@@ -8,7 +8,8 @@
 
 
 
-##### 1.主要 Luci App
+##### 1. 主要 Luci App
+
 
 |              LuCI APP              |              用途               |
 | :--------------------------------  | :----------------------------- |
@@ -21,14 +22,15 @@
 
 
 
-##### 2.源码和脚本来自
+##### 2. 源码和脚本来自
+
 
 - [Lean](https://github.com/coolsnowwolf/lede)
 - [P3TERX](https://github.com/P3TERX/Actions-OpenWrt)
 
 
 
-##### 3.核心插件来自
+##### 3. 核心插件来自
 
 - [OpenClash](https://github.com/vernesong/OpenClash.git)
 - [Dockerman(含依赖版)](https://github.com/KFERMercer/luci-app-dockerman)
