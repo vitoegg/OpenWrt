@@ -4,6 +4,8 @@
 
 Fork：https://github.com/db-one/OpenWrt-AutoBuild
 
+Dockerman编译参考：https://github.com/SuLingGG/OpenWrt-Rpi/blob/main/scripts/lean-openwrt.sh
+
 ##### 源码和脚本来自
 
 - [Lean](https://github.com/coolsnowwolf/lede)
