@@ -1,6 +1,6 @@
 # OpenWrt
 
-#### 基于OpenWrt-Actions-Lean+Lienol-自动化在线编译脚本  
+#### 基于OpenWrt-Actions-Lean-自动化在线编译脚本  
 
 [Fork仓库](https://github.com/db-one/OpenWrt-AutoBuild)
 
