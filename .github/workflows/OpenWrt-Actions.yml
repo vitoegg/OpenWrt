@@ -165,7 +165,7 @@ jobs:
       uses: db-one/delete-workflow-runs@main
       with:
         retain_days: 30     #保留最后多少记录不删除
-        keep_minimum_runs: 0
+        keep_minimum_runs: 2
 
 
 
