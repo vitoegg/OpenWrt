@@ -26,7 +26,7 @@ ZZZ="package/lean/default-settings/files/zzz-default-settings"
 sed -i 's#192.168.1.1#192.168.10.1#g' package/base-files/files/bin/config_generate            # 定制默认IP
 sed -i 's@.*CYXluq4wUazHjmCDBCqXF*@#&@g' $ZZZ                                             # 取消系统默认密码
 sed -i "/uci commit system/i\uci set system.@system[0].hostname='OpenWrt'" $ZZZ       # 修改主机名称为OpenWrt
-sed -i "s/OpenWrt /HomeLede $(TZ=UTC-8 date "+%Y.%m.%d") @ OpenWrt /g" $ZZZ              # 增加自己个性名称
+sed -i "s/OpenWrt / $(TZ=UTC-8 date "+%Y.%m.%d") @ OpenWrt /g" $ZZZ              # 增加自己个性名称
 # sed -i 's/PATCHVER:=5.4/PATCHVER:=4.19/g' target/linux/x86/Makefile                     # 修改内核版本为4.19
 # sed -i "/uci commit luci/i\uci set luci.main.mediaurlbase=/luci-static/atmaterial_red" $ZZZ        # 设置默认主题(如果编译可会自动修改默认主题的，有可能会失效)
 
@@ -81,7 +81,7 @@ EOF
 # 设置固件大小:
 cat >> .config <<EOF
 CONFIG_TARGET_KERNEL_PARTSIZE=32
-CONFIG_TARGET_ROOTFS_PARTSIZE=1536
+CONFIG_TARGET_ROOTFS_PARTSIZE=870
 EOF
 
 # 固件压缩:
@@ -113,8 +113,8 @@ cat >> .config <<EOF
 # CONFIG_PACKAGE_kmod-fs-nfs-v3=y
 # CONFIG_PACKAGE_kmod-fs-nfs-v4=y
 CONFIG_PACKAGE_kmod-fs-exfat=y
-CONFIG_PACKAGE_kmod-fs-ntfs=y
-CONFIG_PACKAGE_kmod-fs-squashfs=y
+# CONFIG_PACKAGE_kmod-fs-ntfs=y
+# CONFIG_PACKAGE_kmod-fs-squashfs=y
 EOF
 
 # USB3.0支持:
@@ -226,7 +226,7 @@ EOF
 cat >> .config <<EOF
 CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_htop=y
-CONFIG_PACKAGE_nano=y
+# CONFIG_PACKAGE_nano=y
 # CONFIG_PACKAGE_screen=y
 # CONFIG_PACKAGE_tree=y
 CONFIG_PACKAGE_vim-fuller=y
@@ -238,7 +238,7 @@ CONFIG_PACKAGE_libcap=y
 CONFIG_PACKAGE_libcap-bin=y
 CONFIG_PACKAGE_docker=y
 CONFIG_PACKAGE_dockerd=y
-CONFIG_PACKAGE_ip6tables-mod-nat=y
+#CONFIG_PACKAGE_ip6tables-mod-nat=y
 CONFIG_PACKAGE_iptables-mod-extra=y
 EOF
 
