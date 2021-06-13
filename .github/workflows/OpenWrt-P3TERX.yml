@@ -36,7 +36,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
 
-    - name: Initialization environment
+    - name: 准备编译环境
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -48,26 +48,29 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
-    - name: Clone source code
+        
+    - name: 克隆代码
       working-directory: /workdir
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-    - name: Update feeds
+        
+    - name: 更新feeds
       run: cd openwrt && ./scripts/feeds update -a
 
-    - name: Install feeds
+    - name: 安装feeds
       run: cd openwrt && ./scripts/feeds install -a
 
-    - name: Load custom configuration
+    - name: 添加自定义信息
       run: |
         [ -e files ] && mv files openwrt/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
         chmod +x $DIY_P_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P_SH
-    - name: Download package
+        
+    - name: 下载安装包
       id: package
       run: |
         cd openwrt
@@ -75,7 +78,8 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-    - name: Compile the firmware
+        
+    - name: 开始编译
       id: compile
       run: |
         cd openwrt
@@ -85,26 +89,29 @@ jobs:
         grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
         [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-    - name: Check space usage
+        
+    - name: 检查存储空间
       if: (!cancelled())
       run: df -hT
 
-    - name: Organize files
+    - name: 整理文件
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd openwrt/bin/targets/*/*
-        rm -rf packages
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "UPLOAD_FIRMWARE=$PWD" >> $GITHUB_ENV
+        mkdir -p ./artifact/firmware
+        rm -rf $(find openwrt/bin/targets/ -type d -name "packages")
+        cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*img*") ./artifact/firmware/
         echo "::set-output name=status::success"
-    - name: Upload firmware directory
+        
+    - name: 上传文件
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
+        path: ./artifact/firmware/
 
-    - name: Delete workflow runs
+    - name: 删除多余信息
       uses: GitRML/delete-workflow-runs@main
       with:
         retain_days: 1
