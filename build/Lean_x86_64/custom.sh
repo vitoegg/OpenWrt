@@ -9,15 +9,15 @@ cat feeds.conf.default
 
 # 添加第三方软件包
 git clone https://github.com/vernesong/OpenClash.git -b master package/clash
-#git clone https://github.com/KFERMercer/luci-app-dockerman package/docker
-#git clone https://github.com/lisaac/luci-lib-docker package/docker
+git clone https://github.com/KFERMercer/luci-app-dockerman package/docker
+git clone https://github.com/lisaac/luci-lib-docker package/docker
 
 # 更新并安装源
 ./scripts/feeds clean
 ./scripts/feeds update -a && ./scripts/feeds install -a
 
 # 删除部分默认包
-#rm -rf package/lean/luci-app-docker
+rm -rf package/lean/luci-app-docker
 
 
 # 自定义定制选项
@@ -107,24 +107,24 @@ EOF
 #EOF
 
 # 多文件系统支持:
-cat >> .config <<EOF
+#cat >> .config <<EOF
 # CONFIG_PACKAGE_kmod-fs-nfs=y
 # CONFIG_PACKAGE_kmod-fs-nfs-common=y
 # CONFIG_PACKAGE_kmod-fs-nfs-v3=y
 # CONFIG_PACKAGE_kmod-fs-nfs-v4=y
-CONFIG_PACKAGE_kmod-fs-exfat=y
+# CONFIG_PACKAGE_kmod-fs-exfat=y
 # CONFIG_PACKAGE_kmod-fs-ntfs=y
 # CONFIG_PACKAGE_kmod-fs-squashfs=y
-EOF
+# EOF
 
 # USB3.0支持:
-cat >> .config <<EOF
-CONFIG_PACKAGE_kmod-usb-ohci=y
-CONFIG_PACKAGE_kmod-usb-ohci-pci=y
-CONFIG_PACKAGE_kmod-usb2=y
-CONFIG_PACKAGE_kmod-usb2-pci=y
-CONFIG_PACKAGE_kmod-usb3=y
-EOF
+#cat >> .config <<EOF
+#CONFIG_PACKAGE_kmod-usb-ohci=y
+#CONFIG_PACKAGE_kmod-usb-ohci-pci=y
+#CONFIG_PACKAGE_kmod-usb2=y
+#CONFIG_PACKAGE_kmod-usb2-pci=y
+#CONFIG_PACKAGE_kmod-usb3=y
+#EOF
 
 # 多线多拨:
 # cat >> .config <<EOF
@@ -137,7 +137,7 @@ EOF
 cat >> .config <<EOF
 # CONFIG_PACKAGE_luci-app-oaf=y #应用过滤
 CONFIG_PACKAGE_luci-app-openclash=y #OpenClash客户端
-#CONFIG_PACKAGE_luci-app-dockerman=y #dockerman客户端
+CONFIG_PACKAGE_luci-app-dockerman=y #dockerman客户端
 # CONFIG_PACKAGE_luci-app-poweroff=y #关机（增加关机功能）
 # CONFIG_PACKAGE_luci-app-argon-config=y #argon主题设置
 # CONFIG_PACKAGE_luci-theme-atmaterial=y #atmaterial 三合一主题
@@ -225,27 +225,27 @@ EOF
 # 常用软件包:
 cat >> .config <<EOF
 CONFIG_PACKAGE_curl=y
-CONFIG_PACKAGE_htop=y
+#CONFIG_PACKAGE_htop=y
 # CONFIG_PACKAGE_nano=y
 # CONFIG_PACKAGE_screen=y
 # CONFIG_PACKAGE_tree=y
 CONFIG_PACKAGE_vim-fuller=y
 CONFIG_PACKAGE_wget=y
-CONFIG_PACKAGE_bash=y
+#CONFIG_PACKAGE_bash=y
 CONFIG_PACKAGE_node=y
-CONFIG_PACKAGE_kmod-tun=y
+#CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_libcap=y
 CONFIG_PACKAGE_libcap-bin=y
 CONFIG_PACKAGE_docker=y
 CONFIG_PACKAGE_dockerd=y
-CONFIG_PACKAGE_ip6tables-mod-nat=y
-CONFIG_PACKAGE_iptables-mod-extra=y
+#CONFIG_PACKAGE_ip6tables-mod-nat=y
+#CONFIG_PACKAGE_iptables-mod-extra=y
 EOF
 
 # 其他软件包:
-cat >> .config <<EOF
-CONFIG_HAS_FPU=y
-EOF
+#cat >> .config <<EOF
+#CONFIG_HAS_FPU=y
+#EOF
 
 
 # 
