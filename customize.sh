@@ -13,13 +13,8 @@
 # 修改默认IP
 sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_generate
 # 取消系统默认密码
-sed -i 's@.*CYXluq4wUazHjmCDBCqXF*@#&@g' $ZZZ
+sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-default-settings
 
-# 修改主机名称为OpenWrt
-sed -i "/uci commit system/i\uci set system.@system[0].hostname='OpenWrt'" $ZZZ
-# 增加自己个性名称
-sed -i "s/OpenWrt /Lrouter $(TZ=UTC-8 date "+%Y.%m.%d") @ OpenWrt /g" $ZZZ
-sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_generate
 
 echo '修改时区'
 sed -i "s/'UTC'/'CST-8'\n   set system.@system[-1].zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
