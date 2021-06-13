@@ -238,7 +238,7 @@ CONFIG_PACKAGE_libcap=y
 CONFIG_PACKAGE_libcap-bin=y
 CONFIG_PACKAGE_docker=y
 CONFIG_PACKAGE_dockerd=y
-#CONFIG_PACKAGE_ip6tables-mod-nat=y
+CONFIG_PACKAGE_ip6tables-mod-nat=y
 CONFIG_PACKAGE_iptables-mod-extra=y
 EOF
 
