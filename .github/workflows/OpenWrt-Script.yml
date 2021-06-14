@@ -19,8 +19,8 @@ on:
 
 
 # 定时触发编译(每月28日早3点)
-  schedule:
-    - cron: 0 19 28 * *
+#  schedule:
+#    - cron: 0 19 28 * *
 
 
 env: 
