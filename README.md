@@ -1,14 +1,17 @@
 # OpenWrt
 
-##### 基于OpenWrt-Actions-Lean-自动化在线编译脚本  
+##### 基于OpenWrt-Actions-Lean-自动化在线编译自用固件  
 
-1. [Fork仓库](https://github.com/db-one/OpenWrt-AutoBuild)
+编译脚本参考：
 
-2. [Dockerman编译参考](https://github.com/SuLingGG/OpenWrt-Rpi/blob/main/scripts/lean-openwrt.sh)
+1. [DB-ONE](https://github.com/db-one/OpenWrt-AutoBuild)
+
+2. [Dockerman修改版编译参考](https://github.com/SuLingGG/OpenWrt-Rpi/blob/main/scripts/lean-openwrt.sh)
+
+3. [Dockerman原版编译参考](https://github.com/mingxiaoyu/N1Openwrt/blob/master/diy.sh)
 
 
-
-##### 1. 主要 Luci App
+##### 1. 主要App
 
 
 |              LuCI APP              |              用途               |
@@ -33,6 +36,5 @@
 ##### 3. 核心插件来自
 
 - [OpenClash](https://github.com/vernesong/OpenClash.git)
-- [Dockerman(含依赖版)](https://github.com/KFERMercer/luci-app-dockerman)
-- [Docker源码](https://github.com/lisaac/luci-app-docker)
-- [Docker依赖](https://github.com/lisaac/luci-lib-docker)
+- [Dockerman(修改版)](https://github.com/KFERMercer/luci-app-dockerman)
+- [Dockerman](https://github.com/lisaac/luci-app-docker)
