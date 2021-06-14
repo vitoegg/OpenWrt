@@ -103,12 +103,12 @@ jobs:
         cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*efi.img*") ./artifact/firmware/
         echo "::set-output name=status::success"
         
-    - name: 上传文件
-      uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
-      with:
-        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ./artifact/firmware/*
+#    - name: 上传文件
+#      uses: actions/upload-artifact@main
+#      if: steps.organize.outputs.status == 'success' && !cancelled()
+#      with:
+#        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+#        path: ./artifact/firmware/*
 
     - name: 自动发布固件到 Releases
       uses: softprops/action-gh-release@v1
@@ -116,8 +116,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GIT_USER_TOKEN }}
       with:
-        name: ${{ env.FILE_DATE1 }} 「 ${{ env.FIRMWARE_MESSAGE }} 」固件
-        tag_name: ${{ env.FILE_DATE2 }}-${{matrix.target}}
+        name: 「OpenWrt-Lean」固件
+        tag_name: ${{ env.FILE_DATE }}-${{matrix.target}}
         body: |            
             ☆  源码 : ${{ env.REPO_URL }}
             ☆  分支 : ${{ env.REPO_BRANCH }}
