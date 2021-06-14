@@ -15,6 +15,9 @@ sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_genera
 # 取消系统默认密码
 sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-default-settings
 
+echo '修改时区'
+sed -i "s/'UTC'/'CST-8'\n   set system.@system[-1].zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
+
 
 # Clone community packages to package/community
 mkdir package/community
@@ -24,12 +27,11 @@ pushd package/community
 # Add OpenClash
 git clone --depth=1 https://github.com/vernesong/OpenClash
 
-# 修改版Dockerman
-rm -rf ../lean/luci-app-docker
-git clone --depth=1 https://github.com/KFERMercer/luci-app-dockerman
+# 原版Dockerman
+#rm -rf ../lean/luci-app-docker
+git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 popd
 
-echo '修改时区'
-sed -i "s/'UTC'/'CST-8'\n   set system.@system[-1].zonename='Asia\/Shanghai'/g" package/base-files/files/bin/config_generate
+
