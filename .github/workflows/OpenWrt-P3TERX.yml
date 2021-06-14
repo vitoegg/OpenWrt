@@ -23,8 +23,6 @@ env:
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P_SH: customize.sh
-  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_BOT: true
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
@@ -105,20 +103,20 @@ jobs:
         cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*efi.img*") ./artifact/firmware/
         echo "::set-output name=status::success"
         
-    - name: 上传文件
+    - name: 上传固件文件
       uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
         name: 「OpenWrt-Lean」${{ env.FILE_DATE }}
         path: ./artifact/firmware/*
 
     - name: 发布固件到 Releases
       uses: softprops/action-gh-release@v1
-      if: steps.organizer.outputs.status == 'success' && !cancelled()
+      if: steps.organizer.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true' 
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
       with:
-        name: 「OpenWrt-Lean」固件-${{ env.FILE_DATE }}
+        name: 「OpenWrt-Lean」固件${{ env.FILE_DATE }}
         tag_name: ${{ env.FILE_DATE }}
         body: |            
             ☆  源码 : ${{ env.REPO_URL }}
@@ -140,9 +138,9 @@ jobs:
         keep_latest: 2         #保留多少个releases不删除
         delete_tags: true
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
     - name: Telegram通知
       if: steps.organizer.outputs.status == 'success' && env.TELEGRAM_BOT == 'true'
       run: |
-        curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=${{ env.FILE_DATE }} 开始编译的固件成功完成了！
+        curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=${{ env.FILE_DATE }} 固件编译完成了！
