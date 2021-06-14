@@ -97,7 +97,7 @@ jobs:
         echo "UPLOAD_FIRMWARE=$PWD" >> $GITHUB_ENV
         mkdir -p ./artifact/firmware
         rm -rf $(find openwrt/bin/targets/ -type d -name "packages")
-        cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*img*") ./artifact/firmware/
+        cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*efi.img*") ./artifact/firmware/
         echo "::set-output name=status::success"
         
     - name: 上传文件
@@ -105,7 +105,7 @@ jobs:
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ./artifact/firmware/
+        path: ./artifact/firmware/*
 
     - name: 删除多余信息
       uses: GitRML/delete-workflow-runs@main
