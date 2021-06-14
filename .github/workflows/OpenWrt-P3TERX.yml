@@ -11,8 +11,11 @@
 name: OpenWrt-P3TERX
 
 on:
-  repository_dispatch:
   workflow_dispatch:
+
+# 定时触发编译(每月28日凌晨4点)
+  schedule:
+    - cron: 0 20 28 * *
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
