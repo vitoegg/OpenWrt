@@ -110,8 +110,26 @@ jobs:
         name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
         path: ./artifact/firmware/*
 
-    - name: 删除多余信息
-      uses: GitRML/delete-workflow-runs@main
+    - name: 自动发布固件到 Releases
+      uses: softprops/action-gh-release@v1
+      if: steps.organizer.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GIT_USER_TOKEN }}
       with:
-        retain_days: 1
-        keep_minimum_runs: 2
+        name: ${{ env.FILE_DATE1 }} 「 ${{ env.FIRMWARE_MESSAGE }} 」固件
+        tag_name: ${{ env.FILE_DATE2 }}-${{matrix.target}}
+        body: |            
+            ☆  源码 : ${{ env.REPO_URL }}
+            ☆  分支 : ${{ env.REPO_BRANCH }}
+            ✨ 固件平台：${{ env.env.DEVICE_NAME }}
+            🎈 编译时间：${{ env.FILE_DATE1 }}   
+        files: ./artifact/firmware/*
+        
+    - name: 删除自动发布的旧固件
+      uses: dev-drprasad/delete-older-releases@v0.1.0
+      if: steps.organizer.outputs.status == 'success' && !cancelled()
+      with:
+        keep_latest: 2         #保留多少个releases不删除
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GIT_USER_TOKEN }}
