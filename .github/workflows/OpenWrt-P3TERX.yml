@@ -109,7 +109,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: 「OpenWrt-Lean」固件-${{ env.FILE_DATE }}
+        name: 「OpenWrt-Lean」${{ env.FILE_DATE }}
         path: ./artifact/firmware/*
 
     - name: 发布固件到 Releases
@@ -140,7 +140,7 @@ jobs:
         keep_latest: 2         #保留多少个releases不删除
         delete_tags: true
       env:
-        GITHUB_TOKEN: ${{ secrets.GIT_USER_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Telegram通知
       if: steps.organizer.outputs.status == 'success' && env.TELEGRAM_BOT == 'true'
