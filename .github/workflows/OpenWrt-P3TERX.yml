@@ -127,8 +127,8 @@ jobs:
             ✨ 固件平台：${{ env.env.DEVICE_NAME }}
             🎈 编译时间：${{ env.FILE_DATE }}   
         files: ./artifact/firmware/*
- 
-     - name: 删除执行记录
+    
+    - name: 删除执行记录
       uses: GitRML/delete-workflow-runs@main
       with:
         retain_days: 1
