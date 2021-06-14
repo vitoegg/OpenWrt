@@ -23,7 +23,6 @@ env:
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: .config
   DIY_P_SH: customize.sh
-  GIT_USER_TOKEN: ${{ secrets.GIT_USER_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_BOT: true
@@ -106,12 +105,12 @@ jobs:
         cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*efi.img*") ./artifact/firmware/
         echo "::set-output name=status::success"
         
-#    - name: 上传文件
-#      uses: actions/upload-artifact@main
-#      if: steps.organize.outputs.status == 'success' && !cancelled()
-#      with:
-#        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-#        path: ./artifact/firmware/*
+    - name: 上传文件
+      uses: actions/upload-artifact@main
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      with:
+        name: 「OpenWrt-Lean」固件-${{ env.FILE_DATE }}
+        path: ./artifact/firmware/*
 
     - name: 发布固件到 Releases
       uses: softprops/action-gh-release@v1
@@ -119,7 +118,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: 「OpenWrt-Lean」固件-${{ env.FILE_DATE1 }}
+        name: 「OpenWrt-Lean」固件-${{ env.FILE_DATE }}
         tag_name: ${{ env.FILE_DATE }}
         body: |            
             ☆  源码 : ${{ env.REPO_URL }}
@@ -127,16 +126,6 @@ jobs:
             ✨ 固件平台：${{ env.env.DEVICE_NAME }}
             🎈 编译时间：${{ env.FILE_DATE }}   
         files: ./artifact/firmware/*
-
-    - name: Upload firmware to release
-      uses: softprops/action-gh-release@v1
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
-        files: ${{ env.FIRMWARE }}/*
 
     - name: 删除执行记录
       uses: GitRML/delete-workflow-runs@main
