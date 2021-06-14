@@ -94,75 +94,17 @@ cat >> .config <<EOF
 CONFIG_EFI_IMAGES=y
 EOF
 
-# IPv6支持:
-#cat >> .config <<EOF
-#CONFIG_PACKAGE_dnsmasq_full_dhcpv6=y
-#CONFIG_PACKAGE_ipv6helper=y
-#EOF
-
-# 编译VMware镜像以及镜像填充
-#cat >> .config <<EOF
-#CONFIG_VMDK_IMAGES=y
-#CONFIG_TARGET_IMAGES_PAD=y
-#EOF
-
-# 多文件系统支持:
-#cat >> .config <<EOF
-# CONFIG_PACKAGE_kmod-fs-nfs=y
-# CONFIG_PACKAGE_kmod-fs-nfs-common=y
-# CONFIG_PACKAGE_kmod-fs-nfs-v3=y
-# CONFIG_PACKAGE_kmod-fs-nfs-v4=y
-# CONFIG_PACKAGE_kmod-fs-exfat=y
-# CONFIG_PACKAGE_kmod-fs-ntfs=y
-# CONFIG_PACKAGE_kmod-fs-squashfs=y
-# EOF
-
-# USB3.0支持:
-#cat >> .config <<EOF
-#CONFIG_PACKAGE_kmod-usb-ohci=y
-#CONFIG_PACKAGE_kmod-usb-ohci-pci=y
-#CONFIG_PACKAGE_kmod-usb2=y
-#CONFIG_PACKAGE_kmod-usb2-pci=y
-#CONFIG_PACKAGE_kmod-usb3=y
-#EOF
-
-# 多线多拨:
-# cat >> .config <<EOF
-# CONFIG_PACKAGE_luci-app-syncdial=y #多拨虚拟WAN
-# CONFIG_PACKAGE_luci-app-mwan3=y #MWAN负载均衡
-# CONFIG_PACKAGE_luci-app-mwan3helper=n #MWAN3分流助手
-# EOF
 
 # 第三方插件选择:
 cat >> .config <<EOF
-# CONFIG_PACKAGE_luci-app-oaf=y #应用过滤
 CONFIG_PACKAGE_luci-app-openclash=y #OpenClash客户端
 CONFIG_PACKAGE_luci-app-dockerman=y #dockerman客户端
-# CONFIG_PACKAGE_luci-app-poweroff=y #关机（增加关机功能）
-# CONFIG_PACKAGE_luci-app-argon-config=y #argon主题设置
-# CONFIG_PACKAGE_luci-theme-atmaterial=y #atmaterial 三合一主题
-# CONFIG_PACKAGE_luci-theme-edge=y #edge主题
-# CONFIG_PACKAGE_luci-app-autotimeset=y #定时重启系统，网络
-# CONFIG_PACKAGE_luci-app-ddnsto=y #小宝开发的DDNS.to内网穿透
-# CONFIG_PACKAGE_ddnsto=y #DDNS.to内网穿透软件包
 EOF
 
 # ShadowsocksR插件:
 cat >> .config <<EOF
 CONFIG_PACKAGE_luci-app-ssr-plus=n
 EOF
-
-# Passwall插件:
-# cat >> .config <<EOF
-# CONFIG_PACKAGE_luci-app-passwall=y
-# CONFIG_PACKAGE_https-dns-proxy=y
-# CONFIG_PACKAGE_naiveproxy=y
-# CONFIG_PACKAGE_kcptun-client=y
-# CONFIG_PACKAGE_chinadns-ng=y
-# CONFIG_PACKAGE_brook=y
-# CONFIG_PACKAGE_trojan-go=y
-# CONFIG_PACKAGE_shadowsocks-rust-sslocal=y
-# EOF
 
 # 常用LuCI插件:
 cat >> .config <<EOF
@@ -198,54 +140,12 @@ CONFIG_PACKAGE_luci-app-usb-printer=n #USB打印机
 CONFIG_PACKAGE_luci-app-sqm=n #SQM智能队列管理
 CONFIG_PACKAGE_luci-app-jd-dailybonus=n #京东签到服务
 CONFIG_PACKAGE_luci-app-uugamebooster=n #UU游戏加速器
-#
-# VPN相关插件(禁用):
-#
-CONFIG_PACKAGE_luci-app-v2ray-server=n #V2ray服务器
-CONFIG_PACKAGE_luci-app-pptp-server=n #PPTP VPN 服务器
-CONFIG_PACKAGE_luci-app-ipsec-vpnd=n #ipsec VPN服务
-CONFIG_PACKAGE_luci-app-openvpn-server=n #openvpn服务
-CONFIG_PACKAGE_luci-app-softethervpn=n #SoftEtherVPN服务器
-#
-# 文件共享相关(禁用):
-#
-CONFIG_PACKAGE_luci-app-minidlna=n #miniDLNA服务
-CONFIG_PACKAGE_luci-app-vsftpd=n #FTP 服务器
-CONFIG_PACKAGE_luci-app-samba=y #网络共享
-CONFIG_PACKAGE_autosamba=y #网络共享
-CONFIG_PACKAGE_samba36-server=y #网络共享
-EOF
+
 
 # LuCI主题:
 cat >> .config <<EOF
-# CONFIG_PACKAGE_luci-theme-argon=y
 CONFIG_PACKAGE_luci-theme-netgear=y
 EOF
-
-# 常用软件包:
-cat >> .config <<EOF
-CONFIG_PACKAGE_curl=y
-#CONFIG_PACKAGE_htop=y
-# CONFIG_PACKAGE_nano=y
-# CONFIG_PACKAGE_screen=y
-# CONFIG_PACKAGE_tree=y
-CONFIG_PACKAGE_vim-fuller=y
-CONFIG_PACKAGE_wget=y
-#CONFIG_PACKAGE_bash=y
-CONFIG_PACKAGE_node=y
-#CONFIG_PACKAGE_kmod-tun=y
-CONFIG_PACKAGE_libcap=y
-CONFIG_PACKAGE_libcap-bin=y
-CONFIG_PACKAGE_docker=y
-CONFIG_PACKAGE_dockerd=y
-#CONFIG_PACKAGE_ip6tables-mod-nat=y
-#CONFIG_PACKAGE_iptables-mod-extra=y
-EOF
-
-# 其他软件包:
-#cat >> .config <<EOF
-#CONFIG_HAS_FPU=y
-#EOF
 
 
 # 
