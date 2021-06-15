@@ -29,8 +29,8 @@ git clone --depth=1 https://github.com/vernesong/OpenClash
 
 # 原版Dockerman
 #rm -rf ../lean/luci-app-docker
-git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+#git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
+#git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 popd
 
