@@ -96,12 +96,11 @@ jobs:
 
     - name: 整理固件文件
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        mkdir -p ./artifact/firmware
         rm -rf $(find openwrt/bin/targets/ -type d -name "packages")
-        cp -rf $(find openwrt/bin/targets/ -type f -name "*.buildinfo") ${{ env.FIRMWARE }}/
-        cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*efi.img*") ${{ env.FIRMWARE }}/
+        cp -rf $(find openwrt/bin/targets/ -type f -name "*.buildinfo") ./artifact/firmware/
+        cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*efi.img*") ./artifact/firmware/
         echo "::set-output name=status::success"
         
     - name: 上传固件文件
@@ -109,7 +108,7 @@ jobs:
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
         name: 「OpenWrt-Lean」${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
+        path:  ./artifact/firmware/
 
     - name: 发布固件到 Releases
       uses: softprops/action-gh-release@v1
@@ -124,7 +123,7 @@ jobs:
             ☆  分支 : ${{ env.REPO_BRANCH }}
             ✨ 固件平台：${{ env.env.DEVICE_NAME }}
             🎈 编译时间：${{ env.FILE_DATE }}   
-        files: ${{ env.FIRMWARE }}/*
+        files:  ./artifact/firmware/*
 
     - name: 删除执行记录
       uses: GitRML/delete-workflow-runs@main
