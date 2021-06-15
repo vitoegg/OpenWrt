@@ -9,15 +9,15 @@ cat feeds.conf.default
 
 # 添加第三方软件包
 git clone https://github.com/vernesong/OpenClash.git -b master package/clash
-git clone https://github.com/KFERMercer/luci-app-dockerman package/docker
-git clone https://github.com/lisaac/luci-lib-docker package/docker
+#git clone https://github.com/KFERMercer/luci-app-dockerman package/docker
+#git clone https://github.com/lisaac/luci-lib-docker package/docker
 
 # 更新并安装源
 ./scripts/feeds clean
 ./scripts/feeds update -a && ./scripts/feeds install -a
 
 # 删除部分默认包
-rm -rf package/lean/luci-app-docker
+#rm -rf package/lean/luci-app-docker
 
 
 # 自定义定制选项
@@ -98,7 +98,7 @@ EOF
 # 第三方插件选择:
 cat >> .config <<EOF
 CONFIG_PACKAGE_luci-app-openclash=y #OpenClash客户端
-CONFIG_PACKAGE_luci-app-dockerman=y #dockerman客户端
+#CONFIG_PACKAGE_luci-app-dockerman=y #dockerman客户端
 EOF
 
 # ShadowsocksR插件:
