@@ -147,6 +147,22 @@ cat >> .config <<EOF
 CONFIG_PACKAGE_luci-theme-netgear=y
 EOF
 
+# 常用软件包:
+cat >> .config <<EOF
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_wget=y
+CONFIG_PACKAGE_bash=y
+CONFIG_PACKAGE_node=y
+CONFIG_PACKAGE_kmod-tun=y
+CONFIG_PACKAGE_libcap=y
+CONFIG_PACKAGE_libcap-bin=y
+EOF
+
+# 其他软件包:
+cat >> .config <<EOF
+CONFIG_HAS_FPU=y
+EOF
+
 
 # 
 # ========================固件定制部分结束========================
