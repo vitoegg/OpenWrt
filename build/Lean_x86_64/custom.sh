@@ -156,6 +156,8 @@ CONFIG_PACKAGE_node=y
 CONFIG_PACKAGE_kmod-tun=y
 CONFIG_PACKAGE_libcap=y
 CONFIG_PACKAGE_libcap-bin=y
+#CONFIG_PACKAGE_docker=y
+#CONFIG_PACKAGE_dockerd=y
 EOF
 
 # 其他软件包:
