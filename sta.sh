@@ -31,12 +31,12 @@ pushd package/community
 git clone --depth=1 https://github.com/vernesong/OpenClash
 
 # 原版Dockerman
-#rm -rf ../lean/luci-app-docker
-#git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-#git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+rm -rf ../lean/luci-app-docker
+git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
+git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 popd
 
 #openclash依赖
-rm -rf feeds/packages/libs/libcap
-svn co https://github.com/openwrt/packages/trunk/libs/libcap feeds/packages/libs/libcap
+#rm -rf feeds/packages/libs/libcap
+#svn co https://github.com/openwrt/packages/trunk/libs/libcap feeds/packages/libs/libcap
