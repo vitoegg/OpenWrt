@@ -100,8 +100,8 @@ jobs:
       run: |
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         rm -rf $(find openwrt/bin/targets/ -type d -name "packages")
-        cp -rf $(find openwrt/bin/targets/ -type f -name "*.buildinfo" -o -name "*.manifest") ${{ env.FIRMWARE }}
-        cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*efi.img*") ${{ env.FIRMWARE }}
+        cp -rf $(find openwrt/bin/targets/ -type f -name "*.buildinfo") ${{ env.FIRMWARE }}/
+        cp -rf $(find openwrt/bin/targets/ -type f -name "*combined*efi.img*") ${{ env.FIRMWARE }}/
         echo "::set-output name=status::success"
         
     - name: 上传固件文件
