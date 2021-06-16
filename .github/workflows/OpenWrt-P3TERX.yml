@@ -121,7 +121,7 @@ jobs:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         message: |
-              ***🎉Openwrt-Lean固件编译成功！！！***
-              -------------------------------------------------
-              🎈 编译时间：${{ env.FILE_DATE1 }}
-              🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
+          ***🎉Openwrt-Lean固件编译成功！！！***
+          -------------------------------------------------
+          🎈 编译时间：${{ env.FILE_DATE1 }}
+          🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
