@@ -115,15 +115,15 @@ jobs:
         
     - name: Telegram通知
       uses: appleboy/telegram-action@master
-      if: steps.organize.outputs.status == 'success' && !cancelled()
+      if: steps.organize.outputs.status == 'success'
       with:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         message: |
           -------------------------------------------------
-          -----------------   X86_64   --------------------
-          ---------- 🎉Openwrt-Lean固件编译成功🎉 -----------
-          -----------------   V4.19.*   -------------------
+          -- X86_64 --
+          🎉Openwrt-Lean固件编译成功🎉 
+          -- V4.19.* --
           -------------------------------------------------
           🎈 编译时间：${{ env.FILE_DATE1 }}
           🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
