@@ -39,6 +39,7 @@ jobs:
       with:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        args: 编译时间：
-              发布地址：
-              固件已经编译完成 🎈！！！"
+        message: |
+              编译时间：2021.06.16
+              发布地址：https://github.com/vitoegg/OpenWrt
+              固件编译成功！
