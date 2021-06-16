@@ -1,0 +1,38 @@
+#
+# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/P3TERX/Actions-OpenWrt
+# Description: Build OpenWrt using GitHub Actions
+#
+
+name: OpenWrt-bot
+
+on:
+  workflow_dispatch:
+
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+
+    steps:
+    - name: 检查项目分支
+      uses: actions/checkout@main
+        
+    - name: Telegram通知
+      uses: appleboy/telegram-action@master
+      if: cancelled()==false
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          -------------------------------------------------
+          -----------------   X86_64   --------------------
+          ---------- 🎉Openwrt-Lean固件编译成功🎉 -----------
+          -----------------   V4.19.*   -------------------
+          -------------------------------------------------
+          🎈 编译时间：${{ env.FILE_DATE1 }}
+          🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
