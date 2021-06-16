@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: OpenWrt-P3TERX
+name: OpenWrt-5.10
 
 on:
   workflow_dispatch:
@@ -97,7 +97,6 @@ jobs:
       run: |
         mkdir -p ./artifact/firmware
         rm -rf $(find openwrt/bin/targets/ -type d -name "packages")
-        cp -rf $(find openwrt/bin/targets/ -type f -name "*.buildinfo") ./artifact/firmware/
         cp -rf $(find openwrt/bin/targets/ -type f -name "*squashfs*combined*efi.img*") ./artifact/firmware/
         echo "::set-output name=status::success"
         
