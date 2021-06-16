@@ -43,9 +43,5 @@ rm -rf ../lean/luci-theme-argon
 
 popd
 
-#openclash依赖
-#rm -rf feeds/packages/libs/libcap
-#svn co https://github.com/openwrt/packages/trunk/libs/libcap feeds/packages/libs/libcap
-
 # 修改默认主题为argon
 sed -i "/commit luci/i\uci set luci.main.mediaurlbase='/luci-static/argon'" package/lean/default-settings/files/zzz-default-settings
