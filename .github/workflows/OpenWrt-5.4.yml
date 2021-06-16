@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: OpenWrt-4.19
+name: OpenWrt-5.4
 
 on:
   workflow_dispatch:
@@ -117,7 +117,7 @@ jobs:
           -------------------------------------------------
           -- X86_64 --
           🎉Openwrt-Lean固件编译成功🎉 
-          -- V4.19.* --
+          -- V5.4.* --
           -------------------------------------------------
           🎈 编译时间：${{ env.FILE_DATE1 }}
           🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
