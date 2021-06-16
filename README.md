@@ -6,9 +6,9 @@
 
 1. [DB-ONE](https://github.com/db-one/OpenWrt-AutoBuild)
 
-2. [Dockerman修改版编译参考](https://github.com/SuLingGG/OpenWrt-Rpi/blob/main/scripts/lean-openwrt.sh)
+2. [SuLingGG/OpenWrt-Rpi](https://github.com/SuLingGG/OpenWrt-Rpi/blob/main/scripts/lean-openwrt.sh)
 
-3. [Dockerman原版编译参考](https://github.com/mingxiaoyu/N1Openwrt/blob/master/diy.sh)
+3. [firker/openwrt-Exclusive](https://github.com/firker/openwrt-Exclusive/blob/main/diy4.19.sh)
 
 
 ##### 1. 主要App
@@ -25,7 +25,7 @@
 
 
 
-##### 2. 源码和脚本来自
+##### 2. 源码来自
 
 
 - [Lean](https://github.com/coolsnowwolf/lede)
@@ -37,5 +37,4 @@
 ##### 3. 核心插件来自
 
 - [OpenClash](https://github.com/vernesong/OpenClash.git)
-- [Dockerman(修改版)](https://github.com/KFERMercer/luci-app-dockerman)
 - [Dockerman](https://github.com/lisaac/luci-app-docker)
