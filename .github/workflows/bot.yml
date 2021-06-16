@@ -33,28 +33,12 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
-
-    - name: 初始化系统环境
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        docker rmi `docker images -q`
-        sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d
-        sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk* mysql* php* android*
-        sudo -E apt-get update
-        sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs gcc-multilib g++-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler antlr3 gperf swig libc6-dev-i386 libc6-dev libncurses5 libtinfo-dev libtinfo5 ncurses-doc python2.7 git-core wget curl rsync
-        sudo -E apt-get -y autoremove --purge
-        sudo -E apt-get clean
-        df -h
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
         
     - name: 通知-Telegram
-      run: |
-        curl -X POST “https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=您的固件成功编译完成了
-          编译时间：${{ env.FILE_DATE1 }}
-          发布地址：${{ env.GITHUB_RELEASE }}
-          奶牛快传：${{ env.COWTRANSFER_URL }}
-          WeTransfer：${{ env.WETRANSFER_URL }}
-          固件已经编译完成 🎈！！！"
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        args: 编译时间：
+              发布地址：
+              固件已经编译完成 🎈！！！"
