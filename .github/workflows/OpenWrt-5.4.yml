@@ -104,7 +104,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
-        name: Lede_4${{ env.FILE_DATE }}
+        name: Lede_5.4${{ env.FILE_DATE }}
         path:  ./artifact/firmware/
         
     - name: Telegram通知
