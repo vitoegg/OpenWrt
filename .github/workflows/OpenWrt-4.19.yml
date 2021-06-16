@@ -112,3 +112,15 @@ jobs:
       with:
         retain_days: 1
         keep_minimum_runs: 2
+        
+    - name: Telegram通知
+      uses: appleboy/telegram-action@master
+      if: steps.organizer.outputs.status == 'success'
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          ***🎉Openwrt-Lean-4.19固件编译成功！！！***
+          -------------------------------------------------
+          🎈 编译时间：${{ env.FILE_DATE1 }}
+          🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
