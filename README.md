@@ -30,6 +30,7 @@
 
 - [Lean](https://github.com/coolsnowwolf/lede)
 - [P3TERX](https://github.com/P3TERX/Actions-OpenWrt)
+- [Telegram Bot](https://github.com/appleboy/telegram-action)
 
 
 
