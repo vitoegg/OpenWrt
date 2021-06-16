@@ -40,6 +40,7 @@ jobs:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         message: |
-              编译时间：2021.06.16
-              发布地址：https://github.com/vitoegg/OpenWrt
-              固件编译成功！
+              ***🎉Openwrt Lean 固件编译成***
+              -------------------------------------------------
+              🎈 编译时间：2021.06.16
+              🌴 发布地址：https://github.com/vitoegg/OpenWrt
