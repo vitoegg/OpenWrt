@@ -1,8 +1,11 @@
 # OpenWrt
 
-##### 基于OpenWrt-Actions-Lean-自动化在线编译自用固件  
+***基于OpenWrt-Actions-Lean-自动化在线编译自用固件***
+---------------------------------------------------------------------------
+---------------------------------------------------------------------------
 
-编译脚本参考：
+
+#### 编译脚本参考：
 
 1. [DB-ONE](https://github.com/db-one/OpenWrt-AutoBuild)
 
@@ -11,7 +14,7 @@
 3. [firker/openwrt-Exclusive](https://github.com/firker/openwrt-Exclusive/blob/main/diy4.19.sh)
 
 
-##### 1. 主要App
+#### 1. 主要App
 
 
 |              LuCI APP              |              用途               |
@@ -25,7 +28,7 @@
 
 
 
-##### 2. 源码来自
+#### 2. 源码来自
 
 
 - [Lean](https://github.com/coolsnowwolf/lede)
@@ -34,7 +37,7 @@
 
 
 
-##### 3. 核心插件来自
+#### 3. 核心插件来自
 
 - [OpenClash](https://github.com/vernesong/OpenClash.git)
 - [Dockerman](https://github.com/lisaac/luci-app-docker)
