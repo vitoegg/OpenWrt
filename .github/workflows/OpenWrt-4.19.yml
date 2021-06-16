@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-    - name: Checkout
+    - name: 检查项目分支
       uses: actions/checkout@main
 
     - name: 准备编译环境
@@ -115,7 +115,7 @@ jobs:
         
     - name: Telegram通知
       uses: appleboy/telegram-action@master
-      if: steps.organizer.outputs.status == 'success'
+      if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
