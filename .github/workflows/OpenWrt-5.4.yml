@@ -119,5 +119,5 @@ jobs:
           🎉Openwrt-Lean固件编译成功🎉 
           -- V5.4.* --
           -------------------------------------------------
-          🎈 编译时间：${{ env.FILE_DATE1 }}
+          🎈 编译时间：${{ env.FILE_DATE }}
           🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
