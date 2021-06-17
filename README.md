@@ -5,13 +5,15 @@
 
 
 
-#### 编译脚本参考：
+#### 源码：
 
-1. [DB-ONE](https://github.com/db-one/OpenWrt-AutoBuild)
+- [Lean](https://github.com/coolsnowwolf/lede)
+- [P3TERX](https://github.com/P3TERX/Actions-OpenWrt)
+- [Telegram Bot](https://github.com/appleboy/telegram-action)
+- [OpenClash](https://github.com/vernesong/OpenClash.git)
+- [Dockerman](https://github.com/lisaac/luci-app-docker)
 
-2. [SuLingGG/OpenWrt-Rpi](https://github.com/SuLingGG/OpenWrt-Rpi/blob/main/scripts/lean-openwrt.sh)
-
-3. [firker/openwrt-Exclusive](https://github.com/firker/openwrt-Exclusive/blob/main/diy4.19.sh)
+感谢大神们的贡献！
 
 
 #### 1. 主要App
@@ -28,16 +30,12 @@
 
 
 
-#### 2. 源码来自
+#### 2. 项目参考
+
+1. [DB-ONE](https://github.com/db-one/OpenWrt-AutoBuild)
+
+2. [SuLingGG/OpenWrt-Rpi](https://github.com/SuLingGG/OpenWrt-Rpi)
+
+3. [firker/openwrt-Exclusive](https://github.com/firker/openwrt-Exclusive)
 
 
-- [Lean](https://github.com/coolsnowwolf/lede)
-- [P3TERX](https://github.com/P3TERX/Actions-OpenWrt)
-- [Telegram Bot](https://github.com/appleboy/telegram-action)
-
-
-
-#### 3. 核心插件来自
-
-- [OpenClash](https://github.com/vernesong/OpenClash.git)
-- [Dockerman](https://github.com/lisaac/luci-app-docker)
