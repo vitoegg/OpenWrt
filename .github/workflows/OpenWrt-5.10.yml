@@ -53,7 +53,15 @@ jobs:
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
-        
+
+    - name: 更新时区、编译时间
+      id: date
+      run: |
+        sudo timedatectl set-timezone "$TZ"
+        echo "::set-output name=status::success"
+        echo "FILE_DATE1=$(date "+%Y%m%d")" >> $GITHUB_ENV
+        echo "FILE_DATE2=$(date "+%Y年%m月%d日%H点%M分")" >> $GITHUB_ENV
+
     - name: 更新feeds
       run: cd openwrt && ./scripts/feeds update -a
 
@@ -104,7 +112,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
-        name: Lean_5.10${{ env.FILE_DATE }}
+        name: Lean_5.10_${{ env.FILE_DATE1 }}
         path:  ./artifact/firmware/
         
     - name: Telegram通知
@@ -114,9 +122,10 @@ jobs:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         message: |
-          ** Lean **
+          --
+          ------
+          Lean V5.10
           🎉OpenWrt-x86-64固件编译成功🎉 
-          -- V5.10 --
           -------------------------------------------------
-          🎈 编译时间：${{ env.FILE_DATE }}
+          🎈 编译时间：${{ env.FILE_DATE2 }}
           🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
