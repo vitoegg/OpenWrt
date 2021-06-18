@@ -122,10 +122,9 @@ jobs:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         message: |
-          --
-          ------
-          Lean V5.10
-          🎉OpenWrt-x86-64固件编译成功🎉 
-          -------------------------------------------------
+          ^_^_^_^_^_^_^
+          🎉固件编译成功🎉 
+          ---** OpenWrt-Lean-5.10-x86_64 **---
+          ^_^_^_^_^_^_^
           🎈 编译时间：${{ env.FILE_DATE2 }}
           🌴 发布地址：https://github.com/vitoegg/OpenWrt/actions
