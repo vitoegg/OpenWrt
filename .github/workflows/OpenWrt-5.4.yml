@@ -60,7 +60,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         echo "::set-output name=status::success"
         echo "FILE_DATE1=$(date "+%Y%m%d")" >> $GITHUB_ENV
-        echo "FILE_DATE2=$(date "+%Y年%m月%d日")" >> $GITHUB_ENV
+        echo "FILE_DATE2=$(date "+%Y年%m月%d日%H点%M分")" >> $GITHUB_ENV
 
     - name: 更新feeds
       run: cd openwrt && ./scripts/feeds update -a
