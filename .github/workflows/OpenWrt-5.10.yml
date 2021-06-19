@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 # 定时触发编译(每月28日凌晨4点)
-#  schedule:
-#    - cron: 0 20 28 * *
+  schedule:
+    - cron: 0 20 */2 * *
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
@@ -114,7 +114,13 @@ jobs:
       with:
         name: Lean_5.10_${{ env.FILE_DATE1 }}
         path:  ./artifact/firmware/
-        
+    
+    - name: 删除历史编译
+      uses: GitRML/delete-workflow-runs@main
+      with:
+        retain_days: 3
+        keep_minimum_runs: 2    
+    
     - name: Telegram通知
       uses: appleboy/telegram-action@master
       if: steps.organize.outputs.status == 'success'
