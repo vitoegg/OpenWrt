@@ -36,6 +36,4 @@
 
 2. [SuLingGG/OpenWrt-Rpi](https://github.com/SuLingGG/OpenWrt-Rpi)
 
-3. [firker/openwrt-Exclusive](https://github.com/firker/openwrt-Exclusive)
-
 
