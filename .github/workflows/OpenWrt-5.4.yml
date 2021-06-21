@@ -112,7 +112,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
-        name: Lede_5.4_${{ env.FILE_DATE1 }}
+        name: Lean_5.4_${{ env.FILE_DATE1 }}
         path:  ./artifact/firmware/
 
     - name: 删除历史编译
@@ -130,6 +130,6 @@ jobs:
         message: |
           🎉固件编译成功🎉 
 
-          - 🌴 内核版本：Lean-5.4
+          - 🌴 内核版本：Lean-5.4-${{ env.DEVICE_NAME }}
           - 🎈 编译时间：${{ env.FILE_DATE2 }}
           - 🔗 下载地址：https://github.com/vitoegg/OpenWrt/actions
