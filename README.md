@@ -1,7 +1,7 @@
 # OpenWrt
 
 
-`基于OpenWrt-Actions-Lean-自动化在线编译自用固件`
+`基于Github-Actions的OpenWrt-Lean自动化在线编译`
 
 
 
