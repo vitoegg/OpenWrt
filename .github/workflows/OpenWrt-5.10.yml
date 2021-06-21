@@ -13,7 +13,7 @@ name: OpenWrt-Lean-5.10
 on:
   workflow_dispatch:
 
-# 定时触发编译(每月28日凌晨4点)
+# 定时触发编译(每两天凌晨4点)
   schedule:
     - cron: 0 20 */2 * *
 
