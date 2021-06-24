@@ -108,12 +108,6 @@ jobs:
         name: Lean_5.4_${{ env.FILE_DATE1 }}
         path:  ./artifact/firmware/
 
-    - name: 删除历史编译
-      uses: GitRML/delete-workflow-runs@main
-      with:
-        retain_days: 3
-        keep_minimum_runs: 2 
-
     - name: Telegram通知
       uses: appleboy/telegram-action@master
       if: steps.organize.outputs.status == 'success'
