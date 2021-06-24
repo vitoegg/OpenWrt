@@ -13,9 +13,9 @@ name: OpenWrt-Lean-5.10
 on:
   workflow_dispatch:
 
-# 定时触发编译(每两天凌晨4点)
+# 定时触发编译(每7天凌晨4点)
   schedule:
-    - cron: 0 20 */2 * *
+    - cron: 0 20 */7 * *
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
@@ -106,13 +106,7 @@ jobs:
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
         name: Lean_5.10_${{ env.FILE_DATE1 }}
-        path:  ./artifact/firmware/
-    
-    - name: 删除历史编译
-      uses: GitRML/delete-workflow-runs@main
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        retain_days: 3   
+        path:  ./artifact/firmware/ 
     
     - name: Telegram通知
       uses: appleboy/telegram-action@master
