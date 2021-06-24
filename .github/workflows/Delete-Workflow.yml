@@ -1,4 +1,4 @@
-name: 清理历史编译任务
+name: Delete-Workflow
 
 on:
   workflow_dispatch:
@@ -15,4 +15,3 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           retain_days: 3
-          keep_minimum_runs: 2
