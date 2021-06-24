@@ -111,8 +111,7 @@ jobs:
     - name: 删除历史编译
       uses: GitRML/delete-workflow-runs@main
       with:
-        retain_days: 3
-        keep_minimum_runs: 2    
+        retain_days: 3   
     
     - name: Telegram通知
       uses: appleboy/telegram-action@master
