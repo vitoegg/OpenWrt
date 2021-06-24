@@ -111,6 +111,7 @@ jobs:
     - name: 删除历史编译
       uses: GitRML/delete-workflow-runs@main
       with:
+        token: ${{ secrets.GITHUB_TOKEN }}
         retain_days: 3   
     
     - name: Telegram通知
