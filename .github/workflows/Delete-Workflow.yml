@@ -1,0 +1,18 @@
+name: 清理历史编译任务
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 16 * * *"
+
+jobs:
+  del_runs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 删除历史编译
+        uses: GitRML/delete-workflow-runs@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          retain_days: 3
+          keep_minimum_runs: 2
