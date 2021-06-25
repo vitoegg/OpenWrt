@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 # 定时触发编译(每7天凌晨4点)
-#  schedule:
-#    - cron: 0 20 */7 * *
+  schedule:
+    - cron: 0 20 1 * *
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
