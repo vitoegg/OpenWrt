@@ -27,7 +27,7 @@
 |          luci-app-samba          |      文件服务器       |
 |        luci-app-hd-idle        |       硬盘休眠      |
 |        luci-app-diskman        |    磁盘管理工具     |
-|      luci-app-flowoffload      |            转发加强工具            |
+|      Turbo Acc      |            网络加速工具            |
 
 
 
