@@ -35,6 +35,6 @@
 
 1. [DB-ONE](https://github.com/db-one/OpenWrt-AutoBuild)
 
-2. [SuLingGG/OpenWrt-Rpi](https://github.com/SuLingGG/OpenWrt-Rpi)
+2. [SuLingGG](https://github.com/SuLingGG)
 
 
