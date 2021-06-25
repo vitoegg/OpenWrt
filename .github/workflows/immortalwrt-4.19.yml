@@ -105,7 +105,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
-        name: Lean_5.10_${{ env.FILE_DATE1 }}
+        name: immortalwrt_4.19_${{ env.FILE_DATE1 }}
         path:  ./artifact/firmware/ 
     
     - name: Telegram通知
