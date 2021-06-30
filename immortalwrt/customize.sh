@@ -13,8 +13,9 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/emortal/default-settings/files/zzz-def
 #修改主机名
 sed -i 's/ImmortalWrt/OpenWrt/g' package/base-files/files/bin/config_generate
 
+#添加编译日期
 pushd package/emortal/default-settings/files
-export orig_version="$(cat "/etc/openwrt_release" | grep DISTRIB_DESCRIPTION | awk -F "'" '{print $2}')"
+export orig_version="$(cat "zzz-default-settings" | grep DISTRIB_DESCRIPTION | awk -F "'" '{print $2}')"
 sed -i "s/${orig_version}/${orig_version} ($(date +"%Y-%m-%d"))/g" zzz-default-settings
 popd
 
@@ -26,7 +27,7 @@ popd
 mkdir package/community
 pushd package/community
 
-# 原版Dockerman
+# 使用最新版Dockerman
 git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
