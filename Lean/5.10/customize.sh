@@ -8,8 +8,6 @@
 # https://github.com/P3TERX/Actions-OpenWrt
 # File name: customize.sh
 # Description: OpenWrt DIY script (After Update feeds)
-#
-
 
 # 修改默认IP
 sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_generate
@@ -19,7 +17,6 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-defaul
 # Clone community packages to package/community
 mkdir package/community
 pushd package/community
-
 
 # Add OpenClash
 git clone --depth=1 https://github.com/vernesong/OpenClash
