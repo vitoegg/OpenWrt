@@ -20,18 +20,13 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/default-settings/files/zzz-default-set
 mkdir package/community
 pushd package/community
 
-
 # Add OpenClash
 git clone --depth=1 https://github.com/vernesong/OpenClash
-rm -rf feeds/packages/libs/libcap
-svn co https://github.com/openwrt/packages/trunk/libs/libcap feeds/packages/libs/libcap
-
-# 原版Dockerman
-rm -rf ../lean/luci-app-docker
-git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 popd
+
+rm -rf feeds/packages/libs/libcap
+svn co https://github.com/openwrt/packages/trunk/libs/libcap feeds/packages/libs/libcap
 
 # 增加日期显示
 pushd package/default-settings/files
