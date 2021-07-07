@@ -16,6 +16,9 @@ sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_genera
 sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/default-settings/files/zzz-default-settings
 
 
+rm -rf package/lean/luci-app-mwan3
+rm -rf package/lean/luci-app-mwan3helper
+
 # Clone community packages to package/community
 mkdir package/community
 pushd package/community
