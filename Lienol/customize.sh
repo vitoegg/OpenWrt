@@ -25,9 +25,6 @@ git clone --depth=1 https://github.com/vernesong/OpenClash
 
 popd
 
-rm -rf feeds/packages/libs/libcap
-svn co https://github.com/openwrt/packages/trunk/libs/libcap feeds/packages/libs/libcap
-
 # 增加日期显示
 pushd package/default-settings/files
 export orig_version="$(cat "zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')"
