@@ -14,7 +14,7 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/emortal/default-settings/files/zzz-def
 sed -i 's/ImmortalWrt/OpenWrt/g' package/base-files/files/bin/config_generate
 
 #修改固件信息
-sed -i "s/iHome $(TZ=UTC-8 date "+%Y.%m.%d")/g" package/emortal/default-settings/files/zzz-default-settings
+sed -i "s/immortalwrt /iHome $(TZ=UTC-8 date "+%Y.%m.%d") @ immortalwrt /g" package/emortal/default-settings/files/zzz-default-settings
 
 # 移除默认编译的插件
 sed -i 's/luci-app-ddns//g;s/luci-app-upnp//g;s/luci-app-adbyby-plus//g;s/luci-app-vsftpd//g;s/luci-app-ssr-plus//g;s/luci-app-unblockmusic//g;s/luci-app-vlmcsd//g;s/luci-app-wol//g;s/luci-app-nlbwmon//g;s/luci-app-accesscontrol//g' include/target.mk
