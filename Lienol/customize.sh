@@ -15,6 +15,9 @@ sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_genera
 # 取消系统默认密码
 sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/default-settings/files/zzz-default-settings
 
+# 默认内核为4.14，修改内核为4.19
+sed -i 's/PATCHVER:=4.14/PATCHVER:=4.19/g' target/linux/x86/Makefile
+
 
 rm -rf package/lean/luci-app-mwan3
 rm -rf package/lean/luci-app-mwan3helper
