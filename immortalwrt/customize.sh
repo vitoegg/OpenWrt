@@ -12,7 +12,8 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/emortal/default-settings/files/zzz-def
 
 #修改主机名
 sed -i 's/ImmortalWrt/OpenWrt/g' package/base-files/files/bin/config_generate
-sed -i "s/OpenWrt /iHome Build in $(TZ=UTC-8 date "+%Y.%m.%d") @ OpenWrt /g" $ZZZ
+#sed -i "s/OpenWrt /iHome Build in $(TZ=UTC-8 date "+%Y.%m.%d") @ OpenWrt /g" $ZZZ
+sed -i 's/.*vermagic.*/\tdate +%Y%m%d > .\/vermagic/g' include/kernel-defaults.mk
 
 
 # 移除默认编译的插件
