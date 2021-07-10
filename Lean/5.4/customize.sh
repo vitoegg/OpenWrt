@@ -25,13 +25,17 @@ mkdir package/community
 pushd package/community
 
 
-# Add OpenClash
+# OpenClash
 git clone --depth=1 https://github.com/vernesong/OpenClash
 
-# 原版Dockerman
+# Dockerman
 rm -rf ../lean/luci-app-docker
 git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+
+# SmartDNS
+git clone --depth=1 https://github.com/pymumu/luci-app-smartdns
+git clone --depth=1 https://github.com/pymumu/smartdns
 
 popd
 
