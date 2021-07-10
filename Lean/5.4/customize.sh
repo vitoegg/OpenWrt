@@ -24,7 +24,6 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-defaul
 mkdir package/community
 pushd package/community
 
-
 # OpenClash
 git clone --depth=1 https://github.com/vernesong/OpenClash
 
@@ -33,10 +32,10 @@ rm -rf ../lean/luci-app-docker
 git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
-# SmartDNS
-git clone --depth=1 https://github.com/pymumu/luci-app-smartdns
-
 popd
+
+# SmartDNS
+git clone -b lede https://github.com/pymumu/luci-app-smartdns.git package/lean/luci-app-smartdns
 
 # 增加日期显示
 pushd package/lean/default-settings/files
