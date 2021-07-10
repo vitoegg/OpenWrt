@@ -19,10 +19,6 @@ sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_genera
 # 取消系统默认密码
 sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-default-settings
 
-# SmartDNS
-pushd package/lean
-git clone --depth=1 https://github.com/pymumu/luci-app-smartdns
-popd
 
 # Clone community packages to package/community
 mkdir package/community
@@ -35,6 +31,10 @@ git clone --depth=1 https://github.com/vernesong/OpenClash
 rm -rf ../lean/luci-app-docker
 git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+
+rm -rf ../lean/luci-app-smartdns
+git clone --depth=1 https://github.com/pymumu/luci-app-smartdns
+git clone --depth=1 https://github.com/pymumu/smartdns
 
 popd
 
