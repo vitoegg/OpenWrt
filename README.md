@@ -13,6 +13,7 @@
 - [Telegram Bot](https://github.com/appleboy/telegram-action)
 - [OpenClash](https://github.com/vernesong/OpenClash.git)
 - [Dockerman](https://github.com/lisaac/luci-app-docker)
+- [SmartDNS](https://github.com/pymumu/smartdns)
 
 感谢大神们的贡献！
 
@@ -27,8 +28,8 @@
 |          luci-app-samba          |      文件服务器       |
 |        luci-app-hd-idle        |       硬盘休眠      |
 |        luci-app-diskman        |    磁盘管理工具     |
+|      luci-app-smartdns      |            DNS服务器            |
 |      Turbo Acc      |            网络加速工具            |
-
 
 
 #### 2. 项目参考
