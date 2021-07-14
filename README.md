@@ -1,7 +1,7 @@
 # OpenWrt
 
 
-`基于Github-Actions的OpenWrt-Lean自动化在线编译`
+`基于Github-Actions的OpenWrt-Lean-immortalwrt自动化在线编译`
 
 
 
