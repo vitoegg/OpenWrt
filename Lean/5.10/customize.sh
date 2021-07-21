@@ -29,6 +29,11 @@ git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 #SmartDNS
 #git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
 
+# Add luci-theme-argon
+git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon
+git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config
+rm -rf ../lean/luci-theme-argon
+
 popd
 
 # 增加日期显示
