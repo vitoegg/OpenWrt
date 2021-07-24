@@ -13,14 +13,10 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/emortal/default-settings/files/zzz-def
 #修改主机名
 sed -i 's/ImmortalWrt/OpenWrt/g' package/base-files/files/bin/config_generate
 
-# Clone community packages to package/community
-mkdir package/community
-pushd package/community
-
-# 原版Dockerman
-rm -rf ../feeds/luci/applications/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+# 使用最新luci-app-dockerman
+pushd feeds/luci/applications
+rm -rf luci-app-dockerman
+svn co https://github.com/lisaac/trunk/luci-app-dockerman
 popd
 
 # 移除默认编译的插件
