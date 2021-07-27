@@ -8,7 +8,6 @@
 #### 源码：
 
 - [Lean](https://github.com/coolsnowwolf/lede)
-- [immortalwrt](https://github.com/immortalwrt/immortalwrt)
 - [P3TERX](https://github.com/P3TERX/Actions-OpenWrt)
 - [Telegram Bot](https://github.com/appleboy/telegram-action)
 - [OpenClash](https://github.com/vernesong/OpenClash.git)
