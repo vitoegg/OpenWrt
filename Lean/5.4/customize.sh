@@ -19,6 +19,10 @@ sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_genera
 # 取消系统默认密码
 sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-default-settings
 
+#移除默认bootstrap主题
+sed -i '/\+luci-theme-bootstrap/d' feeds/luci/collections/luci/Makefile
+sed -i '/\+luci-theme-bootstrap/d' package/feeds/luci/luci/Makefile
+sed -i '/set luci.main.mediaurlbase=\/luci-static\/bootstrap/d' feeds/luci/themes/luci-theme-bootstrap/root/etc/uci-defaults/30_luci-theme-bootstrap
 
 # Clone community packages to package/community
 mkdir package/community
@@ -31,6 +35,11 @@ git clone --depth=1 https://github.com/vernesong/OpenClash
 rm -rf ../lean/luci-app-docker
 git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+
+# luci-theme-argon
+git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon
+git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config
+rm -rf ../lean/luci-theme-argon
 
 #SmartDNS
 #git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
