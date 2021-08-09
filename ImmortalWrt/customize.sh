@@ -10,15 +10,11 @@ sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_genera
 # 取消系统默认密码
 sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/emortal/default-settings/files/zzz-default-settings
 
-#添加额外软件
-mkdir package/community
-pushd package/community
 
-# Dockerman
-rm -rf feeds/luci/applications/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-lib-docker
-
+# 替换Dockerman为最新版
+pushd feeds/luci/applications
+rm -rf luci-app-dockerman
+svn co https://github.com/lisaac/luci-app-dockerman/trunk/applications/luci-app-dockerman
 popd
 
 #修改主机名
