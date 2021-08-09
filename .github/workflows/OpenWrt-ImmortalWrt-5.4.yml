@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: OpenWrt-immortalwrt-5.4
+name: OpenWrt-ImmortalWrt-5.4
 
 on:
   workflow_dispatch:
@@ -103,7 +103,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
-        name: immortalwrt_4.19_${{ env.FILE_DATE1 }}
+        name: ImmortalWrt_5.4_${{ env.FILE_DATE1 }}
         path:  ./artifact/firmware/ 
     
     - name: Telegram通知
