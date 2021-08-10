@@ -33,11 +33,6 @@ git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 popd
 
-pushd package/lean
-rm -rf luci-app-turboacc
-svn co https://github.com/immortalwrt/luci/trunk/applications/luci-app-turboacc
-popd
-
 # 增加日期显示
 pushd package/lean/default-settings/files
 export orig_version="$(cat "zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')"
