@@ -31,14 +31,11 @@ rm -rf ../lean/luci-app-docker
 git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
-# luci-theme-argon
-#git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon
-#git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config
-#rm -rf ../lean/luci-theme-argon
+popd
 
-#SmartDNS
-#git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
-
+pushd package/lean
+rm -rf luci-app-turboacc
+svn co https://github.com/immortalwrt/luci/trunk/applications/luci-app-turboacc
 popd
 
 # 增加日期显示
