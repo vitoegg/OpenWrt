@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: OpenWrt-ImmortalWrt-5.4
+name: OpenWrt-ImmortalWrt-4.19
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ on:
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_BRANCH: openwrt-18.06-k5.4
+  REPO_BRANCH: openwrt-18.06
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: ImmortalWrt/.config
   DIY_P_SH: ImmortalWrt/customize.sh
@@ -103,7 +103,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
-        name: ImmortalWrt_5.4_${{ env.FILE_DATE1 }}
+        name: ImmortalWrt_4.19_${{ env.FILE_DATE1 }}
         path:  ./artifact/firmware/ 
     
     - name: Telegram通知
@@ -115,6 +115,6 @@ jobs:
         message: |
           🎉固件编译成功🎉 
 
-          - 🌴 内核版本：ImmortalWrt-5.4
+          - 🌴 内核版本：ImmortalWrt-4.19
           - 🎈 完成时间：${{ env.FILE_DATE2 }}
           - 🔗 下载地址：https://github.com/vitoegg/OpenWrt/actions
