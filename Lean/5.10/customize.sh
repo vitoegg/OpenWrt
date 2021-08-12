@@ -16,7 +16,7 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-defaul
 
 # 修改内核版本
 sed -i 's/KERNEL_PATCHVER:=5.4/KERNEL_PATCHVER:=5.10/g' ./target/linux/x86/Makefile
-#sed -i 's/KERNEL_TESTING_PATCHVER:=5.10/KERNEL_TESTING_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
+
 
 # Clone community packages to package/community
 mkdir package/community
@@ -25,18 +25,9 @@ pushd package/community
 # Add OpenClash
 git clone --depth=1 https://github.com/vernesong/OpenClash
 
-# 原版Dockerman
-rm -rf ../lean/luci-app-docker
-git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 #SmartDNS
 #git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
-
-# Add luci-theme-argon
-#git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon
-#git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config
-#rm -rf ../lean/luci-theme-argon
 
 popd
 
