@@ -10,12 +10,6 @@
 # Description: OpenWrt DIY script (After Update feeds)
 #
 
-# 修改内核版本
-#sed -i 's/KERNEL_PATCHVER:=5.10/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
-
-# 取消系统默认密码
-sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-default-settings
-
 # 旁路由相关Lan设置
 cat >$NETIP <<-EOF
 uci set network.lan.ipaddr='192.168.10.2'               # IPv4 地址(openwrt后台地址)
@@ -27,6 +21,14 @@ uci commit network                                      # 不要删除跟注释,
 uci set dhcp.lan.ignore='1'                             # 关闭DHCP功能
 uci commit dhcp                                         # 跟‘关闭DHCP功能’联动,同时启用或者删除跟注释
 EOF
+
+# 修改内核版本
+#sed -i 's/KERNEL_PATCHVER:=5.10/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
+
+# 取消系统默认密码
+sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-default-settings
+# 关闭IPv6 分配长度
+sed -i '/ip6assign/d' package/base-files/files/bin/config_generate
 
 # Clone community packages to package/community
 mkdir package/community
