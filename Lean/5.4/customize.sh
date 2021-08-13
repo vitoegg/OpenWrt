@@ -12,15 +12,6 @@
 
 # 旁路由相关Lan设置
 cat >$NETIP <<-EOF
-uci set network.lan.ipaddr='192.168.10.2'               # IPv4 地址(openwrt后台地址)
-uci set network.lan.netmask='255.255.255.0'             # IPv4 子网掩码
-uci set network.lan.gateway='192.168.10.1'              # IPv4 网关
-uci set network.lan.dns='192.168.10.1'                  # DNS(多个DNS要用空格分开)
-uci set network.lan.delegate='0'                        # 去掉LAN口使用内置的 IPv6 管理
-uci commit network                                      # 不要删除跟注释,除非上面全部删除或注释掉了
-uci set dhcp.lan.ignore='1'                             # 关闭DHCP功能
-uci commit dhcp                                         # 跟‘关闭DHCP功能’联动,同时启用或者删除跟注释
-EOF
 
 # 修改内核版本
 #sed -i 's/KERNEL_PATCHVER:=5.10/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
