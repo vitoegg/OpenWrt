@@ -11,7 +11,6 @@
 #
 
 # 旁路由相关Lan设置
-cat >$NETIP <<-EOF
 
 # 修改内核版本
 #sed -i 's/KERNEL_PATCHVER:=5.10/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
