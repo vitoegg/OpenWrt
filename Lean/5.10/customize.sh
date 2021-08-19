@@ -16,8 +16,6 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-defaul
 
 # 修改内核版本
 sed -i 's/KERNEL_PATCHVER:=5.4/KERNEL_PATCHVER:=5.10/g' ./target/linux/x86/Makefile
-# 关闭IPv6 分配长度
-sed -i '/ip6assign/d' package/base-files/files/bin/config_generate
 
 # Clone community packages to package/community
 mkdir package/community
