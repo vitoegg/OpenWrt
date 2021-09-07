@@ -8,10 +8,12 @@
 #### 源码：
 
 - [Lean](https://github.com/coolsnowwolf/lede)
+- [ImmortalWrt](https://github.com/immortalwrt/immortalwrt/tree/openwrt-18.06-k5.4)
 - [P3TERX](https://github.com/P3TERX/Actions-OpenWrt)
 - [Telegram Bot](https://github.com/appleboy/telegram-action)
 - [OpenClash](https://github.com/vernesong/OpenClash.git)
 - [Dockerman](https://github.com/lisaac/luci-app-docker)
+- [SmartDNS](https://github.com/pymumu/smartdns)
 
 感谢大神们的贡献！
 
