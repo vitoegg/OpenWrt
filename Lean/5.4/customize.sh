@@ -25,6 +25,9 @@ pushd package/community
 # Add OpenClash
 #git clone --depth=1 https://github.com/vernesong/OpenClash
 
+# Add luci-app-passwall
+git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall
+
 #SmartDNS
 git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
 
