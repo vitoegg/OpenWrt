@@ -28,6 +28,11 @@ pushd package/community
 #SmartDNS
 git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
 
+# Dockerman
+#rm -rf ../lean/luci-app-docker
+#git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
+#git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+
 popd
 
 # 增加日期显示
