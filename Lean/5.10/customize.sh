@@ -29,7 +29,7 @@ git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
 git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 #SmartDNS
-git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
+#git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
 
 popd
 
