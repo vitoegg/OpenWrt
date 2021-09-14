@@ -21,12 +21,13 @@ sed -i 's/KERNEL_PATCHVER:=5.4/KERNEL_PATCHVER:=5.10/g' ./target/linux/x86/Makef
 mkdir package/community
 pushd package/community
 
-# Add OpenClash
-git clone --depth=1 https://github.com/vernesong/OpenClash
-
+# Dockerman
+rm -rf ../lean/luci-app-docker
+git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
+git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 #SmartDNS
-#git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
+git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
 
 popd
 
