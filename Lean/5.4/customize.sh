@@ -33,7 +33,7 @@ git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 #git clone --depth=1 https://github.com/vernesong/OpenClash
 
 #SmartDNS
-#git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
+git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
 
 
 popd
