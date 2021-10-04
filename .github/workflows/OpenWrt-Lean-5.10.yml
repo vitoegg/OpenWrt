@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 # 定时触发编译
-  schedule:
-    - cron: 0 20 1 */3 *
+#  schedule:
+#    - cron: 0 20 1 */3 *
 
 env:
   REPO_URL: https://github.com/coolsnowwolf/lede
