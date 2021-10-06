@@ -33,7 +33,6 @@ pushd package/community
 #git clone --depth=1 https://github.com/vernesong/OpenClash
 
 #SmartDNS
-git clone --depth=1 https://github.com/pymumu/openwrt-smartdns
 git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
 
 
