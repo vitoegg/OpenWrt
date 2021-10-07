@@ -24,15 +24,15 @@ mkdir package/community
 pushd package/community
 
 # Dockerman
-rm -rf ../lean/luci-app-docker
-git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+#rm -rf ../lean/luci-app-docker
+#git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
+#git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 #AdguardHome
-git clone --depth=1 https://github.com/rufengsuixing/luci-app-adguardhome.git
+#git clone --depth=1 https://github.com/rufengsuixing/luci-app-adguardhome.git
 
 #SmartDNS
-#git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
+git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
 
 popd
 
