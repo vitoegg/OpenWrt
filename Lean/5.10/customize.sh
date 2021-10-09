@@ -10,7 +10,7 @@
 # Description: OpenWrt DIY script (After Update feeds)
 
 # 修改默认IP
-sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_generate
+sed -i 's/192.168.1.1/192.168.10.2/g' package/base-files/files/bin/config_generate
 # 取消系统默认密码
 sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-default-settings
 # 关闭IPv6 分配长度
@@ -24,15 +24,12 @@ mkdir package/community
 pushd package/community
 
 # Dockerman
-#rm -rf ../lean/luci-app-docker
-#git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-#git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+rm -rf ../lean/luci-app-docker
+git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
+git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
-#AdguardHome
-#git clone --depth=1 https://github.com/rufengsuixing/luci-app-adguardhome.git
-
-#SmartDNS
-git clone -b lede --depth=1 https://github.com/pymumu/luci-app-smartdns
+# Add OpenClash
+git clone --depth=1 https://github.com/vernesong/OpenClash
 
 popd
 
