@@ -13,6 +13,9 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/emortal/default-settings/files/zzz-def
 #修改主机名
 sed -i 's/ImmortalWrt/OpenWrt/g' package/base-files/files/bin/config_generate
 
+# 关闭IPv6 分配长度
+sed -i '/ip6assign/d' package/base-files/files/bin/config_generate
+
 # 使用OpenClash源码编译
 #pushd feeds/luci/applications
 #rm -rf luci-app-openclash
