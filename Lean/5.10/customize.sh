@@ -24,9 +24,9 @@ mkdir package/community
 pushd package/community
 
 # Dockerman
-rm -rf ../lean/luci-app-docker
-git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
-git clone --depth=1 https://github.com/lisaac/luci-lib-docker
+#rm -rf ../lean/luci-app-docker
+#git clone --depth=1 https://github.com/lisaac/luci-app-dockerman
+#git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 # Add OpenClash
 git clone --depth=1 https://github.com/vernesong/OpenClash
