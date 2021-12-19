@@ -20,8 +20,8 @@ sed -i '/ip6assign/d' package/base-files/files/bin/config_generate
 sed -i 's/KERNEL_PATCHVER:=5.4/KERNEL_PATCHVER:=5.10/g' ./target/linux/x86/Makefile
 
 # Clone community packages to package/community
-mkdir package/community
-pushd package/community
+#mkdir package/community
+#pushd package/community
 
 # Dockerman
 #rm -rf ../lean/luci-app-docker
@@ -29,12 +29,12 @@ pushd package/community
 #git clone --depth=1 https://github.com/lisaac/luci-lib-docker
 
 # Add OpenClash
-git clone --depth=1 https://github.com/vernesong/OpenClash
+#git clone --depth=1 https://github.com/vernesong/OpenClash
 
-popd
+#popd
 
 # 增加日期显示
-pushd package/lean/default-settings/files
-export orig_version="$(cat "zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')"
-sed -i "s/${orig_version}/${orig_version} ($(date +"%Y-%m-%d"))/g" zzz-default-settings
-popd
+#pushd package/lean/default-settings/files
+#export orig_version="$(cat "zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')"
+#sed -i "s/${orig_version}/${orig_version} ($(date +"%Y-%m-%d"))/g" zzz-default-settings
+#popd
