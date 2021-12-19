@@ -21,7 +21,7 @@ env:
   REPO_URL: https://github.com/coolsnowwolf/lede
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
-  CONFIG_FILE: Lean/5.10/.config
+  CONFIG_FILE: Lean/.config
   DIY_P_SH: Lean/5.10/customize.sh
   UPLOAD_FIRMWARE: true
   TZ: Asia/Shanghai
