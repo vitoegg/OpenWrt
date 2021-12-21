@@ -8,7 +8,7 @@
 # 修改默认IP
 sed -i 's/192.168.1.1/192.168.10.2/g' package/base-files/files/bin/config_generate
 # 取消系统默认密码
-sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/emortal/default-settings/files/zzz-default-settings
+sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/emortal/default-settings/files/99-default-settings
 
 #修改主机名
 sed -i 's/ImmortalWrt/OpenWrt/g' package/base-files/files/bin/config_generate
