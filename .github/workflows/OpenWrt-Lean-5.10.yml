@@ -8,7 +8,7 @@
 # Description: Build OpenWrt using GitHub Actions
 #
 
-name: OpenWrt-Lean-5.10
+name: OpenWrt-Lean-5.15
 
 on:
   workflow_dispatch:
@@ -22,7 +22,7 @@ env:
   REPO_BRANCH: master
   FEEDS_CONF: feeds.conf.default
   CONFIG_FILE: Lean/.config
-  DIY_P_SH: Lean/5.10/customize.sh
+  DIY_P_SH: Lean/5.15/customize.sh
   UPLOAD_FIRMWARE: true
   TZ: Asia/Shanghai
 
@@ -103,7 +103,7 @@ jobs:
       uses: actions/upload-artifact@main
       if: steps.organize.outputs.status == 'success' && env.UPLOAD_FIRMWARE == 'true' 
       with:
-        name: Lean_5.10_${{ env.FILE_DATE1 }}
+        name: Lean_5.15_${{ env.FILE_DATE1 }}
         path:  ./artifact/firmware/ 
     
     - name: Telegram通知
@@ -115,6 +115,6 @@ jobs:
         message: |
           🎉固件编译成功🎉 
 
-          - 🌴 内核版本：Lean-5.10
+          - 🌴 内核版本：Lean-5.15
           - 🎈 完成时间：${{ env.FILE_DATE2 }}
           - 🔗 下载地址：https://github.com/vitoegg/OpenWrt/actions
