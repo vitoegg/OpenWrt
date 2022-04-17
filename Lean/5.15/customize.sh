@@ -19,6 +19,9 @@ sed -i '/ip6assign/d' package/base-files/files/bin/config_generate
 # 修改内核版本
 #sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.10/g' ./target/linux/x86/Makefile
 
+echo 'src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall.git;packages' >>feeds.conf.default
+echo 'src-git passwall_luci https://github.com/xiaorouji/openwrt-passwall.git;luci' >>feeds.conf.default
+
 # Clone community packages to package/community
 #mkdir package/community
 #pushd package/community
