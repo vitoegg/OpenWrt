@@ -16,9 +16,18 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-defaul
 # 关闭IPv6 分配长度
 sed -i '/ip6assign/d' package/base-files/files/bin/config_generate
 
+# 修改内核版本
+sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.4/g' ./target/linux/x86/Makefile
+
+
 # Clone community packages to package/community
-#mkdir package/community
-#pushd package/community
+mkdir package/community
+pushd package/community
+
+# SSRP
+rm -rf package/helloworld
+git clone --depth=1 https://github.com/fw876/helloworld.git package/helloworld
+
 
 # Dockerman
 #rm -rf ../lean/luci-app-docker
@@ -28,7 +37,7 @@ sed -i '/ip6assign/d' package/base-files/files/bin/config_generate
 # Add OpenClash
 #git clone --depth=1 https://github.com/vernesong/OpenClash
 
-#popd
+popd
 
 # 增加日期显示
 #pushd package/lean/default-settings/files
