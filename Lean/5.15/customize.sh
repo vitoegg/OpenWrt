@@ -23,7 +23,7 @@ sed -i 's@list listen_https@# list listen_https@g' package/network/services/uhtt
 # 修改内核版本
 #sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.10/g' ./target/linux/x86/Makefile
 
-# 自定义名称
+# 添加Build日期
 pushd package/lean/default-settings/files
 export orig_version="$(cat "zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')"
 sed -i "s/${orig_version}/${orig_version} ($(date +"%Y-%m-%d"))/g" zzz-default-settings
