@@ -32,7 +32,7 @@ sed -i "s/${orig_version}/${orig_version} ($(date +"%Y-%m-%d"))/g" zzz-default-s
 popd
 
 
-# Clone community packages to package/community
+# 添加额外软件包
 mkdir package/community
 pushd package/community
 
