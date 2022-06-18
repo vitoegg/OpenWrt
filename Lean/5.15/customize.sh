@@ -16,7 +16,7 @@ sed -i "/CYXluq4wUazHjmCDBCqXF/d" package/lean/default-settings/files/zzz-defaul
 # 关闭IPv6 分配长度
 sed -i '/ip6assign/d' package/base-files/files/bin/config_generate
 # 自定义名称
-sed -i "s/OpenWrt /Router $(TZ=UTC-8 date "+%Y.%m.%d") @ OpenWrt /g" package/lean/default-settings/files/zzz-default-settings
+#sed -i "s/OpenWrt /Router $(TZ=UTC-8 date "+%Y.%m.%d") @ OpenWrt /g" package/lean/default-settings/files/zzz-default-settings
 #修改时间格式
 sed -i 's#localtime  = os.date()#localtime  = os.date("%Y年%m月%d日") .. " " .. translate(os.date("%A")) .. " " .. os.date("%X")#g' package/lean/autocore/files/*/index.htm
 # 停止监听443端口
@@ -24,6 +24,12 @@ sed -i 's@list listen_https@# list listen_https@g' package/network/services/uhtt
 
 # 修改内核版本
 #sed -i 's/KERNEL_PATCHVER:=5.15/KERNEL_PATCHVER:=5.10/g' ./target/linux/x86/Makefile
+
+# 自定义名称
+pushd package/lean/default-settings/files
+export orig_version="$(cat "zzz-default-settings" | grep DISTRIB_REVISION= | awk -F "'" '{print $2}')"
+sed -i "s/${orig_version}/${orig_version} ($(date +"%Y-%m-%d"))/g" zzz-default-settings
+popd
 
 
 # Clone community packages to package/community
