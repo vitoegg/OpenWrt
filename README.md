@@ -15,8 +15,6 @@
 - [Dockerman](https://github.com/lisaac/luci-app-docker)
 - [SmartDNS](https://github.com/pymumu/smartdns)
 
-感谢大神们的贡献！
-
 
 #### 1. 主要App
 
