@@ -1,0 +1,254 @@
+#
+# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/P3TERX/Actions-OpenWrt
+# Description: Build OpenWrt using GitHub Actions
+#
+
+name: Build-OpenWrt-Router
+
+on:
+  workflow_dispatch:
+
+# Scheduled trigger compilation
+#  schedule:
+#    - cron: 0 4 15 2,5,8,11 *
+
+env:
+  SOURCE_URL: https://github.com/coolsnowwolf/lede
+  SOURCE_BRANCH: master
+  CONFIG_FILE: scripts/Router/.config
+  FEED_SH: scripts/Router/feeds.sh
+  BUILD_SH: scripts/Router/build.sh
+  FIRMWARE_MESSAGE: HomeLab
+  LUCI_VERSION: 23.05
+  DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+  ROOT_PASSWORD_LEAN: ${{ secrets.ROOT_PASSWORD_LEAN }}
+  PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
+  PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
+  PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
+  ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
+  LMINI_MAC: ${{ secrets.LMINI_MAC }}
+  REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+  REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
+  REPO_URL: ${{ secrets.REPO_URL }}
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    name: Build OpenWrt Router
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Action Branch
+      uses: actions/checkout@main
+      with:
+        fetch-depth: 0
+
+    - name: Print System Information
+      run: |
+        echo "----------------------------CPU Information-----------------------------"
+        echo "Physical CPU Count: $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo "CPU Core Count: $(nproc)"
+        echo -e "CPU Model Info:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
+        echo "---------------------------Memory Information---------------------------"
+        echo "Installed Memory Details:"
+        echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
+        echo "--------------------------HardDisk Information--------------------------"
+        echo "Hard Drive Quantity: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+
+    - name: Free Up Space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: true
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+
+    - name: Prepare Environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt-get -y update
+        sudo -E apt-get -y install $(cat files/packages)
+        sudo -E systemctl daemon-reload
+        sudo -E apt-get -y autoremove --purge
+        sudo -E apt-get -y clean
+        sudo -E timedatectl set-timezone "$TZ"
+        
+    - name: Clone OpenWrt
+      run: |
+        df -hT $GITHUB_WORKSPACE
+        git clone $SOURCE_URL -b $SOURCE_BRANCH openwrt
+        cd openwrt
+        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+
+    - name: Cache Toolchain
+      uses: klever1988/cachewrtbuild@main
+      with:
+        ccache: 'true'
+        mixkey: 'x86_64'
+        prefix: ${{ github.workspace }}/openwrt
+
+    - name: Install Feeds
+      run: |
+        echo "Run Feeds Script"
+        chmod +x $FEED_SH
+        cd $OPENWRT_PATH
+        $GITHUB_WORKSPACE/$FEED_SH
+        
+    - name: Install Custom Config
+      run: |
+        echo "Add Config Files"
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
+        
+        echo "Run Customized Script"
+        chmod +x $BUILD_SH
+        cd $OPENWRT_PATH
+        $GITHUB_WORKSPACE/$BUILD_SH
+        
+        make defconfig
+
+    - name: Output Compilation Information
+      run: |
+        cd $OPENWRT_PATH
+        df -hT $PWD
+        
+        echo
+        echo "=========================================="
+        echo
+
+        # Get Version
+        DISTRIB_REVISION=$(cat package/lean/default-settings/files/zzz-default-settings|grep DISTRIB_REVISION= | sed 's/^.\{24\}//g' | sed 's/.\{26\}$//')
+        KERNEL_PATCHVER=$(cat target/linux/x86/Makefile|grep KERNEL_PATCHVER | sed 's/^.\{17\}//g')
+        # Set ENV
+        echo "DISTRIB_REVISION=$DISTRIB_REVISION" >> $GITHUB_ENV
+        echo "KERNEL_PATCHVER=$KERNEL_PATCHVER" >> $GITHUB_ENV
+        # Print Version
+        echo "Compiled Version：$DISTRIB_REVISION"
+        echo "Kernel Version：$KERNEL_PATCHVER"
+
+        echo
+        echo "=========================================="
+
+        grep -i CONFIG_PACKAGE_luci-app .config | grep  -v \# > Plug-in
+        grep -i CONFIG_PACKAGE_luci-theme .config | grep  -v \# >> Plug-in
+        sed -i '/INCLUDE/d' Plug-in > /dev/null 2>&1
+        sed -i 's/CONFIG_PACKAGE_/、/g' Plug-in
+        sed -i 's/=y/\ /g' Plug-in
+        awk '$0=NR$0' Plug-in > Plug-2
+        awk '{print "	" $0}' Plug-2 > Plug-in
+
+        echo
+        echo
+        echo "      Selected Plugin List"
+        cat Plug-in
+        rm -rf {Plug-in,Plug-2}
+
+        echo
+        echo "=========================================="
+        
+    - name: Download Package
+      id: package
+      run: |
+        cd $OPENWRT_PATH
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+        
+    - name: Compile Firmware
+      id: compile
+      run: |
+        echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+        cd $OPENWRT_PATH
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "status=success" >> $GITHUB_OUTPUT
+        
+    - name: Check Storage
+      if: (!cancelled())
+      run: df -hT
+
+    - name: Set Compile Time
+      id: date
+      if: steps.compile.outputs.status == 'success'
+      run: |
+        # Calculate build duration
+        BUILD_END_TIME=$(date +%s)
+        BUILD_TIME=$((BUILD_END_TIME - ${{ env.BUILD_START_TIME }}))
+        
+        # Calculate hours and minutes
+        BUILD_HOURS=$((BUILD_TIME / 3600))
+        BUILD_MINUTES=$(((BUILD_TIME % 3600) / 60))
+        
+        # Format build time
+        if [ $BUILD_HOURS -gt 0 ]; then
+          BUILD_DURATION="${BUILD_HOURS}h${BUILD_MINUTES}min"
+        else
+          BUILD_DURATION="${BUILD_MINUTES}min"
+        fi
+        
+        # Set environment variables
+        echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
+        echo "TAG_TIME=$(date "+%Y%m%d-%H%M")" >> $GITHUB_ENV
+
+    - name: Organize Files
+      id: organize
+      if: steps.compile.outputs.status == 'success'
+      run: |
+        mkdir -p ./firmware
+        cp -rf $(find $OPENWRT_PATH/bin/targets/ -type f -name "*squashfs*combined*efi.img*") ./firmware/openwrt-router-${{ env.TAG_TIME }}-x86-64-efi.img.gz
+
+    - name: Upload to WebDAV
+      uses: bxb100/action-upload@main
+      if: steps.compile.outcome == 'success'
+      with:
+        provider: webdav
+        provider_options: |
+          endpoint=${{ secrets.WEBDAV_ENDPOINT }}
+          username=${{ secrets.WEBDAV_USERNAME }}
+          password=${{ secrets.WEBDAV_PASSWORD }}
+          root=/openwrt/
+        include: './firmware/*'
+
+    - name: Send Telegram Message
+      if: steps.compile.outcome == 'success'
+      run: |
+        curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d photo="https://mirror.1991991.xyz/Picture/openwrt.webp" \
+          --data-urlencode "caption=#OpenWRT #HomeLab #Router
+          
+          *🎉 Ready to roll! Dive in! 🎉*
+
+          - 🛠 Hardware: Machenike Mini GTX
+
+          - 🌐 Kernel: ${{ env.KERNEL_PATCHVER }}
+
+          - 📦 LuCI: ${{ env.LUCI_VERSION }}
+
+          - ⌛ Build Duration: ${{ env.BUILD_DURATION }}
+
+          - 🔗 Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
+          -d parse_mode=Markdown >/dev/null 2>&1
+
+    - name: Delete Workflow Runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ env.REPO_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 0
+        keep_minimum_runs: 0
