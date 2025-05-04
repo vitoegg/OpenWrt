@@ -1,0 +1,17 @@
+#!/bin/sh
+
+NAME=`grep name /proc/cpuinfo | cut -f2 -d: | uniq`
+
+CORE=`grep 'core id' /proc/cpuinfo | sort -u | wc -l`
+
+THREAD=`grep 'processor' /proc/cpuinfo | wc -l`
+
+MHz=`grep 'MHz' /proc/cpuinfo | cut -c11- |sed -n '1p' | sed 's/^[[:space:]]*//'`
+
+if [ "$(grep 'AMD' /proc/cpuinfo)" != "" ]; then
+TEMP=`sensors 2>/dev/null | grep 'Tctl' | cut -c16- | sed 's/^\\([0-9]\\)/+\\1/' | sed 's/[[:space:]]*$//'`
+else
+TEMP=`sensors 2>/dev/null | grep '0:' | awk -F ':' '{print $2}' | awk '{print $1}' | head -n 1 | sed 's/[[:space:]]*$//'`
+fi
+
+echo "${NAME} : ${CORE}C${THREAD}T ( ${MHz}MHz ${TEMP} )"
