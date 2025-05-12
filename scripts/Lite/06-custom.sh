@@ -41,10 +41,6 @@ sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_D
 sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
 sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
 
-# Modify temperature for AMD CPU（Only Self）
-log "Modifying AMD temperature"
-sed -i '/\["x86"\/*)/,/;;/s/# AMD.*$/# AMD/; /\["x86"\/*)/,/;;/s/\[ -n "\${cpu_temp}" \] || cpu_temp=".*"/\[ -n "\${cpu_temp}" \] || cpu_temp="$(sensors 2>\/dev\/null | grep '"'"'Tctl'"'"' | cut -c16-)"/g' package/system/autocore/files/generic/cpuinfo
-
 # Modify Hostname
 log "Modifying hostname to HomeLab"
 sed -i 's#OpenWrt#HomeLab#g' package/base-files/files/bin/config_generate
