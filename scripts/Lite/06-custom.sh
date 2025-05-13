@@ -21,7 +21,7 @@ rm -rf package/new/extd/luci-theme-argon
 git clone --depth=1 https://github.com/jerrykuku/luci-theme-argon package/app/luci-theme-argon
 mv package/app/luci-theme-argon package/new/extd//luci-theme-argon
 log "Modifying Argon background"
-cp -f $GITHUB_WORKSPACE/files/Pictures/Lite/bg1.jpg package/new/extd/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
+cp -f $GITHUB_WORKSPACE/files/Lite/bg1.jpg package/new/extd/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
 log "Modifying Argon footer"
 sed -i '/<a class="luci-link".*Powered by/d' package/new/extd/luci-theme-argon/luasrc/view/themes/argon/footer.htm
 sed -i '/<a class="luci-link".*Powered by/d; /distversion/d; /ArgonTheme <%# vPKG_VERSION %>/s/ \/ *$//' package/new/extd/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
