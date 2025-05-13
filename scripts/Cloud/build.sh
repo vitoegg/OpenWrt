@@ -25,7 +25,7 @@ git clone --depth=1 https://github.com/jerrykuku/luci-theme-argon package/app/lu
 # Modify Argon theme
 log "Modifying Argon theme"
 mv package/app/luci-theme-argon feeds/luci/themes/luci-theme-argon || log "Failed to move Argon theme"
-cp -f $GITHUB_WORKSPACE/files/Pictures/Cloud/bg1.jpg feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg || log "Failed to replace Argon background"
+cp -f $GITHUB_WORKSPACE/files/Cloud/bg1.jpg feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg || log "Failed to replace Argon background"
 sed -i '/<a class="luci-link".*Powered by/d' feeds/luci/themes/luci-theme-argon/luasrc/view/themes/argon/footer.htm || log "Failed to modify Argon footer"
 sed -i '/<a class="luci-link".*Powered by/d; /distversion/d; /ArgonTheme <%# vPKG_VERSION %>/s/ \/ *$//' feeds/luci/themes/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm || log "Failed to modify Argon login footer"
 
@@ -38,7 +38,7 @@ log "Modifying Model"
 sed -i 's@head -n 1)@head -n 1 | awk -F "/" '"'"'{print $1}'"'"')@g' package/lean/autocore/files/x86/autocore || log "Failed to modify Model Name"
 sed -i 's/${g}.*/${g}/g' package/lean/autocore/files/x86/autocore || log "Failed to modify Model"
 log "Modifying CPU Info"
-cp -f $GITHUB_WORKSPACE/files/cpuinfo package/lean/autocore/files/x86/sbin/cpuinfo || log "Failed to Modify CPU Info"
+cp -f $GITHUB_WORKSPACE/files/Router/cpuinfo package/lean/autocore/files/x86/sbin/cpuinfo || log "Failed to Modify CPU Info"
 
 # Set CPU Mode
 log "Setting CPU mode to PERFORMANCE"

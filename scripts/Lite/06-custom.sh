@@ -41,6 +41,9 @@ sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_D
 sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
 sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
 
+log "Fixed AMD CPU Temperature"
+cp -f $GITHUB_WORKSPACE/files/Lite/cpuinfo package/system/autocore/files/generic/cpuinfo
+
 # Modify Hostname
 log "Modifying hostname to HomeLab"
 sed -i 's#OpenWrt#HomeLab#g' package/base-files/files/bin/config_generate
