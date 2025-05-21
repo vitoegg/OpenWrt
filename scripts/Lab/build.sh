@@ -52,6 +52,7 @@ sed -i 's#ImmortalWrt#HomeLab#g' $NET || log "Failed to modify Hostname"
 
 # Network configuration
 log "Applying Network configuration"
+ZZZ="package/emortal/default-settings/files/99-default-settings"
 cat >> $ZZZ <<-EOF
 # Set Password
 sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /etc/shadow
