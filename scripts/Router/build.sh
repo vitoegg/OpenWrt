@@ -58,11 +58,11 @@ sed -i 's/\+IPV6:luci-proto-ipv6 //g' feeds/luci/collections/luci-nginx/Makefile
 
 # Set CPU Mode
 log "Setting CPU mode to PERFORMANCE"
-sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND is not set/g' target/linux/x86/config-5.15 || log "Failed to cancel FREQ_DEFAULT_GOV_ONDEMAND"
-sed -i 's/CONFIG_CPU_FREQ_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_GOV_ONDEMAND is not set/g' target/linux/x86/config-5.15 || log "Failed to cancel FREQ_GOV_ONDEMAND"
-sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/config-5.15 || log "Failed to set FREQ_DEFAULT_GOV_PERFORMANCE"
-sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-5.15 || log "Failed to cancel SCHEDUTIL"
-sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-5.15 || log "Failed to set GOV_PERFORMANCE"
+sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.6 || log "Failed to cancel FREQ_DEFAULT_GOV_ONDEMAND"
+sed -i 's/CONFIG_CPU_FREQ_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.6 || log "Failed to cancel FREQ_GOV_ONDEMAND"
+sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/config-6.6 || log "Failed to set FREQ_DEFAULT_GOV_PERFORMANCE"
+sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.6 || log "Failed to cancel SCHEDUTIL"
+sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.6 || log "Failed to set GOV_PERFORMANCE"
 
 # LUCI configuration
 log "Applying LuCI configuration"
@@ -77,7 +77,6 @@ sed -i "s/LEDE/ROUTER/g" $ZZZ || log "Failed to modify Distname"
 sed -i "s/${VERSION}/V$(TZ=UTC-8 date +"%y.%m.%d")/g" $ZZZ || log "Failed to modify Version"
 sed -i 's/luci-theme-bootstrap/luci-theme-argon/g' feeds/luci/collections/luci-light/Makefile || log "Failed to modify default Theme"
 sed -i 's/os.date()/os.date("%Y.%m.%d %a %H:%M:%S")/g' package/lean/autocore/files/*/index.htm || log "Failed to modify Time format"
-sed -i 's/KERNEL_PATCHVER:=6.6/KERNEL_PATCHVER:=5.15/g' target/linux/x86/Makefile || log "Failed to modify KERNEL"
 
 # Network configuration
 log "Applying Network configuration"
