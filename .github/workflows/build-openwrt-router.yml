@@ -18,8 +18,8 @@ on:
 #    - cron: 0 4 15 2,5,8,11 *
 
 env:
-  SOURCE_URL: https://github.com/coolsnowwolf/lede
-  SOURCE_BRANCH: master
+  SOURCE_URL: https://github.com/vitoegg/Lean
+  SOURCE_BRANCH: main
   CONFIG_FILE: scripts/Router/.config
   FEED_SH: scripts/Router/feeds.sh
   BUILD_SH: scripts/Router/build.sh
