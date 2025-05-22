@@ -168,3 +168,9 @@ mkdir -p files/usr/bin/AdGuardHome
 ADGUARDHOME_CORE_URL="https://github.com/AdguardTeam/AdGuardHome/releases/latest/download/AdGuardHome_linux_amd64.tar.gz"
 wget -qO- $ADGUARDHOME_CORE_URL | tar xOvz > files/usr/bin/AdGuardHome/AdGuardHome
 chmod +x files/usr/bin/AdGuardHome/AdGuardHome
+
+log "Pre-downloading AdGuardHome filter"
+mkdir -p files/usr/bin/AdGuardHome/data/filters
+ADGUARDHOME_FILTER_URL="https://ruleset.skk.moe/Internal/reject-adguardhome.txt"
+wget -qO- $ADGUARDHOME_FILTER_URL > files/usr/bin/AdGuardHome/data/filters/1747139661.txt
+chmod +x files/usr/bin/AdGuardHome/data/filters/1747139661.txt
