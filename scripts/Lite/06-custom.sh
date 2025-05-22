@@ -127,6 +127,12 @@ uci set dhcp.@host[-1].ip='192.168.10.5'
 uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
+
+# Enable Shortcut-FE
+uci del firewall.cfg01e63d.flow_offloading
+uci set firewall.cfg01e63d.shortcut_fe='1'
+uci set firewall.cfg01e63d.shortcut_fe_module='shortcut-fe-cm'
+uci commit firewall
 EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
 
