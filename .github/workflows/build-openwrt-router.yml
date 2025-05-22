@@ -32,6 +32,7 @@ env:
   PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
   ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
   LMINI_MAC: ${{ secrets.LMINI_MAC }}
+  UPDATE_SH_URL: ${{ secrets.UPDATE_SH_URL }}
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}

@@ -132,6 +132,15 @@ uci commit turboacc
 EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ  || log "Failed to Exit"
 
+# Add Services Update Script
+log "Adding services update script"
+mkdir -p files/usr/share/task
+wget -qO- $UPDATE_SH_URL > files/usr/share/task/update_services.sh
+chmod +x files/usr/share/task/update_services.sh
+# Add Cron Job
+mkdir -p files/etc/crontabs
+echo "0 5 * * 6 /usr/share/task/update_services.sh" >> files/etc/crontabs/root
+
 # Move configuration files
 log "Creating files directory"
 mkdir -p files/etc
