@@ -164,7 +164,7 @@ log "Pre-downloading zashboard UI"
 mkdir -p files/usr/share/openclash/ui/zashboard
 ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
 TEMP_DIR=$(mktemp -d)
-wget -O "$TEMP_DIR/dist.zip" $ZASHBOARD_URL && unzip -q "$TEMP_DIR/dist.zip" -d "$TEMP_DIR"
+wget -qO "$TEMP_DIR/dist.zip" $ZASHBOARD_URL && unzip -q "$TEMP_DIR/dist.zip" -d "$TEMP_DIR"
 cp -r "$TEMP_DIR/dist"/* files/usr/share/openclash/ui/zashboard/ && rm -rf "$TEMP_DIR"
 
 log "Pre-downloading adguardhome core"
