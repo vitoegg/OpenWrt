@@ -165,7 +165,7 @@ chmod +x files/etc/openclash/core/clash*
 
 log "Pre-downloading zashboard UI"
 mkdir -p files/usr/share/openclash/ui/zashboard
-ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
 TEMP_DIR=$(mktemp -d)
 wget -qO- $ZASHBOARD_URL | unzip -q - -d "$TEMP_DIR"
 mv "$TEMP_DIR"/*/* files/usr/share/openclash/ui/zashboard/
