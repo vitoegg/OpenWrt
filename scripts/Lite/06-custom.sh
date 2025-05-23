@@ -163,6 +163,14 @@ OPENCLASH_CORE_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/m
 wget -qO- $OPENCLASH_CORE_URL | tar xOvz > files/etc/openclash/core/clash_meta
 chmod +x files/etc/openclash/core/clash*
 
+log "Pre-downloading zashboard UI"
+mkdir -p files/usr/share/openclash/ui/zashboard
+ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+TEMP_DIR=$(mktemp -d)
+wget -qO- $ZASHBOARD_URL | unzip -q - -d "$TEMP_DIR"
+mv "$TEMP_DIR"/*/* files/usr/share/openclash/ui/zashboard/
+rm -rf "$TEMP_DIR"
+
 log "Pre-downloading AdGuardHome core"
 mkdir -p files/usr/bin/AdGuardHome
 ADGUARDHOME_CORE_URL="https://github.com/AdguardTeam/AdGuardHome/releases/latest/download/AdGuardHome_linux_amd64.tar.gz"
@@ -173,4 +181,5 @@ log "Pre-downloading AdGuardHome filter"
 mkdir -p files/usr/bin/AdGuardHome/data/filters
 ADGUARDHOME_FILTER_URL="https://ruleset.skk.moe/Internal/reject-adguardhome.txt"
 wget -qO- $ADGUARDHOME_FILTER_URL > files/usr/bin/AdGuardHome/data/filters/1747139661.txt
-chmod +x files/usr/bin/AdGuardHome/data/filters/1747139661.txt
+
+log "Script completed successfully"
