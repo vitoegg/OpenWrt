@@ -173,4 +173,12 @@ ADGUARDHOME_CORE_URL="https://github.com/AdguardTeam/AdGuardHome/releases/latest
 wget -qO- $ADGUARDHOME_CORE_URL | tar xOvz > files/usr/bin/AdGuardHome/AdGuardHome
 chmod +x files/usr/bin/AdGuardHome/AdGuardHome
 
+log "Pre-downloading AdGuardHome filters"
+mkdir -p files/usr/bin/AdGuardHome/data/filters
+ADGUARDHOME_FILTER1_URL="https://raw.githubusercontent.com/miaoermua/AdguardFilter/main/rule.txt"
+ADGUARDHOME_FILTER2_URL="https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt"
+wget -qO- $ADGUARDHOME_FILTER1_URL > files/usr/bin/AdGuardHome/data/filters/1.txt &
+wget -qO- $ADGUARDHOME_FILTER2_URL > files/usr/bin/AdGuardHome/data/filters/2.txt &
+wait
+
 log "Script completed successfully"
