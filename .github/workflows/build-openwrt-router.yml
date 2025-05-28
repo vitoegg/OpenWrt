@@ -24,7 +24,7 @@ env:
   FEED_SH: scripts/Router/feeds.sh
   BUILD_SH: scripts/Router/build.sh
   FIRMWARE_MESSAGE: HomeLab
-  LUCI_VERSION: 23.05
+  LUCI_VERSION: 24.10
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_LEAN: ${{ secrets.ROOT_PASSWORD_LEAN }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}

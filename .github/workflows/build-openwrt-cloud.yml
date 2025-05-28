@@ -24,7 +24,7 @@ env:
   FEED_SH: scripts/Cloud/feeds.sh
   BUILD_SH: scripts/Cloud/build.sh
   FIRMWARE_MESSAGE: HomeCloud
-  LUCI_VERSION: 23.05
+  LUCI_VERSION: 24.10
   ROOT_PASSWORD_LEAN: ${{ secrets.ROOT_PASSWORD_LEAN }}
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
