@@ -166,7 +166,7 @@ wget -qO- $MOSDNS_RULE_URL > files/etc/mosdns/rule/apple.txt
 log "Pre-downloading OpenClash core"
 mkdir -p files/etc/openclash/core
 OPENCLASH_CORE_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-amd64.tar.gz"
-wget -qO- $OPENCLASH_CORE_URL | tar xOvz > files/etc/openclash/core/clash_meta
+wget -qO- $OPENCLASH_CORE_URL | tar xOz > files/etc/openclash/core/clash_meta
 chmod +x files/etc/openclash/core/clash*
 
 log "Pre-downloading zashboard UI"
@@ -179,7 +179,7 @@ cp -r "$TEMP_DIR/dist"/* files/usr/share/openclash/ui/zashboard/ && rm -rf "$TEM
 log "Pre-downloading AdGuardHome core"
 mkdir -p files/usr/bin/AdGuardHome
 ADGUARDHOME_CORE_URL="https://github.com/AdguardTeam/AdGuardHome/releases/latest/download/AdGuardHome_linux_amd64.tar.gz"
-wget -qO- $ADGUARDHOME_CORE_URL | tar xOvz > files/usr/bin/AdGuardHome/AdGuardHome
+wget -qO- $ADGUARDHOME_CORE_URL | tar xOz > files/usr/bin/AdGuardHome/AdGuardHome
 chmod +x files/usr/bin/AdGuardHome/AdGuardHome
 
 log "Pre-downloading AdGuardHome filters"
