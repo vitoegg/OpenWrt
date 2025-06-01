@@ -140,4 +140,11 @@ log "Setting up pre-configuration files"
 mv /tmp/repo_download/*/Lite/files/etc/* files/etc/
 rm -rf /tmp/repo_download
 
+log "Pre-downloading zashboard UI"
+mkdir -p files/etc/nikki/run/ui/zashboard
+ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+TEMP_DIR=$(mktemp -d)
+wget -qO "$TEMP_DIR/dist.zip" $ZASHBOARD_URL && unzip -q "$TEMP_DIR/dist.zip" -d "$TEMP_DIR"
+cp -r "$TEMP_DIR/dist"/* files/etc/nikki/run/ui/zashboard/ && rm -rf "$TEMP_DIR"
+
 log "Script completed successfully"
