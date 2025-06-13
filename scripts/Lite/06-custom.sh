@@ -26,13 +26,6 @@ log "Modifying Argon footer"
 sed -i '/<a class="luci-link".*Powered by/d' package/new/extd/luci-theme-argon/luasrc/view/themes/argon/footer.htm
 sed -i '/<a class="luci-link".*Powered by/d; /distversion/d; /ArgonTheme <%# vPKG_VERSION %>/s/ \/ *$//' package/new/extd/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
 
-# Modify OpenClash
-log "Modifying OpenClash dashboard password"
-sed -i 's/dashboard_password="[^"]*"/dashboard_password="$DASHBOARD_PASSWORD"/g' package/new/lite/luci-app-openclash/root/etc/uci-defaults/luci-openclash
-log "Removing OpenClash useless rules"
-rm -rf package/new/lite/luci-app-openclash/root/etc/openclash/game_rules/*
-find package/new/lite/luci-app-openclash/root/etc/openclash/rule_provider -type f ! -name "*.yaml" -exec rm -f {} +
-
 # Set CPU Mode
 log "Setting CPU mode to PERFORMANCE"
 sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.11
@@ -110,7 +103,8 @@ uci set dhcp.lan.ra=''
 uci set dhcp.lan.dhcpv6=''
 uci set dhcp.lan.ra_management=''
 uci set dhcp.@dnsmasq[0].filter_aaaa='1'
-uci set dhcp.@dnsmasq[0].cachesize="1000"
+uci set dhcp.@dnsmasq[0].cachesize="0"
+uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5533'
 uci commit dhcp
 
 # Set Static DHCP
@@ -144,7 +138,7 @@ log "Downloading pre-configuration files"
 curl -s -S -f -L -u "$REPO_USERNAME:$REPO_TOKEN" "$REPO_URL" -o /tmp/repo_download/repo.zip 2>/dev/null
 unzip -q /tmp/repo_download/repo.zip -d /tmp/repo_download/
 log "Setting up pre-configuration files"
-mv /tmp/repo_download/*/Router/files/etc/* files/etc/
+mv /tmp/repo_download/*/Lite/files/etc/* files/etc/
 rm -rf /tmp/repo_download
 
 # Add Services Update Script
@@ -162,19 +156,12 @@ mkdir -p files/etc/mosdns/rule
 MOSDNS_RULE_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Apple/Service.txt"
 wget -qO- $MOSDNS_RULE_URL > files/etc/mosdns/rule/apple.txt
 
-# Pre-download necessary files
-log "Pre-downloading OpenClash core"
-mkdir -p files/etc/openclash/core
-OPENCLASH_CORE_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-amd64.tar.gz"
-wget -qO- $OPENCLASH_CORE_URL | tar xOz > files/etc/openclash/core/clash_meta
-chmod +x files/etc/openclash/core/clash*
-
 log "Pre-downloading zashboard UI"
-mkdir -p files/usr/share/openclash/ui/zashboard
+mkdir -p files/etc/nikki/run/ui/zashboard
 ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
 TEMP_DIR=$(mktemp -d)
 wget -qO "$TEMP_DIR/dist.zip" $ZASHBOARD_URL && unzip -q "$TEMP_DIR/dist.zip" -d "$TEMP_DIR"
-cp -r "$TEMP_DIR/dist"/* files/usr/share/openclash/ui/zashboard/ && rm -rf "$TEMP_DIR"
+cp -r "$TEMP_DIR/dist"/* files/etc/nikki/run/ui/zashboard/ && rm -rf "$TEMP_DIR"
 
 log "Pre-downloading AdGuardHome core"
 mkdir -p files/usr/bin/AdGuardHome
