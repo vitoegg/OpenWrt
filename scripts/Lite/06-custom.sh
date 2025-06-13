@@ -103,8 +103,6 @@ uci set dhcp.lan.ra=''
 uci set dhcp.lan.dhcpv6=''
 uci set dhcp.lan.ra_management=''
 uci set dhcp.@dnsmasq[0].filter_aaaa='1'
-uci set dhcp.@dnsmasq[0].cachesize="0"
-uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5533'
 uci commit dhcp
 
 # Set Static DHCP
@@ -123,9 +121,9 @@ uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
 
 # Enable Shortcut-FE
-uci del firewall.cfg01e63d.flow_offloading
-uci set firewall.cfg01e63d.shortcut_fe='1'
-uci set firewall.cfg01e63d.shortcut_fe_module='shortcut-fe-cm'
+uci del firewall.@defaults[0].flow_offloading
+uci set firewall.@defaults[0].shortcut_fe='1'
+uci set firewall.@defaults[0].shortcut_fe_module='shortcut-fe-cm'
 uci commit firewall
 EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
