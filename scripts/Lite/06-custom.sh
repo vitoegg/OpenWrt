@@ -154,13 +154,6 @@ mkdir -p files/etc/mosdns/rule
 MOSDNS_RULE_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Apple/Service.txt"
 wget -qO- $MOSDNS_RULE_URL > files/etc/mosdns/rule/apple.txt
 
-log "Pre-downloading zashboard UI"
-mkdir -p files/etc/nikki/run/ui/zashboard
-ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
-TEMP_DIR=$(mktemp -d)
-wget -qO "$TEMP_DIR/dist.zip" $ZASHBOARD_URL && unzip -q "$TEMP_DIR/dist.zip" -d "$TEMP_DIR"
-cp -r "$TEMP_DIR/dist"/* files/etc/nikki/run/ui/zashboard/ && rm -rf "$TEMP_DIR"
-
 log "Pre-downloading AdGuardHome core"
 mkdir -p files/usr/bin/AdGuardHome
 ADGUARDHOME_CORE_URL="https://github.com/AdguardTeam/AdGuardHome/releases/latest/download/AdGuardHome_linux_amd64.tar.gz"
