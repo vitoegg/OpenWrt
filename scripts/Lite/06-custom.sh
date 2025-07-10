@@ -139,15 +139,6 @@ log "Setting up pre-configuration files"
 mv /tmp/repo_download/*/Lite/files/etc/* files/etc/
 rm -rf /tmp/repo_download
 
-# Add Services Update Script
-log "Adding services update script"
-mkdir -p files/usr/share/task
-wget -qO- $UPDATE_SH_URL > files/usr/share/task/update_services.sh
-chmod +x files/usr/share/task/update_services.sh
-# Add Cron Job
-mkdir -p files/etc/crontabs
-echo "0 5 * * 6 /usr/share/task/update_services.sh" >> files/etc/crontabs/root
-
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
 mkdir -p files/etc/mosdns/rule
