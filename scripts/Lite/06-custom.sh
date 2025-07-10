@@ -151,8 +151,11 @@ echo "0 5 * * 6 /usr/share/task/update_services.sh" >> files/etc/crontabs/root
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
 mkdir -p files/etc/mosdns/rule
-MOSDNS_RULE_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Apple/Service.txt"
-wget -qO- $MOSDNS_RULE_URL > files/etc/mosdns/rule/apple.txt
+MOSDNS_APPLE_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Extra/MosDNS/apple.txt"
+MOSDNS_REJECT_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Extra/MosDNS/reject.txt"
+wget -qO- $MOSDNS_APPLE_URL > files/etc/mosdns/rule/apple.txt &
+wget -qO- $MOSDNS_REJECT_URL > files/etc/mosdns/rule/reject.txt &
+wait
 
 log "Pre-downloading AdGuardHome core"
 mkdir -p files/usr/bin/AdGuardHome
