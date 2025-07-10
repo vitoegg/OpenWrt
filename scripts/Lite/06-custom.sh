@@ -157,20 +157,4 @@ wget -qO- $MOSDNS_APPLE_URL > files/etc/mosdns/rule/apple.txt &
 wget -qO- $MOSDNS_REJECT_URL > files/etc/mosdns/rule/reject.txt &
 wait
 
-log "Pre-downloading AdGuardHome core"
-mkdir -p files/usr/bin/AdGuardHome
-ADGUARDHOME_CORE_URL="https://github.com/AdguardTeam/AdGuardHome/releases/latest/download/AdGuardHome_linux_amd64.tar.gz"
-wget -qO- $ADGUARDHOME_CORE_URL | tar xOz > files/usr/bin/AdGuardHome/AdGuardHome
-chmod +x files/usr/bin/AdGuardHome/AdGuardHome
-
-log "Pre-downloading AdGuardHome filters"
-mkdir -p files/usr/bin/AdGuardHome/data/filters
-ADGUARDHOME_FILTER1_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Extra/AdGuard/customized.txt"
-ADGUARDHOME_FILTER2_URL="https://raw.githubusercontent.com/miaoermua/AdguardFilter/main/rule.txt"
-ADGUARDHOME_FILTER3_URL="https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt"
-wget -qO- $ADGUARDHOME_FILTER1_URL > files/usr/bin/AdGuardHome/data/filters/1.txt &
-wget -qO- $ADGUARDHOME_FILTER2_URL > files/usr/bin/AdGuardHome/data/filters/2.txt &
-wget -qO- $ADGUARDHOME_FILTER3_URL > files/usr/bin/AdGuardHome/data/filters/3.txt &
-wait
-
 log "Script completed successfully"
