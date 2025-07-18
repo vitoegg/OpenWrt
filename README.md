@@ -29,13 +29,16 @@ OpenLite/
 - X86_64架构设备
 
 #### 2. 核心应用
-- [x] **OpenClash**：强大的代理工具，预下载核心文件和配置
-- [x] **AdGuardHome**：网络广告和跟踪拦截器，预下载二进制文件
+- [x] **Nikki**：强大的Mihomo代理工具，预下载Smart核心文件和配置
 - [x] **MosDNS**：DNS分流工具，用于分流不同网站使用的上游DNS
 
 #### 3. 特别感谢
 - [OpenWrt Lite](https://github.com/pmkol/openwrt-lite)
 
 - [OpenWrt Lean](https://github.com/coolsnowwolf/lede)
+
+- [Nikki](https://github.com/nikkinikki-org/OpenWrt-nikki)
+
+- [MosDNS](https://github.com/sbwml/luci-app-mosdns)
 
 - [P3TERX](https://p3terx.com)
