@@ -80,30 +80,13 @@ sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /et
 uci set network.wan.proto='pppoe'
 uci set network.wan.username='$PPPOE_USERNAME'
 uci set network.wan.password='$PPPOE_PASSWORD'
-uci set network.wan.delegate='0'
-uci delete network.globals.ula_prefix
-uci delete network.wan6
 uci commit network
 
 # Set PPPOE Device
 uci add network device # =cfg060f15
 uci set network.cfg060f15.macaddr='$PPPOE_MAC'
 uci set network.@device[-1].name='pppoe-wan'
-uci set network.@device[-1].ipv6='0'
 uci commit network
-
-# Disable IPv6
-uci set network.lan.ip6assign=''
-uci set network.wan.ipv6='0'
-uci set network.wan.sourcefilter='0'
-uci set network.lan.delegate='0'
-uci set network.wan.delegate='0'
-uci commit network
-uci set dhcp.lan.ra=''
-uci set dhcp.lan.dhcpv6=''
-uci set dhcp.lan.ra_management=''
-uci set dhcp.@dnsmasq[0].filter_aaaa='1'
-uci commit dhcp
 
 # Set Static DHCP
 uci add dhcp host #1
@@ -138,6 +121,15 @@ unzip -q /tmp/repo_download/repo.zip -d /tmp/repo_download/
 log "Setting up pre-configuration files"
 mv /tmp/repo_download/*/Lite/files/etc/* files/etc/
 rm -rf /tmp/repo_download
+
+# Pre-download mihomo smart core
+log "Pre-downloading mihomo core"
+mkdir -p files/usr/bin
+version=$(wget -qO- https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/version.txt)
+wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/mihomo-linux-amd64-$version.gz
+gzip -dq mihomo-linux-amd64.gz
+mv mihomo-linux-amd64 files/usr/bin/mihomo
+chmod +x files/usr/bin/mihomo
 
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
