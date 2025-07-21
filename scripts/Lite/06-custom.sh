@@ -148,6 +148,11 @@ gzip -dq mihomo-linux-amd64.gz
 mv mihomo-linux-amd64 files/usr/bin/mihomo
 chmod +x files/usr/bin/mihomo
 
+# Pre-downloading LightGBM model
+log "Pre-downloading LightGBM model"
+mkdir -p files/etc/nikki/run
+wget -qO files/etc/nikki/run/Model.bin https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model-large.bin
+
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
 mkdir -p files/etc/mosdns/rule
