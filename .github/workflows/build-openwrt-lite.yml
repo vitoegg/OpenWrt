@@ -19,6 +19,7 @@ env:
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}
+  HARDWARE_MODEL: MINISFORUM NAB9 PLUS
 
 jobs:
   build:
@@ -184,7 +185,7 @@ jobs:
 
           *🎉 Ready to roll! Dive in! 🎉*
 
-          - 🛠 Hardware: Machenike Mini GTX
+          - 🛠 Hardware: ${{ env.HARDWARE_MODEL }}
 
           - 🌐 Kernel: ${{ env.KERNEL_PATCHVER }}
 

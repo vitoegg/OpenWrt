@@ -24,12 +24,13 @@ env:
   FEED_SH: scripts/Cloud/feeds.sh
   BUILD_SH: scripts/Cloud/build.sh
   FIRMWARE_MESSAGE: HomeCloud
-  LUCI_VERSION: 24.10
+  HARDWARE_MODEL: MINISFORUM N100D
+  LUCI_VERSION: 23.05
+  TZ: Asia/Shanghai
   ROOT_PASSWORD_LEAN: ${{ secrets.ROOT_PASSWORD_LEAN }}
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}
-  TZ: Asia/Shanghai
 
 jobs:
   build:
@@ -228,7 +229,7 @@ jobs:
           
           *🎉 Ready to roll! Dive in! 🎉*
 
-          - 🛠 Hardware: MINISFORUM N100D
+          - 🛠 Hardware: ${{ env.HARDWARE_MODEL }}
 
           - 🌐 Kernel: ${{ env.KERNEL_PATCHVER }}
 
