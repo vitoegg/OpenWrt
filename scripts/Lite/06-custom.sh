@@ -26,14 +26,6 @@ log "Modifying Argon footer"
 sed -i '/<a class="luci-link".*Powered by/d' package/new/extd/luci-theme-argon/luasrc/view/themes/argon/footer.htm
 sed -i '/<a class="luci-link".*Powered by/d; /distversion/d; /ArgonTheme <%# vPKG_VERSION %>/s/ \/ *$//' package/new/extd/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm
 
-# Set CPU Mode
-log "Setting CPU mode to PERFORMANCE"
-sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.11
-sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
-
 # Modify Hostname
 log "Modifying hostname to HomeLab"
 sed -i 's#OpenWrt#HomeLab#g' package/base-files/files/bin/config_generate
