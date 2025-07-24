@@ -30,6 +30,34 @@ sed -i '/<a class="luci-link".*Powered by/d; /distversion/d; /ArgonTheme <%# vPK
 log "Modifying hostname to HomeLab"
 sed -i 's#OpenWrt#HomeLab#g' package/base-files/files/bin/config_generate
 
+# Delete LED Menu
+log "Removing LED menu from LuCI"
+awk '
+BEGIN { skip=0; brace_count=0; }
+/[[:space:]]*"admin\/system\/leds": {/ { 
+  skip=1; 
+  brace_count=1; 
+  next; 
+}
+{
+  if(skip==1) {
+    if($0 ~ /{/) brace_count++;
+    if($0 ~ /}/) brace_count--;
+    if(brace_count==0) {
+      if($0 ~ /},/) {
+        skip=0;
+        next;
+      } else if($0 ~ /}/) {
+        skip=0;
+        next;
+      }
+    }
+  } else {
+    print;
+  }
+}
+' feeds/luci/modules/luci-mod-system/root/usr/share/luci/menu.d/luci-mod-system.json > /tmp/temp.json && mv /tmp/temp.json feeds/luci/modules/luci-mod-system/root/usr/share/luci/menu.d/luci-mod-system.json
+
 # Default settings
 log "Setting up network configuration"
 ZZZ="package/new/default-settings/default/zzz-default-settings"
