@@ -115,13 +115,13 @@ sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
 # Move configuration files
 log "Removing sysctl.d and creating tmp directory"
 rm -rf files/etc/sysctl.d
-mkdir -p /tmp/repo_download
+REPO_TEMP_DIR=$(mktemp -d)
 log "Downloading pre-configuration files"
-curl -s -S -f -L -u "$REPO_USERNAME:$REPO_TOKEN" "$REPO_URL" -o /tmp/repo_download/repo.zip 2>/dev/null
-unzip -q /tmp/repo_download/repo.zip -d /tmp/repo_download/
+curl -s -S -f -L -u "$REPO_USERNAME:$REPO_TOKEN" "$REPO_URL" -o "$REPO_TEMP_DIR/repo.zip" 2>/dev/null
+unzip -q "$REPO_TEMP_DIR/repo.zip" -d "$REPO_TEMP_DIR/"
 log "Setting up pre-configuration files"
-mv /tmp/repo_download/*/Lite/files/etc/* files/etc/
-rm -rf /tmp/repo_download
+mv "$REPO_TEMP_DIR"/*/Lite/files/etc/* files/etc/
+rm -rf "$REPO_TEMP_DIR"
 
 # Pre-download mihomo smart core
 log "Pre-downloading mihomo smart core"
@@ -131,6 +131,16 @@ wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/down
 gzip -dq mihomo-linux-amd64.gz
 mv mihomo-linux-amd64 files/usr/bin/mihomo
 chmod +x files/usr/bin/mihomo
+
+log "Pre-downloading zashboard UI"
+mkdir -p files/etc/nikki/run/ui
+ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+TEMP_DIR=$(mktemp -d)
+wget -q --no-show-progress -O "$TEMP_DIR/dist.zip" "$ZASHBOARD_URL" 2>/dev/null
+unzip -qq "$TEMP_DIR/dist.zip" -d "$TEMP_DIR" 2>/dev/null
+mv "$TEMP_DIR/dist" files/etc/nikki/run/ui/zashboard
+rm -rf "$TEMP_DIR"
+
 
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
