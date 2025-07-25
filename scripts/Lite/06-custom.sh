@@ -138,9 +138,8 @@ ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/d
 TEMP_DIR=$(mktemp -d)
 wget -q --no-show-progress -O "$TEMP_DIR/dist.zip" "$ZASHBOARD_URL" 2>/dev/null
 unzip -qq "$TEMP_DIR/dist.zip" -d "$TEMP_DIR" 2>/dev/null
-cp -r "$TEMP_DIR"/*/ files/etc/nikki/run/ui/zashboard
+find "$TEMP_DIR" -mindepth 2 -exec cp -r {} files/etc/nikki/run/ui/zashboard/ \; 2>/dev/null || cp -r "$TEMP_DIR"/* files/etc/nikki/run/ui/zashboard/
 rm -rf "$TEMP_DIR"
-
 
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
