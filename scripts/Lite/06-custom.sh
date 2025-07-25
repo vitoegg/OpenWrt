@@ -133,12 +133,12 @@ mv mihomo-linux-amd64 files/usr/bin/mihomo
 chmod +x files/usr/bin/mihomo
 
 log "Pre-downloading zashboard UI"
-mkdir -p files/etc/nikki/run/ui
+mkdir -p files/etc/nikki/run/ui/zashboard
 ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
 TEMP_DIR=$(mktemp -d)
 wget -q --no-show-progress -O "$TEMP_DIR/dist.zip" "$ZASHBOARD_URL" 2>/dev/null
 unzip -qq "$TEMP_DIR/dist.zip" -d "$TEMP_DIR" 2>/dev/null
-mv "$TEMP_DIR/dist" files/etc/nikki/run/ui/zashboard
+cp -r "$TEMP_DIR"/*/ files/etc/nikki/run/ui/zashboard
 rm -rf "$TEMP_DIR"
 
 
