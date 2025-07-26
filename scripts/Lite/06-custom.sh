@@ -123,15 +123,6 @@ log "Setting up pre-configuration files"
 mv "$REPO_TEMP_DIR"/*/Lite/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
 
-# Pre-download mihomo smart core
-log "Pre-downloading mihomo smart core"
-mkdir -p files/usr/bin
-version=$(wget -qO- https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/version.txt)
-wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/mihomo-linux-amd64-$version.gz
-gzip -dq mihomo-linux-amd64.gz
-mv mihomo-linux-amd64 files/usr/bin/mihomo
-chmod +x files/usr/bin/mihomo
-
 log "Pre-downloading zashboard UI"
 mkdir -p files/etc/nikki/run/ui/zashboard
 ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
