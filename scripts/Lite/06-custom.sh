@@ -114,6 +114,7 @@ sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
 
 # Move configuration files
 log "Removing sysctl.d and creating tmp directory"
+rm -rf files/etc/sysctl.d
 REPO_TEMP_DIR=$(mktemp -d)
 log "Downloading pre-configuration files"
 curl -s -S -f -L -u "$REPO_USERNAME:$REPO_TOKEN" "$REPO_URL" -o "$REPO_TEMP_DIR/repo.zip" 2>/dev/null
