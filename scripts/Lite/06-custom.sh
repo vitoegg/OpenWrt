@@ -140,15 +140,6 @@ unzip -qq "$TEMP_DIR/dist.zip" -d "$TEMP_DIR" 2>/dev/null
 find "$TEMP_DIR" -mindepth 2 -exec cp -r {} files/etc/nikki/run/ui/zashboard/ \; 2>/dev/null || cp -r "$TEMP_DIR"/* files/etc/nikki/run/ui/zashboard/
 rm -rf "$TEMP_DIR"
 
-# Pre-download mihomo smart core
-log "Pre-downloading mihomo smart core"
-mkdir -p files/usr/bin
-version=$(wget -qO- https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/version.txt)
-wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/mihomo-linux-amd64-$version.gz
-gzip -dq mihomo-linux-amd64.gz
-mv mihomo-linux-amd64 files/usr/bin/mihomo
-chmod +x files/usr/bin/mihomo
-
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
 mkdir -p files/etc/mosdns/rule
