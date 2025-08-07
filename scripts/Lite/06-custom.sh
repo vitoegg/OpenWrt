@@ -18,7 +18,7 @@ git clone https://$github/sbwml/packages_utils_lrzsz package/new/lrzsz
 # Modify Argon theme
 log "Switching to the customized Argon"
 rm -rf package/new/extd/luci-theme-argon
-git clone --depth=1 https://github.com/vitoegg/luci-theme-argon package/app/luci-theme-argon
+git clone --depth=1 https://github.com/vitoegg/Argon package/app/luci-theme-argon
 mv package/app/luci-theme-argon package/new/extd/luci-theme-argon
 
 # Modify Hostname
