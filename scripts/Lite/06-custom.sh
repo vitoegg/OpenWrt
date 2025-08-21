@@ -126,6 +126,11 @@ log "Setting up pre-configuration files"
 mv "$REPO_TEMP_DIR"/*/Lite/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
 
+# Remove existing nikki ui directory
+if [ -d "files/etc/nikki/run/ui" ]; then
+    log "Removing existing nikki ui directory"
+    rm -rf files/etc/nikki/run/ui
+fi
 log "Pre-downloading zashboard UI"
 mkdir -p files/etc/nikki/run/ui/zashboard
 ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
