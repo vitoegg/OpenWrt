@@ -16,11 +16,19 @@ rm -rf feeds/packages/utils/lrzsz
 git clone https://$github/sbwml/packages_utils_lrzsz package/new/lrzsz
 
 # Nikki - add original package
-if [ -d "package/new/lite/openwrt-mihomo" ]; then
-    log "Removing existing nikki app and cloning new package"
-    rm -rf package/new/lite/openwrt-mihomo
-    git clone --depth=1 https://github.com/nikkinikki-org/OpenWrt-nikki.git package/new/openwrt-nikki
+# >Remove existing nikki app
+if [ -d "package/new/lite/luci-app-nikki" ]; then
+    log "Removing existing nikki app"
+    rm -rf package/new/lite/luci-app-nikki
 fi
+# >Remove existing nikki package
+if [ -d "package/new/lite/nikki" ]; then
+    log "Removing existing nikki package"
+    rm -rf package/new/lite/nikki
+fi
+# >Clone nikki package
+log "Cloning nikki package"
+git clone --depth=1 https://github.com/nikkinikki-org/OpenWrt-nikki.git package/new/openwrt-nikki
 
 # Modify Argon theme
 log "Switching to the customized Argon"
