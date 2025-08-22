@@ -10,11 +10,6 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $msg"
 }
 
-# lrzsz - add patched package
-log "Adding patched lrzsz package"
-rm -rf feeds/packages/utils/lrzsz
-git clone https://$github/sbwml/packages_utils_lrzsz package/new/lrzsz
-
 # Nikki - add original package
 if [ -d "package/new/lite/luci-app-nikki" ] && [ -d "package/new/lite/nikki" ]; then
     log "Removing existing nikki app and package"
