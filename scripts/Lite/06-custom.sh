@@ -130,12 +130,14 @@ log "Setting up pre-configuration files"
 mv "$REPO_TEMP_DIR"/*/Lite/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
 
-# Remove existing nikki ui directory
+# Pre-downloading Nikki necessary files
+# >Remove existing nikki ui directory
 if [ -d "files/etc/nikki/run/ui" ]; then
     log "Removing existing nikki ui directory"
     rm -rf files/etc/nikki/run/ui
 fi
-log "Pre-downloading zashboard UI"
+# >Download Nikki zashboard UI
+log "Downloading Nikki zashboard UI"
 mkdir -p files/etc/nikki/run/ui/zashboard
 ZASHBOARD_URL="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
 TEMP_DIR=$(mktemp -d)
@@ -143,6 +145,17 @@ wget -q --no-show-progress -O "$TEMP_DIR/dist.zip" "$ZASHBOARD_URL" 2>/dev/null
 unzip -qq "$TEMP_DIR/dist.zip" -d "$TEMP_DIR" 2>/dev/null
 find "$TEMP_DIR" -mindepth 2 -exec cp -r {} files/etc/nikki/run/ui/zashboard/ \; 2>/dev/null || cp -r "$TEMP_DIR"/* files/etc/nikki/run/ui/zashboard/
 rm -rf "$TEMP_DIR"
+# >Download LightGBM model
+log "Downloading Nikki LightGBM model"
+wget -qO files/etc/nikki/run/Model.bin https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model.bin
+# >Pre-download mihomo smart core
+log "Pre-downloading Nikki smart core"
+mkdir -p files/usr/bin
+version=$(wget -qO- https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/version.txt)
+wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/mihomo-linux-amd64-$version.gz
+gzip -dq mihomo-linux-amd64.gz
+mv mihomo-linux-amd64 files/usr/bin/mihomo
+chmod +x files/usr/bin/mihomo
 
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
