@@ -23,7 +23,9 @@ fi
 log "Removing existing argon theme"
 rm -rf package/new/extd/luci-theme-argon
 log "Adding customized argon theme"
-git clone --depth=1 https://github.com/vitoegg/Argon package/new/argon-theme
+git clone --depth=1 https://github.com/vitoegg/Argon package/app/luci-theme-argon
+mv package/app/luci-theme-argon package/new/extd/luci-theme-argon
+
 
 # Modify Hostname
 log "Modifying hostname to HomeLab"
