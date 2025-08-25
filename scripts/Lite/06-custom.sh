@@ -19,11 +19,11 @@ if [ -d "package/new/lite/luci-app-nikki" ] && [ -d "package/new/lite/nikki" ]; 
     git clone --depth=1 https://github.com/nikkinikki-org/OpenWrt-nikki.git package/new/openwrt-nikki
 fi
 
-# Modify Argon theme
-log "Switching to the customized Argon"
+# Argon - add customized argon theme
+log "Removing existing argon theme"
 rm -rf package/new/extd/luci-theme-argon
-git clone --depth=1 https://github.com/vitoegg/Argon package/app/luci-theme-argon
-mv package/app/luci-theme-argon package/new/extd/luci-theme-argon
+log "Adding customized argon theme"
+git clone --depth=1 https://github.com/vitoegg/Argon package/new/argon-theme
 
 # Modify Hostname
 log "Modifying hostname to HomeLab"
@@ -145,17 +145,6 @@ wget -q --no-show-progress -O "$TEMP_DIR/dist.zip" "$ZASHBOARD_URL" 2>/dev/null
 unzip -qq "$TEMP_DIR/dist.zip" -d "$TEMP_DIR" 2>/dev/null
 find "$TEMP_DIR" -mindepth 2 -exec cp -r {} files/etc/nikki/run/ui/zashboard/ \; 2>/dev/null || cp -r "$TEMP_DIR"/* files/etc/nikki/run/ui/zashboard/
 rm -rf "$TEMP_DIR"
-# >Download LightGBM model
-log "Downloading Nikki LightGBM model"
-wget -qO files/etc/nikki/run/Model.bin https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model.bin
-# >Pre-download mihomo smart core
-log "Pre-downloading Nikki smart core"
-mkdir -p files/usr/bin
-version=$(wget -qO- https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/version.txt)
-wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/mihomo-linux-amd64-$version.gz
-gzip -dq mihomo-linux-amd64.gz
-mv mihomo-linux-amd64 files/usr/bin/mihomo
-chmod +x files/usr/bin/mihomo
 
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
