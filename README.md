@@ -5,8 +5,7 @@
 ```
 OpenLite/
 ├── files/                                      # [预设文件]
-│   ├── Pictures/                               # 主题背景图片
-│   ├── cpuinfo                                 # CPU信息展示脚本
+│   ├── Picture/                                # 主题背景图片
 │   ├── packages                                # 预安装包列表
 │   └── README.md                               # 编译依赖说明
 ├── scripts/                                    # [脚本集合]
@@ -15,10 +14,6 @@ OpenLite/
 │   │   ├── 23-config-musl-x86                  # x86架构配置
 │   │   ├── 23-config-common-lite               # 通用轻量级配置
 │   │   └── 23-config-common-custom             # 用户自定义配置
-│   ├── Router/                                 # Router构建脚本
-│   │   ├── build.sh                            # 路由器固件构建脚本
-│   │   ├── .config                             # 路由器配置文件
-│   │   └── feeds.sh                            # 软件源配置脚本
 │   └── Cloud/                                  # Cloud构建脚本
 │       ├── build.sh                            # 云服务器固件构建脚本
 │       ├── .config                             # 云服务器配置文件
