@@ -19,15 +19,12 @@ log "Removing existing Argon theme"
 rm -rf feeds/luci/themes/luci-theme-argon || log "Failed to remove luci-theme-argon"
 
 # Add new packages
-log "Adding original Argon theme"
-git clone --depth=1 https://github.com/jerrykuku/luci-theme-argon package/app/luci-theme-argon || log "Failed to clone Argon theme"
+log "Adding customized Argon theme"
+git clone --depth=1 https://github.com/vitoegg/Argon package/app/luci-theme-argon || log "Failed to clone Argon theme"
 
 # Modify Argon theme
 log "Modifying Argon theme"
 mv package/app/luci-theme-argon feeds/luci/themes/luci-theme-argon || log "Failed to move Argon theme"
-cp -f $GITHUB_WORKSPACE/files/Cloud/bg1.jpg feeds/luci/themes/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg || log "Failed to replace Argon background"
-sed -i '/<a class="luci-link".*Powered by/d' feeds/luci/themes/luci-theme-argon/luasrc/view/themes/argon/footer.htm || log "Failed to modify Argon footer"
-sed -i '/<a class="luci-link".*Powered by/d; /distversion/d; /ArgonTheme <%# vPKG_VERSION %>/s/ \/ *$//' feeds/luci/themes/luci-theme-argon/luasrc/view/themes/argon/footer_login.htm || log "Failed to modify Argon login footer"
 
 # Modify Samba4 Menu
 log "Modifying Samba4 Menu"
