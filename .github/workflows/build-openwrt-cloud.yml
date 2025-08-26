@@ -216,7 +216,7 @@ jobs:
           endpoint=${{ secrets.WEBDAV_ENDPOINT }}
           username=${{ secrets.WEBDAV_USERNAME }}
           password=${{ secrets.WEBDAV_PASSWORD }}
-          root=/openwrt/
+          root=/OpenWrt/
         include: './firmware/*'
 
     - name: Send Telegram Message
