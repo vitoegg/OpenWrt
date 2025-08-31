@@ -1,0 +1,2 @@
+### Apps
+CONFIG_PACKAGE_luci-app-samba4=y
