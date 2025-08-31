@@ -61,7 +61,7 @@ This project uses automatically built extended software repositories, optimizing
 - Added CAKE qdisc for improved network performance (openwrt/23-config-common-lite)
 
 #### Applications & Services
-- Added OpenClash with pre-downloaded core files and configuration (openwrt/23-config-common-custom, openwrt/scripts/06-custom.sh)
-- Added AdGuardHome with pre-downloaded binary (openwrt/23-config-common-custom, openwrt/scripts/06-custom.sh)
-- Customized Argon theme with new background (openwrt/scripts/06-custom.sh)
+- Added Nikki with pre-downloaded core files and configuration (openwrt/23-config-common-custom, openwrt/scripts/06-custom.sh)
+- Added MosDNS with pre-downloaded binary (openwrt/23-config-common-custom, openwrt/scripts/06-custom.sh)
+- Customized Argon Theme (openwrt/scripts/06-custom.sh)
 - Removed unnecessary packages (openwrt/23-config-common-custom, openwrt/23-config-common-lite)
