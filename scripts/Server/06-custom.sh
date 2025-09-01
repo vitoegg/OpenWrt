@@ -29,10 +29,6 @@ sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_D
 sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
 sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
 
-# Modify Samba4 Menu
-log "Modifying Samba4 Menu"
-sed -i 's/services/nas/g' package/new/extd/luci-app-samba4/root/usr/share/luci/menu.d/luci-app-samba4.json
-
 # Delete LED Menu
 log "Removing LED menu from LuCI"
 awk '
