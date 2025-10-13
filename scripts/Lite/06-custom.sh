@@ -153,6 +153,8 @@ wget -q --no-show-progress -O "$TEMP_DIR/dist.zip" "$ZASHBOARD_URL" 2>/dev/null
 unzip -qq "$TEMP_DIR/dist.zip" -d "$TEMP_DIR" 2>/dev/null
 find "$TEMP_DIR" -mindepth 2 -exec cp -r {} files/etc/nikki/run/ui/zashboard/ \; 2>/dev/null || cp -r "$TEMP_DIR"/* files/etc/nikki/run/ui/zashboard/
 rm -rf "$TEMP_DIR"
+
+# Pre-download smart related files
 # >Download LightGBM model
 log "Downloading Nikki LightGBM model"
 wget -qO files/etc/nikki/run/Model.bin https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model.bin
@@ -164,6 +166,14 @@ wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/down
 gzip -dq mihomo-linux-amd64.gz
 mv mihomo-linux-amd64 files/usr/bin/mihomo
 chmod +x files/usr/bin/mihomo
+# >Pre-download smart core update script
+log "Pre-downloading Nikki smart core update script"
+mkdir -p files/usr/share/task
+wget -qO- $UPDATE_SH_URL > files/usr/share/task/update_smart_core.sh
+chmod +x files/usr/share/task/update_smart_core.sh
+# >Add smart core update Job
+mkdir -p files/etc/crontabs
+echo "0 5 * * 0 /usr/share/task/update_smart_core.sh" >> files/etc/crontabs/root
 
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
