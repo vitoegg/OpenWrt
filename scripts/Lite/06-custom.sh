@@ -171,9 +171,6 @@ log "Pre-downloading Nikki smart core update script"
 mkdir -p files/usr/share/task
 wget -qO- $UPDATE_SH_URL > files/usr/share/task/update_smart_core.sh
 chmod +x files/usr/share/task/update_smart_core.sh
-# >Add smart core update Job
-mkdir -p files/etc/crontabs
-echo "0 5 * * 0 /usr/share/task/update_smart_core.sh" >> files/etc/crontabs/root
 
 # Pre-downloading MosDNS rules
 log "Pre-downloading MosDNS rules"
