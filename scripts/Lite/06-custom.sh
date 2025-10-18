@@ -155,9 +155,9 @@ find "$TEMP_DIR" -mindepth 2 -exec cp -r {} files/etc/nikki/run/ui/zashboard/ \;
 rm -rf "$TEMP_DIR"
 
 # Pre-download smart related files
-# >Download LightGBM model
-log "Downloading Nikki LightGBM model"
-wget -qO files/etc/nikki/run/Model.bin https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model.bin
+# >Download ASN mmdb file
+log "Downloading Nikki ASN mmdb file"
+wget -qO files/etc/nikki/run/ASN.mmdb https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb
 # >Pre-download mihomo smart core
 log "Pre-downloading Nikki smart core"
 mkdir -p files/usr/bin
