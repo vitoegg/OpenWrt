@@ -86,6 +86,17 @@ uci set network.cfg060f15.macaddr='$PPPOE_MAC'
 uci set network.@device[-1].name='pppoe-wan'
 uci commit network
 
+# Set IPV6 Network
+uci del network.wan6
+uci set network.lan.delegate='0'
+uci set network.lan.ip6ifaceid='eui64'
+uci commit network
+uci del dhcp.lan.dhcpv6
+uci set dhcp.lan.ra_default='1'
+uci set dhcp.lan.dns_service='0'
+uci add_list dhcp.lan.ra_flags='none'
+uci commit dhcp
+
 # Set Static DHCP
 uci add dhcp host #1
 uci set dhcp.@host[-1].name='Router'
