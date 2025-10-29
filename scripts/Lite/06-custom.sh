@@ -78,30 +78,13 @@ sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /et
 uci set network.wan.proto='pppoe'
 uci set network.wan.username='$PPPOE_USERNAME'
 uci set network.wan.password='$PPPOE_PASSWORD'
-uci set network.wan.delegate='0'
-uci delete network.globals.ula_prefix
-uci delete network.wan6
 uci commit network
 
 # Set PPPOE Device
 uci add network device # =cfg060f15
 uci set network.cfg060f15.macaddr='$PPPOE_MAC'
 uci set network.@device[-1].name='pppoe-wan'
-uci set network.@device[-1].ipv6='0'
 uci commit network
-
-# Disable IPv6
-uci set network.lan.ip6assign=''
-uci set network.wan.ipv6='0'
-uci set network.wan.sourcefilter='0'
-uci set network.lan.delegate='0'
-uci set network.wan.delegate='0'
-uci commit network
-uci set dhcp.lan.ra=''
-uci set dhcp.lan.dhcpv6=''
-uci set dhcp.lan.ra_management=''
-uci set dhcp.@dnsmasq[0].filter_aaaa='1'
-uci commit dhcp
 
 # Set Static DHCP
 uci add dhcp host #1
