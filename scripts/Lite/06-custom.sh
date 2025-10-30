@@ -91,9 +91,8 @@ uci del network.wan6
 uci set network.lan.delegate='0'
 uci set network.lan.ip6ifaceid='eui64'
 uci commit network
-uci del dhcp.lan.dhcpv6
-uci set dhcp.lan.ra_default='1'
 uci set dhcp.lan.dns_service='0'
+uci set dhcp.lan.ra_default='1'
 uci add_list dhcp.lan.ra_flags='none'
 uci commit dhcp
 
