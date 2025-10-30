@@ -94,9 +94,8 @@ uci commit network
 uci set dhcp.lan.dns_service='0'
 uci set dhcp.lan.ra_default='1'
 uci commit dhcp
-uci del dhcp.lan.ra_slaac
 uci del dhcp.lan.ra_flags
-uci add_list dhcp.lan.ra_flags='none'
+uci add_list dhcp.lan.ra_flags='managed-config'
 uci commit dhcp
 
 # Set Static DHCP
@@ -110,6 +109,8 @@ uci add dhcp host #2
 uci set dhcp.@host[-1].name='LMini'
 uci set dhcp.@host[-1].mac='$LMINI_MAC'
 uci set dhcp.@host[-1].ip='192.168.10.5'
+uci set dhcp.@host[-1].duid="$LMINI_DUID"
+uci set dhcp.@host[-1].hostid="$LMINI_HOSTID"
 uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
