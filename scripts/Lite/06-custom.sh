@@ -163,6 +163,9 @@ wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/down
 gzip -dq mihomo-linux-amd64.gz
 mv mihomo-linux-amd64 files/usr/bin/mihomo
 chmod +x files/usr/bin/mihomo
+# >Download LightGBM model
+log "Downloading Nikki LightGBM model"
+wget -qO files/etc/nikki/run/Model.bin https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model.bin
 # >Pre-download smart core update script
 log "Pre-downloading Nikki smart core update script"
 mkdir -p files/usr/share/task
