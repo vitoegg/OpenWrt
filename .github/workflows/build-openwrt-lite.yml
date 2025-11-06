@@ -17,6 +17,8 @@ env:
   LMINI_MAC: ${{ secrets.LMINI_MAC }}
   LMINI_DUID: ${{ secrets.LMINI_DUID }}
   LMINI_HOSTID: ${{ secrets.LMINI_HOSTID }}
+  REDIRECT_SRC_DPORT: ${{ secrets.REDIRECT_SRC_DPORT }}
+  REDIRECT_DEST_PORT: ${{ secrets.REDIRECT_DEST_PORT }}
   UPDATE_SH_URL: ${{ secrets.UPDATE_SH_URL }}
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}

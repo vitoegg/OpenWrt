@@ -19,6 +19,7 @@ env:
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}
+  DDNS_SH_URL: ${{ secrets.DDNS_SH_URL }}
   HARDWARE_MODEL: MINISFORUM UN100D
 
 jobs:
