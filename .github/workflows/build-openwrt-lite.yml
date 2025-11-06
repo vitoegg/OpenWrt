@@ -111,7 +111,7 @@ jobs:
       run: |
         echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
         export GITHUB_REPO=vitoegg/OpenLite
-        export LAN=192.168.10.1
+        export LAN=192.168.10.1 ENABLE_DPDK=y
         # Download and replace build.sh
         curl -sS https://raw.githubusercontent.com/vitoegg/OpenLite/main/openwrt/build.sh -o build.sh
         sed -i 's|https://\$mirror/openwrt/23-config-musl-x86|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Lite/23-config-musl-x86|g' build.sh
