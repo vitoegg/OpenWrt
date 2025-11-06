@@ -1,2 +1,7 @@
 ### Apps
 CONFIG_PACKAGE_luci-app-samba4=y
+
+### Shadowsocks-libev Server
+CONFIG_PACKAGE_luci-app-shadowsocks-libev=y
+CONFIG_PACKAGE_shadowsocks-libev-ss-server=y
+CONFIG_PACKAGE_shadowsocks-libev-config=y
