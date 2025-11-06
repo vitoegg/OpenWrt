@@ -66,6 +66,11 @@ sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /et
 # Enable auto mount
 uci set fstab.@global[0].anon_mount='1'
 uci commit fstab
+# Set local domain
+uci add dhcp domain # =cfg05f37d
+uci set dhcp.@domain[-1].name='cloud.home'
+uci set dhcp.@domain[-1].ip='192.168.10.2'
+uci commit dhcp
 EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
 
@@ -82,5 +87,11 @@ if [ ! -d "files/etc" ]; then
 fi
 mv "$REPO_TEMP_DIR"/*/Cloud/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
+
+# Pre-download ddns script
+log "Pre-downloading ddns script"
+mkdir -p files/usr/share/task
+wget -qO- $DDNS_SH_URL > files/usr/share/task/ddns.sh
+chmod +x files/usr/share/task/ddns.sh
 
 log "Script completed successfully"
