@@ -25,6 +25,7 @@ OpenLite/
 
 #### 2. 核心应用
 - [x] **Nikki**：强大的Mihomo代理工具，预下载Smart核心文件和配置
+- [x] **SmartCore**：Vernesong提供的Mihomo Smart Core，智能切换代理服务
 - [x] **MosDNS**：DNS分流工具，用于分流不同网站使用的上游DNS
 
 #### 3. 特别感谢
@@ -33,6 +34,8 @@ OpenLite/
 - [OpenWrt Lean](https://github.com/coolsnowwolf/lede)
 
 - [Nikki](https://github.com/nikkinikki-org/OpenWrt-nikki)
+
+- [Mihomo Smart Core](https://github.com/vernesong/OpenClash/releases/tag/mihomo)
 
 - [MosDNS](https://github.com/sbwml/luci-app-mosdns)
 
