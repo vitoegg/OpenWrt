@@ -66,11 +66,6 @@ sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /et
 # Enable auto mount
 uci set fstab.@global[0].anon_mount='1'
 uci commit fstab
-# Set local domain
-uci add dhcp domain # =cfg05f37d
-uci set dhcp.@domain[-1].name='cloud.home'
-uci set dhcp.@domain[-1].ip='192.168.10.2'
-uci commit dhcp
 EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
 
