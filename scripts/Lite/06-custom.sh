@@ -147,6 +147,15 @@ log "Setting up pre-configuration files"
 mv "$REPO_TEMP_DIR"/*/Lite/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
 
+# Pre-downloading MosDNS rules
+log "Pre-downloading MosDNS rules"
+mkdir -p files/etc/mosdns/rule
+MOSDNS_APPLE_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Extra/MosDNS/apple.txt"
+MOSDNS_REJECT_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Extra/MosDNS/reject.txt"
+wget -qO- $MOSDNS_APPLE_URL > files/etc/mosdns/rule/apple.txt &
+wget -qO- $MOSDNS_REJECT_URL > files/etc/mosdns/rule/reject.txt &
+wait
+
 # Pre-downloading Nikki necessary files
 # >Remove existing nikki ui directory
 if [ -d "files/etc/nikki/run/ui" ]; then
@@ -162,35 +171,5 @@ wget -q --no-show-progress -O "$TEMP_DIR/dist.zip" "$ZASHBOARD_URL" 2>/dev/null
 unzip -qq "$TEMP_DIR/dist.zip" -d "$TEMP_DIR" 2>/dev/null
 find "$TEMP_DIR" -mindepth 2 -exec cp -r {} files/etc/nikki/run/ui/zashboard/ \; 2>/dev/null || cp -r "$TEMP_DIR"/* files/etc/nikki/run/ui/zashboard/
 rm -rf "$TEMP_DIR"
-
-# Pre-download smart related files
-# >Download ASN mmdb file
-log "Downloading Nikki ASN mmdb file"
-wget -qO files/etc/nikki/run/ASN.mmdb https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb
-# >Pre-download mihomo smart core
-log "Pre-downloading Nikki smart core"
-mkdir -p files/usr/bin
-version=$(wget -qO- https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/version.txt)
-wget -qO mihomo-linux-amd64.gz https://github.com/vernesong/mihomo/releases/download/Prerelease-Alpha/mihomo-linux-amd64-$version.gz
-gzip -dq mihomo-linux-amd64.gz
-mv mihomo-linux-amd64 files/usr/bin/mihomo
-chmod +x files/usr/bin/mihomo
-# >Download LightGBM model
-log "Downloading Nikki LightGBM model"
-wget -qO files/etc/nikki/run/Model.bin https://github.com/vernesong/mihomo/releases/download/LightGBM-Model/Model.bin
-# >Pre-download smart core update script
-log "Pre-downloading Nikki smart core update script"
-mkdir -p files/usr/share/task
-wget -qO- $UPDATE_SH_URL > files/usr/share/task/update_smart_core.sh
-chmod +x files/usr/share/task/update_smart_core.sh
-
-# Pre-downloading MosDNS rules
-log "Pre-downloading MosDNS rules"
-mkdir -p files/etc/mosdns/rule
-MOSDNS_APPLE_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Extra/MosDNS/apple.txt"
-MOSDNS_REJECT_URL="https://raw.githubusercontent.com/vitoegg/Provider/master/RuleSet/Extra/MosDNS/reject.txt"
-wget -qO- $MOSDNS_APPLE_URL > files/etc/mosdns/rule/apple.txt &
-wget -qO- $MOSDNS_REJECT_URL > files/etc/mosdns/rule/reject.txt &
-wait
 
 log "Script completed successfully"
