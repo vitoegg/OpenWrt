@@ -83,10 +83,4 @@ fi
 mv "$REPO_TEMP_DIR"/*/Cloud/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
 
-# Pre-download ddns script
-log "Pre-downloading ddns script"
-mkdir -p files/usr/share/task
-wget -qO- $DDNS_SH_URL > files/usr/share/task/ddns.sh
-chmod +x files/usr/share/task/ddns.sh
-
 log "Script completed successfully"
