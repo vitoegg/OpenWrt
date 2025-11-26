@@ -123,6 +123,16 @@ uci set firewall.@defaults[0].shortcut_fe='1'
 uci set firewall.@defaults[0].shortcut_fe_module='shortcut-fe-cm'
 uci commit firewall
 
+# Enable Transmit Firewall
+uci add firewall redirect # =cfg0f3837
+uci set firewall.cfg0f3837.name='Transmit'
+uci set firewall.@redirect[-1].dest='lan'
+uci set firewall.@redirect[-1].target='DNAT'
+uci set firewall.@redirect[-1].src='wan'
+uci set firewall.@redirect[-1].src_dport='$REDIRECT_SRC_DPORT'
+uci set firewall.cfg0f3837.dest_ip='192.168.10.2'
+uci set firewall.@redirect[-1].dest_port='$REDIRECT_DEST_PORT'
+
 EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
 
