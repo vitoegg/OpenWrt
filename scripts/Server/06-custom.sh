@@ -83,10 +83,17 @@ fi
 mv "$REPO_TEMP_DIR"/*/Cloud/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
 
-# Pre-download ddns script
-log "Pre-downloading ddns script"
+# Add docker restart task to crontabs
+log "Adding docker restart task to crontabs"
+mkdir -p files/etc/crontabs
+echo "15 5 * * * docker restart tunnel" >> files/etc/crontabs/root
+
+# Download ddns script
+log "Downloading ddns script"
 mkdir -p files/usr/share/task
 wget -qO- $DDNS_SH_URL > files/usr/share/task/ddns.sh
 chmod +x files/usr/share/task/ddns.sh
+log "Adding ddns script to crontabs"
+echo "*/30 * * * * /usr/share/task/ddns.sh > /dev/null 2>&1" >> files/etc/crontabs/root
 
 log "Script completed successfully"
