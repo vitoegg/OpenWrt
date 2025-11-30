@@ -31,7 +31,24 @@ jobs:
         shell: bash
 
     steps:
-    - name: Checkout
+    - name: Sync Upstream Repository
+      run: |
+        RESPONSE=$(curl -s -X POST \
+          -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/vitoegg/OpenLite/merge-upstream \
+          -d '{"branch":"main"}')
+        
+        if echo "$RESPONSE" | grep -q "Successfully merged"; then
+          echo "✅ Synced: Merged latest code from upstream"
+        elif echo "$RESPONSE" | grep -q "This branch is not behind"; then
+          echo "ℹ️ No sync needed: Already up-to-date"
+        else
+          MESSAGE=$(echo "$RESPONSE" | grep -o '"message":"[^"]*"' | head -1 | cut -d'"' -f4)
+          echo "⚠️ Sync status: ${MESSAGE:-Unknown}"
+        fi
+
+    - name: Checkout Repository
       uses: actions/checkout@main
 
     - name: Set Timezone
@@ -50,23 +67,6 @@ jobs:
         sudo chown -R runner:runner /builder
         echo WORKDIR="/builder" >> "$GITHUB_ENV"
 
-    - name: Sync Upstream Repository
-      run: |
-        RESPONSE=$(curl -s -X POST \
-          -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/vitoegg/OpenLite/merge-upstream \
-          -d '{"branch":"main"}')
-        
-        if echo "$RESPONSE" | grep -q "Successfully merged"; then
-          echo "✅ Synced: Merged latest code from upstream"
-        elif echo "$RESPONSE" | grep -q "This branch is not behind"; then
-          echo "ℹ️ No sync needed: Already up-to-date"
-        else
-          MESSAGE=$(echo "$RESPONSE" | grep -o '"message":"[^"]*"' | head -1 | cut -d'"' -f4)
-          echo "⚠️ Sync status: ${MESSAGE:-Unknown}"
-        fi
-  
     - name: Free Disk Space
       run: |
         sudo swapoff -a
