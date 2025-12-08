@@ -10,14 +10,20 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $msg"
 }
 
-# Nikki - add original package
-if [ -d "package/new/lite/luci-app-nikki" ] && [ -d "package/new/lite/nikki" ]; then
-    log "Removing existing nikki app and package"
+# Remove built-in nikki (if exists)
+if [ -d "package/new/lite/luci-app-nikki" ]; then
+    log "Removing existing luci-app-nikki"
     rm -rf package/new/lite/luci-app-nikki
-    rm -rf package/new/lite/nikki
-    log "Adding original nikki repository"
-    git clone --depth=1 https://github.com/nikkinikki-org/OpenWrt-nikki.git package/new/openwrt-nikki
 fi
+
+if [ -d "package/new/lite/nikki" ]; then
+    log "Removing existing nikki"
+    rm -rf package/new/lite/nikki
+fi
+
+# Nikki - add personalized package
+log "Adding personalized nikki repository"
+git clone --depth=1 https://github.com/vitoegg/OpenNikki.git package/new/OpenNikk
 
 # Argon - add customized argon theme
 log "Removing existing argon theme"
