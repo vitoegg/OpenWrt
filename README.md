@@ -4,23 +4,17 @@
 
 ```
 OpenWrt/
-├── files/                                      # [预设文件]
-│   ├── Picture/                                # 主题背景图片
-│   ├── packages                                # 编译依赖包列表
-│   └── README.md                               # 编译依赖说明
-├── scripts/                                    # [脚本集合]
-│   ├── Lite/                                   # Lite版本构建脚本
-│   │   ├── 06-custom.sh                        # 自定义配置脚本
-│   │   ├── 23-config-musl-x86                  # x86架构配置
-│   │   ├── 23-config-common-lite               # 通用轻量级配置
-│   │   ├── 23-config-common-custom             # 用户自定义配置
-│   │   └── README.md                           # 说明文档
-│   └── Cloud/                                  # Cloud版本构建脚本
-│       ├── 06-custom.sh                        # 自定义配置脚本
-│       ├── 23-config-musl-x86                  # x86架构配置
-│       ├── 23-config-common-server             # 服务器通用配置
-│       ├── 23-config-common-custom             # 用户自定义配置
-│       └── README.md                           # 说明文档
+├── Lite/                                   # Lite版本构建脚本
+│   ├── 06-custom.sh                        # 自定义配置脚本
+│   ├── 23-config-musl-x86                  # x86架构配置
+│   ├── 23-config-common-lite               # 通用轻量级配置
+│   ├── 23-config-common-custom             # 用户自定义配置
+├── Cloud/                                  # Cloud版本构建脚本
+│   ├── 06-custom.sh                        # 自定义配置脚本
+│   ├── 23-config-musl-x86                  # x86架构配置
+│   ├── 23-config-common-server             # 服务器通用配置
+│   ├── 23-config-common-custom             # 用户自定义配置
+└── README.md                               # 说明文档
 ```
 
 #### 1. 适配硬件

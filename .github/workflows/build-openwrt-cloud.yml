@@ -130,10 +130,10 @@ jobs:
         export LAN=192.168.10.2
         # Download and replace build.sh
         curl -sS https://raw.githubusercontent.com/vitoegg/OpenLite/main/openwrt/build.sh -o build.sh
-        sed -i 's|https://\$mirror/openwrt/23-config-musl-x86|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Cloud/23-config-musl-x86|g' build.sh
-        sed -i 's|https://\$mirror/openwrt/23-config-common-custom|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Cloud/23-config-common-custom|g' build.sh
-        sed -i 's|https://\$mirror/openwrt/23-config-common-server|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Cloud/23-config-common-server|g' build.sh
-        sed -i 's|https://\$mirror/openwrt/scripts/06-custom.sh|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Cloud/06-custom.sh|g' build.sh
+        sed -i 's|https://\$mirror/openwrt/23-config-musl-x86|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/Cloud/23-config-musl-x86|g' build.sh
+        sed -i 's|https://\$mirror/openwrt/23-config-common-custom|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/Cloud/23-config-common-custom|g' build.sh
+        sed -i 's|https://\$mirror/openwrt/23-config-common-server|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/Cloud/23-config-common-server|g' build.sh
+        sed -i 's|https://\$mirror/openwrt/scripts/06-custom.sh|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/Cloud/06-custom.sh|g' build.sh
         # Build
         bash build.sh server x86_64 | tee build.log
 
