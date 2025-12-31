@@ -70,16 +70,13 @@ EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
 
 # Move configuration files
-REPO_TEMP_DIR=$(mktemp -d)
 log "Downloading pre-configuration files"
+REPO_TEMP_DIR=$(mktemp -d)
 curl -s -S -f -L -u "$REPO_USERNAME:$REPO_TOKEN" "$REPO_URL" -o "$REPO_TEMP_DIR/repo.zip" 2>/dev/null
 unzip -q "$REPO_TEMP_DIR/repo.zip" -d "$REPO_TEMP_DIR/"
 log "Setting up pre-configuration files"
-# Check if files/etc directory exists, create if not
-if [ ! -d "files/etc" ]; then
-    log "Creating files/etc directory"
-    mkdir -p files/etc
-fi
+# Remove existing files/etc directory and recreate it
+rm -rf files/etc && mkdir -p files/etc
 mv "$REPO_TEMP_DIR"/*/Cloud/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
 
