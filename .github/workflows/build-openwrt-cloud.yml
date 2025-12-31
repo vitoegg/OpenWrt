@@ -39,12 +39,12 @@ jobs:
           https://api.github.com/repos/vitoegg/OpenLite/merge-upstream \
           -d '{"branch":"main"}')
         
-        if echo "$RESPONSE" | grep -q "Successfully merged"; then
-          echo "✅ Synced: Merged latest code from upstream"
-        elif echo "$RESPONSE" | grep -q "This branch is not behind"; then
+        if echo "$RESPONSE" | grep -qi "Successfully"; then
+          echo "✅ Synced: Updated from upstream"
+        elif echo "$RESPONSE" | grep -qi "not behind"; then
           echo "ℹ️ No sync needed: Already up-to-date"
         else
-          MESSAGE=$(echo "$RESPONSE" | grep -o '"message":"[^"]*"' | head -1 | cut -d'"' -f4)
+          MESSAGE=$(echo "$RESPONSE" | grep -o '"message":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
           echo "⚠️ Sync status: ${MESSAGE:-Unknown}"
         fi
 
