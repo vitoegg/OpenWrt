@@ -1,36 +1,26 @@
-#
-# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
-# https://github.com/P3TERX/Actions-OpenWrt
-# Description: Build OpenWrt using GitHub Actions
-#
-
 name: Build-OpenWrt-Cloud
 
 on:
   workflow_dispatch:
 
 # Scheduled trigger compilation
-#  schedule:
-#    - cron: 0 4 15 2,5,8,11 *
+  schedule:
+    - cron: 0 5 6 6 *
 
 env:
-  SOURCE_URL: https://github.com/vitoegg/Lean
-  SOURCE_BRANCH: main
-  CONFIG_FILE: scripts/Cloud/.config
-  FEED_SH: scripts/Cloud/feeds.sh
-  BUILD_SH: scripts/Cloud/build.sh
-  FIRMWARE_MESSAGE: HomeCloud
-  HARDWARE_MODEL: MINISFORUM N100D
-  LUCI_VERSION: 23.05
-  TZ: Asia/Shanghai
-  ROOT_PASSWORD_LEAN: ${{ secrets.ROOT_PASSWORD_LEAN }}
+  DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+  ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
+  PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
+  PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
+  PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
+  ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
+  LMINI_MAC: ${{ secrets.LMINI_MAC }}
+  UPDATE_SH_URL: ${{ secrets.UPDATE_SH_URL }}
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}
+  DDNS_SH_URL: ${{ secrets.DDNS_SH_URL }}
+  HARDWARE_MODEL: MINISFORUM UN100D
 
 jobs:
   build:
@@ -41,146 +31,131 @@ jobs:
         shell: bash
 
     steps:
-    - name: Action Branch
-      uses: actions/checkout@main
-      with:
-        fetch-depth: 0
-
-    - name: Print System Information
+    - name: Sync Upstream Repository
       run: |
-        echo "----------------------------CPU Information-----------------------------"
-        echo "Physical CPU Count: $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
-        echo "CPU Core Count: $(nproc)"
-        echo -e "CPU Model Info:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
-        echo "---------------------------Memory Information---------------------------"
-        echo "Installed Memory Details:"
-        echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
-        echo "--------------------------HardDisk Information--------------------------"
-        echo "Hard Drive Quantity: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+        RESPONSE=$(curl -s -X POST \
+          -H "Authorization: token ${{ secrets.REPO_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/vitoegg/OpenLite/merge-upstream \
+          -d '{"branch":"main"}')
+        
+        if echo "$RESPONSE" | grep -q "Successfully merged"; then
+          echo "✅ Synced: Merged latest code from upstream"
+        elif echo "$RESPONSE" | grep -q "This branch is not behind"; then
+          echo "ℹ️ No sync needed: Already up-to-date"
+        else
+          MESSAGE=$(echo "$RESPONSE" | grep -o '"message":"[^"]*"' | head -1 | cut -d'"' -f4)
+          echo "⚠️ Sync status: ${MESSAGE:-Unknown}"
+        fi
 
-    - name: Free Up Space
-      uses: jlumbroso/free-disk-space@main
-      with:
-        # this might remove tools that are actually needed,
-        # if set to "true" but frees about 6 GB
-        tool-cache: true
-        # all of these default to true, but feel free to set to
-        # "false" if necessary for your workflow
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
+    - name: Checkout Repository
+      uses: actions/checkout@main
 
-    - name: Prepare Environment
+    - name: Set Timezone
+      run: sudo timedatectl set-timezone 'Asia/Shanghai'
+
+    - name: Show System Info
+      run: |
+        lscpu
+        free -h
+        df -Th
+        uname -a
+
+    - name: Set Release ENV
+      run: |
+        sudo mkdir -p /builder
+        sudo chown -R runner:runner /builder
+        echo WORKDIR="/builder" >> "$GITHUB_ENV"
+
+    - name: Free Disk Space
+      run: |
+        sudo swapoff -a
+        sudo rm -f /swapfile /mnt/swapfile
+        sudo docker image prune -a -f
+        sudo systemctl stop docker
+        sudo snap set system refresh.retain=2
+        sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php*
+        sudo apt-get -y autoremove --purge
+        sudo apt-get clean
+        sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
+        sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+        rm -rf ~/{.cargo,.dotnet,.rustup}
+        df -Th
+
+    - name: Create Swap
+      run: |
+        sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
+        sudo chmod 600 /mnt/swapfile
+        sudo mkswap /mnt/swapfile
+        sudo swapon /mnt/swapfile
+        free -h | grep -i swap
+
+    - name: Build System Setup
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo -E apt-get -y update
-        sudo -E apt-get -y install $(cat files/packages)
-        sudo -E systemctl daemon-reload
-        sudo -E apt-get -y autoremove --purge
-        sudo -E apt-get -y clean
-        sudo -E timedatectl set-timezone "$TZ"
-        
-    - name: Clone OpenWrt
+        sudo apt-get update
+        sudo apt-get install -y build-essential flex bison cmake g++ gawk gcc-multilib g++-multilib gettext git libfuse-dev libncurses5-dev libssl-dev python3 python3-pip python3-ply python3-pyelftools rsync unzip zlib1g-dev file wget subversion patch upx-ucl autoconf automake curl asciidoc binutils bzip2 lib32gcc-s1 libc6-dev-i386 uglifyjs msmtp texinfo libreadline-dev libglib2.0-dev xmlto libelf-dev libtool autopoint antlr3 gperf ccache swig coreutils haveged scons libpython3-dev rename qemu-utils
+        sudo apt-get clean
+        git config --global user.name 'GitHub Actions' && git config --global user.email 'noreply@github.com'
+
+    - name: Create VG & LV
       run: |
-        df -hT $GITHUB_WORKSPACE
-        git clone $SOURCE_URL -b $SOURCE_BRANCH openwrt
-        cd openwrt
-        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+        mnt_size=$(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//')
+        root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 2)
+        sudo truncate -s "$mnt_size"G /mnt/mnt.img
+        sudo truncate -s "$root_size"G /root.img
+        sudo losetup /dev/loop6 /mnt/mnt.img
+        sudo losetup /dev/loop7 /root.img
+        sudo pvcreate /dev/loop6
+        sudo pvcreate /dev/loop7
+        sudo vgcreate github /dev/loop6 /dev/loop7
+        sudo lvcreate -n runner -l 100%FREE github
+        sudo mkfs.xfs /dev/github/runner
 
-    - name: Cache Toolchain
-      uses: klever1988/cachewrtbuild@main
-      with:
-        ccache: 'true'
-        mixkey: 'x86_64'
-        prefix: ${{ github.workspace }}/openwrt
-
-    - name: Install Feeds
+    - name: Mount LV
       run: |
-        echo "Run Feeds Script"
-        chmod +x $FEED_SH
-        cd $OPENWRT_PATH
-        $GITHUB_WORKSPACE/$FEED_SH
-        
-    - name: Install Custom Config
-      run: |
-        echo "Add Config Files"
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
-        
-        echo "Run Customized Script"
-        chmod +x $BUILD_SH
-        cd $OPENWRT_PATH
-        $GITHUB_WORKSPACE/$BUILD_SH
-        
-        make defconfig
+        sudo mkdir -p /builder
+        sudo mount /dev/github/runner /builder
+        sudo chown -R runner:runner /builder
+        df -Th
 
-    - name: Output Compilation Information
-      run: |
-        cd $OPENWRT_PATH
-        df -hT $PWD
-        
-        echo
-        echo "=========================================="
-        echo
-
-        # Get Version
-        DISTRIB_REVISION=$(cat package/lean/default-settings/files/zzz-default-settings|grep DISTRIB_REVISION= | sed 's/^.\{24\}//g' | sed 's/.\{26\}$//')
-        KERNEL_PATCHVER=$(cat target/linux/x86/Makefile|grep KERNEL_PATCHVER | sed 's/^.\{17\}//g')
-        # Set ENV
-        echo "DISTRIB_REVISION=$DISTRIB_REVISION" >> $GITHUB_ENV
-        echo "KERNEL_PATCHVER=$KERNEL_PATCHVER" >> $GITHUB_ENV
-        # Print Version
-        echo "Compiled Version：$DISTRIB_REVISION"
-        echo "Kernel Version：$KERNEL_PATCHVER"
-
-        echo
-        echo "=========================================="
-
-        grep -i CONFIG_PACKAGE_luci-app .config | grep  -v \# > Plug-in
-        grep -i CONFIG_PACKAGE_luci-theme .config | grep  -v \# >> Plug-in
-        sed -i '/INCLUDE/d' Plug-in > /dev/null 2>&1
-        sed -i 's/CONFIG_PACKAGE_/、/g' Plug-in
-        sed -i 's/=y/\ /g' Plug-in
-        awk '$0=NR$0' Plug-in > Plug-2
-        awk '{print "	" $0}' Plug-2 > Plug-in
-
-        echo
-        echo
-        echo "Selected Plugin List"
-        cat Plug-in
-        rm -rf {Plug-in,Plug-2}
-
-        echo
-        echo "=========================================="
-        
-    - name: Download Package
-      id: package
-      run: |
-        cd $OPENWRT_PATH
-        make download -j8
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
-        
-    - name: Compile Firmware
+    - name: Compile OpenWrt
+      working-directory: /builder
       id: compile
+      continue-on-error: true
       run: |
         echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
-        cd $OPENWRT_PATH
-        echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
-        
-    - name: Check Storage
-      if: (!cancelled())
-      run: df -hT
+        export GITHUB_REPO=vitoegg/OpenLite
+        export LAN=192.168.10.2
+        # Download and replace build.sh
+        curl -sS https://raw.githubusercontent.com/vitoegg/OpenLite/main/openwrt/build.sh -o build.sh
+        sed -i 's|https://\$mirror/openwrt/23-config-musl-x86|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Cloud/23-config-musl-x86|g' build.sh
+        sed -i 's|https://\$mirror/openwrt/23-config-common-custom|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Cloud/23-config-common-custom|g' build.sh
+        sed -i 's|https://\$mirror/openwrt/23-config-common-server|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Cloud/23-config-common-server|g' build.sh
+        sed -i 's|https://\$mirror/openwrt/scripts/06-custom.sh|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/scripts/Cloud/06-custom.sh|g' build.sh
+        # Build
+        bash build.sh server x86_64 | tee build.log
 
-    - name: Set Compile Time
-      id: date
-      if: steps.compile.outputs.status == 'success'
+    - name: Extensive Failed Logs
+      working-directory: /builder
+      if: steps.compile.outcome == 'failure'
       run: |
+        cd openwrt
+        make V=s
+
+    - name: Set Compiled ENV
+      working-directory: /builder
+      if: steps.compile.outcome == 'success'
+      run: |
+        # Set kernel version
+        KERNEL=$(grep -oE 'Kernel: [0-9]+(\.[0-9]+)+(-[0-9]+)?' build.log | head -1 | awk '{print $2}' | grep -oE '^[0-9]+(\.[0-9]+)+')
+        echo "KERNEL_PATCHVER=$KERNEL" >> $GITHUB_ENV
+        
+        # Set LuCI version
+        LUCI=$(grep -oE 'Building v[0-9]+(\.[0-9]+)+' build.log | head -1 | awk '{print $2}' | grep -oE '[0-9]+\.[0-9]+')
+        echo "LUCI_VERSION=$LUCI" >> $GITHUB_ENV
+
         # Calculate build duration
         BUILD_END_TIME=$(date +%s)
         BUILD_TIME=$((BUILD_END_TIME - ${{ env.BUILD_START_TIME }}))
@@ -200,12 +175,11 @@ jobs:
         echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
         echo "TAG_TIME=$(date "+%Y%m%d-%H%M")" >> $GITHUB_ENV
 
-    - name: Organize Files
-      id: organize
-      if: steps.compile.outputs.status == 'success'
+    - name: Prepare Firmware Files
+      working-directory: /builder
       run: |
-        mkdir -p ./firmware
-        cp -rf $(find $OPENWRT_PATH/bin/targets/ -type f -name "*squashfs*combined*efi.img*") ./firmware/openwrt-cloud-${{ env.TAG_TIME }}-x86-64-efi.img.gz
+        mkdir -p firmware
+        cp -a openwrt/bin/targets/x86/*/*-squashfs-combined-efi.img.gz firmware/openwrt-server-${{ env.TAG_TIME }}-x86-64-efi.img.gz
 
     - name: Upload to WebDAV
       uses: bxb100/action-upload@main
@@ -217,7 +191,7 @@ jobs:
           username=${{ secrets.WEBDAV_USERNAME }}
           password=${{ secrets.WEBDAV_PASSWORD }}
           root=/OpenWrt/
-        include: './firmware/*'
+        include: '${{ env.WORKDIR }}/firmware/*'
 
     - name: Send Telegram Message
       if: steps.compile.outcome == 'success'
@@ -225,8 +199,8 @@ jobs:
         curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
           -d photo="https://mirror.1991991.xyz/Picture/openwrt.webp" \
-          --data-urlencode "caption=#OpenWRT #HomeCloud
-          
+          --data-urlencode "caption=#OpenWRT #HomeCloud #Server
+
           *🎉 Ready to roll! Dive in! 🎉*
 
           - 🛠 Hardware: ${{ env.HARDWARE_MODEL }}
