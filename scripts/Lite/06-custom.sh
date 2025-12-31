@@ -150,6 +150,11 @@ log "Downloading pre-configuration files"
 curl -s -S -f -L -u "$REPO_USERNAME:$REPO_TOKEN" "$REPO_URL" -o "$REPO_TEMP_DIR/repo.zip" 2>/dev/null
 unzip -q "$REPO_TEMP_DIR/repo.zip" -d "$REPO_TEMP_DIR/"
 log "Setting up pre-configuration files"
+# Check if files/etc directory exists, create if not
+if [ ! -d "files/etc" ]; then
+    log "Creating files/etc directory"
+    mkdir -p files/etc
+fi
 mv "$REPO_TEMP_DIR"/*/Lite/files/etc/* files/etc/
 rm -rf "$REPO_TEMP_DIR"
 

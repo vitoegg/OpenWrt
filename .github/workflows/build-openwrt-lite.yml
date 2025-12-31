@@ -5,7 +5,8 @@ on:
 
 # Scheduled trigger compilation
   schedule:
-    - cron: 0 4 15 2,5,8,11 *
+    - cron: 0 8 6 6 *
+    - cron: 0 8 12 12 *
 
 env:
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
