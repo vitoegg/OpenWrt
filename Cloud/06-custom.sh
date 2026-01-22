@@ -17,6 +17,10 @@ log "Adding customized argon theme"
 git clone --depth=1 https://github.com/vitoegg/Argon package/app/luci-theme-argon
 mv package/app/luci-theme-argon package/new/extd/luci-theme-argon
 
+# Mio - add personalized ssserver
+log "Adding personalized shadowsocks server"
+git clone --depth=1 https://github.com/vitoegg/Mio.git package/new/Mio
+
 # Modify Hostname
 log "Modifying hostname to HomeCloud"
 sed -i 's#OpenWrt#HomeCloud#g' package/base-files/files/bin/config_generate
