@@ -92,18 +92,20 @@ uci set network.cfg060f15.macaddr='$PPPOE_MAC'
 uci set network.@device[-1].name='pppoe-wan'
 uci commit network
 
-# Enable WAN IPv6
-uci del network.wan6
-uci set network.lan.ip6ifaceid='eui64'
-uci commit network
-
-# Disable LAN IPV6
+# Disable IPV6 Network
+uci delete network.wan6
+uci delete network.globals.ula_prefix
+uci set network.@device[-1].ipv6='0'
+uci set network.wan.sourcefilter='0'
+uci set network.wan.ipv6='0'
+uci set network.wan.delegate='0'
 uci set network.lan.delegate='0'
 uci set network.lan.ip6assign=''
 uci commit network
 uci set dhcp.lan.ra=''
 uci set dhcp.lan.dhcpv6=''
 uci set dhcp.lan.ra_management=''
+uci set dhcp.@dnsmasq[0].filter_aaaa='1'
 uci commit dhcp
 
 # Set Static DHCP
