@@ -1,0 +1,238 @@
+name: Build-OpenWrt-Router
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: 0 8 6 6 *
+    - cron: 0 8 12 12 *
+
+env:
+  IMMORTALWRT_REPO: https://github.com/immortalwrt/immortalwrt.git
+  IMMORTALWRT_BRANCH: openwrt-24.10
+  DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+  ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
+  PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
+  PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
+  PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
+  ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
+  LMINI_MAC: ${{ secrets.LMINI_MAC }}
+  REDIRECT_SRC_DPORT: ${{ secrets.REDIRECT_SRC_DPORT }}
+  REDIRECT_DEST_PORT: ${{ secrets.REDIRECT_DEST_PORT }}
+  REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+  REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
+  REPO_URL: ${{ secrets.REPO_URL }}
+  HARDWARE_MODEL: MINISFORUM UN100D
+
+jobs:
+  build:
+    name: Build OpenWrt Router
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@main
+
+    - name: Set Timezone
+      run: sudo timedatectl set-timezone 'Asia/Shanghai'
+
+    - name: Show System Info
+      run: |
+        lscpu
+        free -h
+        df -Th
+        uname -a
+
+    - name: Set Release ENV
+      run: |
+        sudo mkdir -p /builder
+        sudo chown -R runner:runner /builder
+        echo WORKDIR="/builder" >> "$GITHUB_ENV"
+
+    - name: Free Disk Space
+      run: |
+        sudo swapoff -a
+        sudo rm -f /swapfile /mnt/swapfile
+        sudo docker image prune -a -f
+        sudo systemctl stop docker
+        sudo snap set system refresh.retain=2
+        sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php*
+        sudo apt-get -y autoremove --purge
+        sudo apt-get clean
+        sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
+        sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+        rm -rf ~/{.cargo,.dotnet,.rustup}
+        df -Th
+
+    - name: Create Swap
+      run: |
+        sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
+        sudo chmod 600 /mnt/swapfile
+        sudo mkswap /mnt/swapfile
+        sudo swapon /mnt/swapfile
+        free -h | grep -i swap
+
+    - name: Build System Setup
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential flex bison cmake g++ gawk gcc-multilib g++-multilib gettext git libfuse-dev libncurses5-dev libssl-dev python3 python3-pip python3-ply python3-pyelftools rsync unzip zlib1g-dev file wget subversion patch upx-ucl autoconf automake curl asciidoc binutils bzip2 lib32gcc-s1 libc6-dev-i386 uglifyjs msmtp texinfo libreadline-dev libglib2.0-dev xmlto libelf-dev libtool autopoint antlr3 gperf ccache swig coreutils haveged scons libpython3-dev rename qemu-utils
+        sudo apt-get clean
+        git config --global user.name 'GitHub Actions' && git config --global user.email 'noreply@github.com'
+
+    - name: Create VG & LV
+      run: |
+        mnt_size=$(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//')
+        root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 2)
+        sudo truncate -s "$mnt_size"G /mnt/mnt.img
+        sudo truncate -s "$root_size"G /root.img
+        sudo losetup /dev/loop6 /mnt/mnt.img
+        sudo losetup /dev/loop7 /root.img
+        sudo pvcreate /dev/loop6
+        sudo pvcreate /dev/loop7
+        sudo vgcreate github /dev/loop6 /dev/loop7
+        sudo lvcreate -n runner -l 100%FREE github
+        sudo mkfs.xfs /dev/github/runner
+
+    - name: Mount LV
+      run: |
+        sudo mkdir -p /builder
+        sudo mount /dev/github/runner /builder
+        sudo chown -R runner:runner /builder
+        df -Th
+
+    - name: Clone ImmortalWrt Source
+      working-directory: /builder
+      run: |
+        echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+        git clone --depth=1 -b $IMMORTALWRT_BRANCH $IMMORTALWRT_REPO openwrt
+        cd openwrt
+        echo "Source cloned successfully"
+
+    - name: Update Feeds
+      working-directory: /builder/openwrt
+      run: |
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Setup Custom Packages
+      working-directory: /builder/openwrt
+      run: |
+        chmod +x $GITHUB_WORKSPACE/Router/scripts/01-packages.sh
+        $GITHUB_WORKSPACE/Router/scripts/01-packages.sh
+
+    - name: Apply Settings
+      working-directory: /builder/openwrt
+      run: |
+        chmod +x $GITHUB_WORKSPACE/Router/scripts/02-settings.sh
+        $GITHUB_WORKSPACE/Router/scripts/02-settings.sh
+
+    - name: Prepare Files
+      working-directory: /builder/openwrt
+      run: |
+        chmod +x $GITHUB_WORKSPACE/Router/scripts/03-files.sh
+        $GITHUB_WORKSPACE/Router/scripts/03-files.sh
+
+    - name: Generate Config
+      working-directory: /builder/openwrt
+      run: |
+        cat $GITHUB_WORKSPACE/Router/config/platform-x86.config \
+            $GITHUB_WORKSPACE/Router/config/common-base.config \
+            $GITHUB_WORKSPACE/Router/config/common-apps.config \
+            > .config
+        make defconfig
+
+    - name: Download Packages
+      working-directory: /builder/openwrt
+      run: make download -j$(nproc)
+
+    - name: Compile Firmware
+      working-directory: /builder/openwrt
+      id: compile
+      continue-on-error: true
+      run: make -j$(nproc)
+
+    - name: Extensive Failed Logs
+      working-directory: /builder/openwrt
+      if: steps.compile.outcome == 'failure'
+      run: make V=s
+
+    - name: Set Compiled ENV
+      working-directory: /builder/openwrt
+      if: steps.compile.outcome == 'success'
+      run: |
+        # Set kernel version
+        KERNEL=$(cat include/kernel-defaults.mk 2>/dev/null | grep -oE 'LINUX_VERSION-[0-9]+\.[0-9]+' | head -1 | sed 's/LINUX_VERSION-//' || echo "unknown")
+        if [ "$KERNEL" = "unknown" ]; then
+          KERNEL=$(ls build_dir/target-*/linux-x86_64/linux-* 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
+        fi
+        echo "KERNEL_PATCHVER=$KERNEL" >> $GITHUB_ENV
+
+        # Set LuCI version
+        LUCI=$(cat feeds/luci/luci.mk 2>/dev/null | grep -oE 'PKG_VERSION:=[0-9]+\.[0-9]+' | head -1 | sed 's/PKG_VERSION:=//' || echo "unknown")
+        echo "LUCI_VERSION=$LUCI" >> $GITHUB_ENV
+
+        # Calculate build duration
+        BUILD_END_TIME=$(date +%s)
+        BUILD_TIME=$((BUILD_END_TIME - ${{ env.BUILD_START_TIME }}))
+        BUILD_HOURS=$((BUILD_TIME / 3600))
+        BUILD_MINUTES=$(((BUILD_TIME % 3600) / 60))
+        if [ $BUILD_HOURS -gt 0 ]; then
+          BUILD_DURATION="${BUILD_HOURS}h${BUILD_MINUTES}min"
+        else
+          BUILD_DURATION="${BUILD_MINUTES}min"
+        fi
+        echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
+        echo "TAG_TIME=$(date "+%Y%m%d-%H%M")" >> $GITHUB_ENV
+
+    - name: Prepare Firmware Files
+      working-directory: /builder
+      if: steps.compile.outcome == 'success'
+      run: |
+        mkdir -p firmware
+        cp -a openwrt/bin/targets/x86/*/*-squashfs-combined-efi.img.gz firmware/openwrt-router-${{ env.TAG_TIME }}-x86-64-efi.img.gz
+
+    - name: Upload to WebDAV
+      uses: bxb100/action-upload@main
+      if: steps.compile.outcome == 'success'
+      with:
+        provider: webdav
+        provider_options: |
+          endpoint=${{ secrets.WEBDAV_ENDPOINT }}
+          username=${{ secrets.WEBDAV_USERNAME }}
+          password=${{ secrets.WEBDAV_PASSWORD }}
+          root=/OpenWrt/
+        include: '${{ env.WORKDIR }}/firmware/*'
+
+    - name: Send Telegram Message
+      if: steps.compile.outcome == 'success'
+      run: |
+        curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
+          -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          -d photo="https://mirror.1991991.xyz/Picture/openwrt.webp" \
+          --data-urlencode "caption=#OpenWRT #HomeLab #Router
+
+          *Ready to roll! Dive in!*
+
+          - Hardware: ${{ env.HARDWARE_MODEL }}
+
+          - Kernel: ${{ env.KERNEL_PATCHVER }}
+
+          - LuCI: ${{ env.LUCI_VERSION }}
+
+          - Build Duration: ${{ env.BUILD_DURATION }}
+
+          - Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
+          -d parse_mode=Markdown >/dev/null 2>&1
+
+    - name: Delete Workflow Runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ env.REPO_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 0
+        keep_minimum_runs: 0
