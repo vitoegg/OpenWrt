@@ -146,6 +146,28 @@ jobs:
             > .config
         make defconfig
 
+    - name: Show Firmware Info
+      working-directory: /builder/openwrt
+      run: |
+        echo "========== Firmware Build Info =========="
+
+        # Kernel Version
+        KERNEL_VER=$(grep -m1 'LINUX_VERSION-' include/kernel-version.mk | sed 's/.*LINUX_VERSION-//' | awk '{print $1}')
+        echo "Kernel: $KERNEL_VER"
+        echo "KERNEL_PATCHVER=$KERNEL_VER" >> $GITHUB_ENV
+
+        # LuCI Version
+        LUCI_VER=$(grep -m1 'PKG_VERSION:=' feeds/luci/luci.mk | sed 's/PKG_VERSION:=//')
+        echo "LuCI: $LUCI_VER"
+        echo "LUCI_VERSION=$LUCI_VER" >> $GITHUB_ENV
+
+        # All luci-app packages
+        echo ""
+        echo "--- Installed Apps ---"
+        grep -E '^CONFIG_PACKAGE_luci-app-.*=y' .config | sed 's/CONFIG_PACKAGE_//;s/=y//' | sort
+
+        echo "========================================"
+
     - name: Download Packages
       working-directory: /builder/openwrt
       run: make download -j$(nproc)
@@ -165,17 +187,6 @@ jobs:
       working-directory: /builder/openwrt
       if: steps.compile.outcome == 'success'
       run: |
-        # Set kernel version
-        KERNEL=$(cat include/kernel-defaults.mk 2>/dev/null | grep -oE 'LINUX_VERSION-[0-9]+\.[0-9]+' | head -1 | sed 's/LINUX_VERSION-//' || echo "unknown")
-        if [ "$KERNEL" = "unknown" ]; then
-          KERNEL=$(ls build_dir/target-*/linux-x86_64/linux-* 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "unknown")
-        fi
-        echo "KERNEL_PATCHVER=$KERNEL" >> $GITHUB_ENV
-
-        # Set LuCI version
-        LUCI=$(cat feeds/luci/luci.mk 2>/dev/null | grep -oE 'PKG_VERSION:=[0-9]+\.[0-9]+' | head -1 | sed 's/PKG_VERSION:=//' || echo "unknown")
-        echo "LUCI_VERSION=$LUCI" >> $GITHUB_ENV
-
         # Calculate build duration
         BUILD_END_TIME=$(date +%s)
         BUILD_TIME=$((BUILD_END_TIME - ${{ env.BUILD_START_TIME }}))
