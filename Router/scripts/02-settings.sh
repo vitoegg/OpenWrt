@@ -80,11 +80,34 @@ uci set network.@device[-1].macaddr='$PPPOE_MAC'
 uci set network.@device[-1].ipv6='0'
 uci commit network
 
+# Set VLAN Device for WAN2
+uci add network device
+uci set network.@device[-1].type='8021q'
+uci set network.@device[-1].ifname='eth2'
+uci set network.@device[-1].vid='$VLAN_ID_2'
+uci set network.@device[-1].name='eth2.$VLAN_ID_2'
+uci set network.@device[-1].macaddr='$PPPOE_MAC_2'
+uci set network.@device[-1].ipv6='0'
+uci commit network
+
 # Set PPPOE Dial-up
 uci set network.wan.device='eth1.$VLAN_ID'
 uci set network.wan.proto='pppoe'
 uci set network.wan.username='$PPPOE_USERNAME'
 uci set network.wan.password='$PPPOE_PASSWORD'
+uci set network.wan.metric='10'
+uci commit network
+
+# Set PPPOE Dial-up for WAN2
+uci set network.wan2=interface
+uci set network.wan2.device='eth2.$VLAN_ID_2'
+uci set network.wan2.proto='pppoe'
+uci set network.wan2.username='$PPPOE_USERNAME_2'
+uci set network.wan2.password='$PPPOE_PASSWORD_2'
+uci set network.wan2.metric='20'
+uci set network.wan2.ipv6='0'
+uci set network.wan2.sourcefilter='0'
+uci set network.wan2.delegate='0'
 uci commit network
 
 # Disable IPV6 Network
@@ -117,6 +140,10 @@ uci set dhcp.@host[-1].ip='192.168.10.5'
 uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
+
+# Add WAN2 to firewall wan zone
+uci add_list firewall.@zone[1].network='wan2'
+uci commit firewall
 
 # Enable Shortcut-FE
 uci del firewall.@defaults[0].flow_offloading

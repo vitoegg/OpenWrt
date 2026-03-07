@@ -16,6 +16,10 @@ env:
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
   PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
   VLAN_ID: ${{ secrets.VLAN_ID }}
+  PPPOE_USERNAME_2: ${{ secrets.PPPOE_USERNAME_2 }}
+  PPPOE_PASSWORD_2: ${{ secrets.PPPOE_PASSWORD_2 }}
+  PPPOE_MAC_2: ${{ secrets.PPPOE_MAC_2 }}
+  VLAN_ID_2: ${{ secrets.VLAN_ID_2 }}
   ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
   LMINI_MAC: ${{ secrets.LMINI_MAC }}
   REDIRECT_SRC_DPORT: ${{ secrets.REDIRECT_SRC_DPORT }}
@@ -153,7 +157,7 @@ jobs:
         echo "========== Firmware Build Info =========="
 
         # Kernel Version
-        KERNEL_VER=$(grep -m1 'LINUX_VERSION-' include/kernel-version.mk | sed 's/.*LINUX_VERSION-//' | awk '{print $1}')
+        KERNEL_VER=$(grep -m1 'KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/KERNEL_PATCHVER:=//')
         echo "Kernel: $KERNEL_VER"
         echo "KERNEL_PATCHVER=$KERNEL_VER" >> $GITHUB_ENV
 
