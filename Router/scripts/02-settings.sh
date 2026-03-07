@@ -134,8 +134,6 @@ uci set firewall.@redirect[-1].src_dport='$REDIRECT_SRC_DPORT'
 uci set firewall.@redirect[-1].dest_ip='192.168.10.2'
 uci set firewall.@redirect[-1].dest_port='$REDIRECT_DEST_PORT'
 uci commit firewall
-
-exit 0
 SETTINGS
 
 # Append Dual WAN configuration if enabled
@@ -175,5 +173,8 @@ uci add_list firewall.@zone[1].network='wan2'
 uci commit firewall
 DUALWAN
 fi
+
+# Append exit 0 at the end
+echo "exit 0" >> files/etc/uci-defaults/99-custom-settings
 
 log "02-settings.sh completed"

@@ -158,32 +158,16 @@ jobs:
             > .config
         make defconfig
 
-    - name: Set Build Info
-      working-directory: /builder/openwrt
-      run: |
-        KERNEL_VER=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
-        echo "KERNEL_PATCHVER=$KERNEL_VER" >> $GITHUB_ENV
-        LUCI_VER=$(grep -rm1 'PKG_VERSION:=' feeds/luci/luci.mk feeds/luci/Makefile 2>/dev/null | head -1 | sed 's/.*PKG_VERSION:=//' || echo "unknown")
-        echo "LUCI_VERSION=$LUCI_VER" >> $GITHUB_ENV
-
     - name: Download Packages
       working-directory: /builder/openwrt
-      run: make download -j$(nproc)
+      run: make download -j$(nproc) || make download -j1 V=s
 
     - name: Compile Firmware
       working-directory: /builder/openwrt
-      id: compile
-      continue-on-error: true
-      run: make -j$(nproc)
-
-    - name: Extensive Failed Logs
-      working-directory: /builder/openwrt
-      if: steps.compile.outcome == 'failure'
-      run: make V=s
+      run: make -j$(nproc) || make -j1 V=s
 
     - name: Set Compiled ENV
       working-directory: /builder/openwrt
-      if: steps.compile.outcome == 'success'
       run: |
         # Calculate build duration
         BUILD_END_TIME=$(date +%s)
@@ -197,17 +181,19 @@ jobs:
         fi
         echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
         echo "TAG_TIME=$(date "+%Y%m%d-%H%M")" >> $GITHUB_ENV
+        KERNEL_VER=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
+        echo "KERNEL_PATCHVER=$KERNEL_VER" >> $GITHUB_ENV
+        LUCI_VER=$(grep -rm1 'PKG_VERSION:=' feeds/luci/luci.mk feeds/luci/Makefile 2>/dev/null | head -1 | sed 's/.*PKG_VERSION:=//' || echo "unknown")
+        echo "LUCI_VERSION=$LUCI_VER" >> $GITHUB_ENV
 
     - name: Prepare Firmware Files
       working-directory: /builder
-      if: steps.compile.outcome == 'success'
       run: |
         mkdir -p firmware
         cp -a openwrt/bin/targets/x86/*/*-squashfs-combined-efi.img.gz firmware/openwrt-router-${{ env.TAG_TIME }}-x86-64-efi.img.gz
 
     - name: Upload to WebDAV
       uses: bxb100/action-upload@main
-      if: steps.compile.outcome == 'success'
       with:
         provider: webdav
         provider_options: |
@@ -218,7 +204,6 @@ jobs:
         include: '${{ env.WORKDIR }}/firmware/*'
 
     - name: Send Telegram Message
-      if: steps.compile.outcome == 'success'
       run: |
         curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
@@ -239,6 +224,7 @@ jobs:
           -d parse_mode=Markdown >/dev/null 2>&1
 
     - name: Delete Workflow Runs
+      if: always()
       uses: Mattraks/delete-workflow-runs@v2
       with:
         token: ${{ env.REPO_TOKEN }}
