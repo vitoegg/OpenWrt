@@ -157,19 +157,19 @@ jobs:
         echo "========== Firmware Build Info =========="
 
         # Kernel Version
-        KERNEL_VER=$(grep -m1 'KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/KERNEL_PATCHVER:=//')
+        KERNEL_VER=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
         echo "Kernel: $KERNEL_VER"
         echo "KERNEL_PATCHVER=$KERNEL_VER" >> $GITHUB_ENV
 
         # LuCI Version
-        LUCI_VER=$(grep -m1 'PKG_VERSION:=' feeds/luci/luci.mk | sed 's/PKG_VERSION:=//')
+        LUCI_VER=$(grep -rm1 'PKG_VERSION:=' feeds/luci/luci.mk feeds/luci/Makefile 2>/dev/null | head -1 | sed 's/.*PKG_VERSION:=//' || echo "unknown")
         echo "LuCI: $LUCI_VER"
         echo "LUCI_VERSION=$LUCI_VER" >> $GITHUB_ENV
 
         # All luci-app packages
         echo ""
         echo "--- Installed Apps ---"
-        grep -E '^CONFIG_PACKAGE_luci-app-.*=y' .config | sed 's/CONFIG_PACKAGE_//;s/=y//' | sort
+        grep -E '^CONFIG_PACKAGE_luci-app-.*=y' .config | sed 's/CONFIG_PACKAGE_//;s/=y//' | sort || true
 
         echo "========================================"
 
