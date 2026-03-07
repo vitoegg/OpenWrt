@@ -8,14 +8,20 @@ on:
         required: false
         type: boolean
         default: false
+      test_mode:
+        description: 'Test Mode (output config only, skip compilation)'
+        required: false
+        type: boolean
+        default: false
 
   schedule:
     - cron: 0 8 6 6 *
     - cron: 0 8 12 12 *
 
 env:
-  IMMORTALWRT_REPO: https://github.com/immortalwrt/immortalwrt.git
-  IMMORTALWRT_BRANCH: openwrt-24.10
+  WRT_BRANCH: openwrt-24.10
+  WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
+  WRT_TEST: ${{ inputs.test_mode || 'false' }}
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
@@ -37,8 +43,22 @@ env:
   HARDWARE_MODEL: MINISFORUM UN100D
 
 jobs:
+  cleanup:
+    name: Cleanup Old Resources
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Delete Workflow Runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ secrets.REPO_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 0
+        keep_minimum_runs: 0
+
   build:
     name: Build OpenWrt Router
+    needs: cleanup
+    if: always()
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -121,9 +141,34 @@ jobs:
       working-directory: /builder
       run: |
         echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
-        git clone --depth=1 -b $IMMORTALWRT_BRANCH $IMMORTALWRT_REPO openwrt
+        git clone --depth=1 -b $WRT_BRANCH $WRT_REPO openwrt
         cd openwrt
+        echo "WRT_HASH=$(git log -1 --format='%H')" >> $GITHUB_ENV
         echo "Source cloned successfully"
+
+    - name: Load Toolchain Cache
+      if: env.WRT_TEST != 'true'
+      uses: actions/cache@main
+      id: cache
+      with:
+        key: toolchain-x86-64-${{ env.WRT_HASH }}
+        restore-keys: toolchain-x86-64-
+        path: |
+          /builder/openwrt/.ccache
+          /builder/openwrt/staging_dir/host*
+          /builder/openwrt/staging_dir/tool*
+
+    - name: Restore Toolchain Timestamps
+      if: env.WRT_TEST != 'true' && steps.cache.outputs.cache-hit == 'true'
+      working-directory: /builder/openwrt
+      run: |
+        find ./staging_dir -type d -name "stamp" -not -path "*target*" | while read stamp_dir; do
+          find "$stamp_dir" -type f | while read stamp_file; do
+            touch "$stamp_file"
+          done
+        done
+        mkdir -p ./tmp && echo "1" > ./tmp/.build
+        echo "Toolchain cache restored"
 
     - name: Update Feeds
       working-directory: /builder/openwrt
@@ -134,39 +179,46 @@ jobs:
     - name: Setup Custom Packages
       working-directory: /builder/openwrt
       run: |
-        chmod +x $GITHUB_WORKSPACE/Router/scripts/01-packages.sh
-        $GITHUB_WORKSPACE/Router/scripts/01-packages.sh
-
-    - name: Apply Settings
-      working-directory: /builder/openwrt
-      run: |
-        chmod +x $GITHUB_WORKSPACE/Router/scripts/02-settings.sh
-        $GITHUB_WORKSPACE/Router/scripts/02-settings.sh
+        chmod +x $GITHUB_WORKSPACE/Scripts/Packages.sh
+        $GITHUB_WORKSPACE/Scripts/Packages.sh
 
     - name: Prepare Files
       working-directory: /builder/openwrt
       run: |
-        chmod +x $GITHUB_WORKSPACE/Router/scripts/03-files.sh
-        $GITHUB_WORKSPACE/Router/scripts/03-files.sh
+        chmod +x $GITHUB_WORKSPACE/Scripts/Prepare.sh
+        $GITHUB_WORKSPACE/Scripts/Prepare.sh
+
+    - name: Apply Settings
+      working-directory: /builder/openwrt
+      run: |
+        chmod +x $GITHUB_WORKSPACE/Scripts/Settings.sh
+        $GITHUB_WORKSPACE/Scripts/Settings.sh
 
     - name: Generate Config
       working-directory: /builder/openwrt
       run: |
-        cat $GITHUB_WORKSPACE/Router/config/platform-x86.config \
-            $GITHUB_WORKSPACE/Router/config/common-base.config \
-            $GITHUB_WORKSPACE/Router/config/common-apps.config \
-            > .config
+        cat $GITHUB_WORKSPACE/Config/X86.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
         make defconfig
 
+    - name: Upload Config (Test Mode)
+      if: env.WRT_TEST == 'true'
+      uses: actions/upload-artifact@main
+      with:
+        name: router-config-test
+        path: /builder/openwrt/.config
+
     - name: Download Packages
+      if: env.WRT_TEST != 'true'
       working-directory: /builder/openwrt
       run: make download -j$(nproc) || make download -j1 V=s
 
     - name: Compile Firmware
+      if: env.WRT_TEST != 'true'
       working-directory: /builder/openwrt
       run: make -j$(nproc) || make -j1 V=s
 
     - name: Set Compiled ENV
+      if: env.WRT_TEST != 'true'
       working-directory: /builder/openwrt
       run: |
         # Calculate build duration
@@ -187,12 +239,14 @@ jobs:
         echo "LUCI_VERSION=$LUCI_VER" >> $GITHUB_ENV
 
     - name: Prepare Firmware Files
+      if: env.WRT_TEST != 'true'
       working-directory: /builder
       run: |
         mkdir -p firmware
         cp -a openwrt/bin/targets/x86/*/*-squashfs-combined-efi.img.gz firmware/openwrt-router-${{ env.TAG_TIME }}-x86-64-efi.img.gz
 
     - name: Upload to WebDAV
+      if: env.WRT_TEST != 'true'
       uses: bxb100/action-upload@main
       with:
         provider: webdav
@@ -204,6 +258,7 @@ jobs:
         include: '${{ env.WORKDIR }}/firmware/*'
 
     - name: Send Telegram Message
+      if: env.WRT_TEST != 'true'
       run: |
         curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
@@ -223,11 +278,11 @@ jobs:
           - Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
           -d parse_mode=Markdown >/dev/null 2>&1
 
-    - name: Delete Workflow Runs
-      if: always()
-      uses: Mattraks/delete-workflow-runs@v2
-      with:
-        token: ${{ env.REPO_TOKEN }}
-        repository: ${{ github.repository }}
-        retain_days: 0
-        keep_minimum_runs: 0
+    - name: Clean Old Cache
+      if: env.WRT_TEST != 'true' && steps.cache.outputs.cache-hit != 'true'
+      run: |
+        gh cache list --key "toolchain-x86-64-" --json id,key | \
+          jq -r '.[] | select(.key != "toolchain-x86-64-${{ env.WRT_HASH }}") | .id' | \
+          xargs -I {} gh cache delete {} 2>/dev/null || true
+      env:
+        GH_TOKEN: ${{ env.REPO_TOKEN }}

@@ -4,15 +4,18 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
-# Modify Default IP
+# ===== Modify Default IP =====
+
 log "Setting default IP to 192.168.10.1"
 sed -i 's/192.168.1.1/192.168.10.1/g' package/base-files/files/bin/config_generate
 
-# Modify Hostname
+# ===== Modify Hostname =====
+
 log "Modifying hostname to HomeLab"
 sed -i 's/ImmortalWrt/HomeLab/g' package/base-files/files/bin/config_generate
 
-# Set CPU Performance Mode (dynamic kernel version detection)
+# ===== Set CPU Performance Mode (dynamic kernel version detection) =====
+
 log "Setting CPU mode to PERFORMANCE"
 KERNEL_CONFIG=$(find target/linux/x86 -maxdepth 1 -name 'config-*' -type f | head -1)
 KERNEL_CONFIG_64=$(find target/linux/x86/64 -maxdepth 1 -name 'config-*' -type f 2>/dev/null | head -1)
@@ -30,7 +33,8 @@ if [ -n "$KERNEL_CONFIG_64" ]; then
     sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' "$KERNEL_CONFIG_64"
 fi
 
-# Delete LED Menu
+# ===== Delete LED Menu =====
+
 log "Removing LED menu from LuCI"
 LED_MENU="feeds/luci/modules/luci-mod-system/root/usr/share/luci/menu.d/luci-mod-system.json"
 if [ -f "$LED_MENU" ]; then
@@ -61,7 +65,8 @@ BEGIN { skip=0; brace_count=0; }
 ' "$LED_MENU" > /tmp/temp.json && mv /tmp/temp.json "$LED_MENU"
 fi
 
-# Generate uci-defaults script
+# ===== Generate uci-defaults Script =====
+
 log "Generating uci-defaults settings"
 mkdir -p files/etc/uci-defaults
 cat > files/etc/uci-defaults/99-custom-settings <<-SETTINGS
@@ -136,7 +141,8 @@ uci set firewall.@redirect[-1].dest_port='$REDIRECT_DEST_PORT'
 uci commit firewall
 SETTINGS
 
-# Append Dual WAN configuration if enabled
+# ===== Append Dual WAN Configuration (if enabled) =====
+
 if [ "$ENABLE_DUAL_WAN" = "true" ]; then
     log "Dual WAN enabled, appending WAN2 configuration"
     cat >> files/etc/uci-defaults/99-custom-settings <<-'DUALWAN'
@@ -174,7 +180,8 @@ uci commit firewall
 DUALWAN
 fi
 
-# Append exit 0 at the end
+# ===== Append exit 0 =====
+
 echo "exit 0" >> files/etc/uci-defaults/99-custom-settings
 
-log "02-settings.sh completed"
+log "Settings.sh completed"
