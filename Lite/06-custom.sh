@@ -87,8 +87,8 @@ uci set network.wan.password='$PPPOE_PASSWORD'
 uci commit network
 
 # Set PPPOE Device
-uci add network device # =cfg060f15
-uci set network.cfg060f15.macaddr='$PPPOE_MAC'
+uci add network device
+uci set network.@device[-1].macaddr='$PPPOE_MAC'
 uci set network.@device[-1].name='pppoe-wan'
 uci commit network
 
@@ -109,13 +109,13 @@ uci set dhcp.@dnsmasq[0].filter_aaaa='1'
 uci commit dhcp
 
 # Set Static DHCP
-uci add dhcp host #1
+uci add dhcp host
 uci set dhcp.@host[-1].name='Router'
 uci set dhcp.@host[-1].mac='$ROUTER_MAC'
 uci set dhcp.@host[-1].ip='192.168.10.3'
 uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
-uci add dhcp host #2
+uci add dhcp host
 uci set dhcp.@host[-1].name='LMini'
 uci set dhcp.@host[-1].mac='$LMINI_MAC'
 uci set dhcp.@host[-1].ip='192.168.10.5'
@@ -130,14 +130,15 @@ uci set firewall.@defaults[0].shortcut_fe_module='shortcut-fe-cm'
 uci commit firewall
 
 # Enable Transmit Firewall
-uci add firewall redirect # =cfg0f3837
-uci set firewall.cfg0f3837.name='Transmit'
+uci add firewall redirect
+uci set firewall.@redirect[-1].name='Transmit'
 uci set firewall.@redirect[-1].dest='lan'
 uci set firewall.@redirect[-1].target='DNAT'
 uci set firewall.@redirect[-1].src='wan'
 uci set firewall.@redirect[-1].src_dport='$REDIRECT_SRC_DPORT'
-uci set firewall.cfg0f3837.dest_ip='192.168.10.2'
+uci set firewall.@redirect[-1].dest_ip='192.168.10.2'
 uci set firewall.@redirect[-1].dest_port='$REDIRECT_DEST_PORT'
+uci commit firewall
 
 EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
