@@ -2,6 +2,12 @@ name: Build-OpenWrt-Router
 
 on:
   workflow_dispatch:
+    inputs:
+      enable_dual_wan:
+        description: 'Enable Dual WAN'
+        required: false
+        type: boolean
+        default: false
 
   schedule:
     - cron: 0 8 6 6 *
@@ -16,6 +22,7 @@ env:
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
   PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
   VLAN_ID: ${{ secrets.VLAN_ID }}
+  ENABLE_DUAL_WAN: ${{ inputs.enable_dual_wan || 'false' }}
   PPPOE_USERNAME_2: ${{ secrets.PPPOE_USERNAME_2 }}
   PPPOE_PASSWORD_2: ${{ secrets.PPPOE_PASSWORD_2 }}
   PPPOE_MAC_2: ${{ secrets.PPPOE_MAC_2 }}
@@ -151,27 +158,13 @@ jobs:
             > .config
         make defconfig
 
-    - name: Show Firmware Info
+    - name: Set Build Info
       working-directory: /builder/openwrt
       run: |
-        echo "========== Firmware Build Info =========="
-
-        # Kernel Version
         KERNEL_VER=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
-        echo "Kernel: $KERNEL_VER"
         echo "KERNEL_PATCHVER=$KERNEL_VER" >> $GITHUB_ENV
-
-        # LuCI Version
         LUCI_VER=$(grep -rm1 'PKG_VERSION:=' feeds/luci/luci.mk feeds/luci/Makefile 2>/dev/null | head -1 | sed 's/.*PKG_VERSION:=//' || echo "unknown")
-        echo "LuCI: $LUCI_VER"
         echo "LUCI_VERSION=$LUCI_VER" >> $GITHUB_ENV
-
-        # All luci-app packages
-        echo ""
-        echo "--- Installed Apps ---"
-        grep -E '^CONFIG_PACKAGE_luci-app-.*=y' .config | sed 's/CONFIG_PACKAGE_//;s/=y//' | sort || true
-
-        echo "========================================"
 
     - name: Download Packages
       working-directory: /builder/openwrt
