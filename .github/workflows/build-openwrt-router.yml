@@ -3,6 +3,14 @@ name: Build-OpenWrt-Router
 on:
   workflow_dispatch:
     inputs:
+      wrt_branch:
+        description: 'ImmortalWrt Branch'
+        required: false
+        type: choice
+        default: openwrt-24.10
+        options:
+          - openwrt-24.10
+          - master
       enable_dual_wan:
         description: 'Enable Dual WAN'
         required: false
@@ -15,7 +23,7 @@ on:
 permissions: write-all
 
 env:
-  WRT_BRANCH: openwrt-24.10
+  WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-24.10' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}

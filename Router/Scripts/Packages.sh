@@ -57,8 +57,15 @@ UPDATE_PACKAGE "argon" "vitoegg/Argon" "main"
 # Nikki
 UPDATE_PACKAGE "nikki" "vitoegg/OpenNikki" "master"
 
-# MosDNS
-UPDATE_PACKAGE "mosdns" "sbwml/luci-app-mosdns" "v5" "" "v2dat"
+# MosDNS - branch-aware handling:
+#   master: use sbwml's full package (backend + luci)
+#   openwrt-24.10: keep ImmortalWrt built-in backend, only add sbwml LuCI frontend
+if [[ "$WRT_BRANCH" == "master" ]]; then
+    UPDATE_PACKAGE "mosdns" "sbwml/luci-app-mosdns" "v5" "" "v2dat"
+else
+    UPDATE_PACKAGE "luci-app-mosdns" "sbwml/luci-app-mosdns" "v5" "" "v2dat"
+    rm -rf "package/custom/luci-app-mosdns/mosdns"
+fi
 
 # ===== Dynamic Package Extension =====
 
