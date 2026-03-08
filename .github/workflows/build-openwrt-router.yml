@@ -7,10 +7,11 @@ on:
         description: 'ImmortalWrt Branch'
         required: false
         type: choice
-        default: openwrt-25.12
+        default: master
         options:
-          - openwrt-24.10
+          - master
           - openwrt-25.12
+          - openwrt-24.10
       wan_mode:
         description: 'WAN Mode'
         required: false
@@ -26,7 +27,7 @@ on:
 permissions: write-all
 
 env:
-  WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-25.12' }}
+  WRT_BRANCH: ${{ inputs.wrt_branch || 'master' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
