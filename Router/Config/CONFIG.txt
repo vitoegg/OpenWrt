@@ -1,0 +1,123 @@
+# --- Device Platform ---
+CONFIG_TARGET_x86=y
+CONFIG_TARGET_x86_64=y
+
+# --- Device Profile ---
+CONFIG_TARGET_ALL_PROFILES=y
+
+# --- Build Options ---
+CONFIG_CCACHE=y
+CONFIG_DEVEL=y
+CONFIG_TARGET_MULTI_PROFILE=y
+CONFIG_TARGET_PER_DEVICE_ROOTFS=y
+CONFIG_TARGET_ROOTFS_INITRAMFS=n
+
+# --- Firmware Configuration ---
+CONFIG_TARGET_ROOTFS_SQUASHFS=y
+CONFIG_GRUB_EFI_IMAGES=y
+# CONFIG_GRUB_IMAGES is not set
+# CONFIG_VMDK_IMAGES is not set
+CONFIG_TARGET_KERNEL_PARTSIZE=128
+CONFIG_TARGET_ROOTFS_PARTSIZE=2048
+CONFIG_TARGET_ROOTFS_EXT4FS=n
+
+# --- EFI & FAT32 Mounting ---
+CONFIG_PACKAGE_kmod-fs-vfat=y
+CONFIG_PACKAGE_kmod-nls-cp437=y
+CONFIG_PACKAGE_kmod-nls-iso8859-1=y
+
+# --- Hardware Monitoring ---
+CONFIG_PACKAGE_kmod-hwmon-w83627ehf=y
+CONFIG_PACKAGE_kmod-hwmon-w83627hf=y
+CONFIG_PACKAGE_kmod-w83627hf-wdt=y
+
+# --- Nftables & QoS ---
+CONFIG_PACKAGE_kmod-nft-core=y
+CONFIG_PACKAGE_kmod-nft-arp=y
+CONFIG_PACKAGE_kmod-nft-bridge=y
+CONFIG_PACKAGE_kmod-nft-connlimit=y
+CONFIG_PACKAGE_kmod-nft-dup-inet=y
+CONFIG_PACKAGE_kmod-nft-fib=y
+CONFIG_PACKAGE_kmod-nft-fullcone=y
+CONFIG_PACKAGE_kmod-nft-nat=y
+CONFIG_PACKAGE_kmod-nft-netdev=y
+CONFIG_PACKAGE_kmod-nft-offload=y
+CONFIG_PACKAGE_kmod-nft-queue=y
+CONFIG_PACKAGE_kmod-nft-socket=y
+CONFIG_PACKAGE_kmod-nft-tproxy=y
+CONFIG_PACKAGE_kmod-nft-xfrm=y
+CONFIG_PACKAGE_kmod-inet-diag=y
+CONFIG_PACKAGE_kmod-inet-mptcp-diag=y
+CONFIG_PACKAGE_kmod-netlink-diag=y
+
+# --- Kernel Modules ---
+CONFIG_PACKAGE_kmod-sched-cake=y
+CONFIG_PACKAGE_kmod-tcp-bbr=y
+
+# --- Network & VPN Modules ---
+CONFIG_PACKAGE_kmod-bonding=y
+CONFIG_PACKAGE_proto-bonding=y
+CONFIG_PACKAGE_kmod-dummy=y
+CONFIG_PACKAGE_kmod-tun=y
+CONFIG_PACKAGE_kmod-veth=y
+CONFIG_PACKAGE_kmod-wireguard=y
+
+# --- USB Core & Controllers ---
+CONFIG_PACKAGE_kmod-usb-core=y
+CONFIG_PACKAGE_kmod-usb3=y
+CONFIG_PACKAGE_kmod-usb-dwc3=y
+CONFIG_PACKAGE_kmod-usb-ohci=y
+CONFIG_PACKAGE_kmod-usb-uhci=y
+CONFIG_PACKAGE_kmod-usb-xhci=y
+
+# --- USB Ethernet Adapters ---
+CONFIG_PACKAGE_kmod-usb-net=y
+CONFIG_PACKAGE_kmod-usb-net-asix=y
+CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
+CONFIG_PACKAGE_kmod-usb-net-rtl8150=y
+CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
+
+# --- Filesystem & Storage Modules ---
+CONFIG_PACKAGE_kmod-fs-btrfs=y
+CONFIG_PACKAGE_kmod-fuse=y
+CONFIG_PACKAGE_kmod-usb-storage=y
+CONFIG_PACKAGE_kmod-usb-storage-extras=y
+CONFIG_PACKAGE_kmod-usb-storage-uas=y
+
+# --- Disk & Storage Utilities ---
+CONFIG_PACKAGE_automount=y
+CONFIG_PACKAGE_blkid=y
+CONFIG_PACKAGE_cfdisk=y
+CONFIG_PACKAGE_lsblk=y
+
+# --- Network & Core Utilities ---
+CONFIG_PACKAGE_curl=y
+CONFIG_PACKAGE_iperf3=y
+CONFIG_PACKAGE_ip-full=y
+CONFIG_PACKAGE_openssh-keygen=y
+CONFIG_PACKAGE_openssh-sftp-server=y
+CONFIG_PACKAGE_openssl-util=y
+CONFIG_PACKAGE_usbutils=y
+CONFIG_PACKAGE_xz-utils=y
+
+# --- System Monitor & Others ---
+CONFIG_PACKAGE_autocore=y
+CONFIG_PACKAGE_cpufreq=y
+CONFIG_PACKAGE_dmesg=y
+CONFIG_PACKAGE_htop=y
+CONFIG_PACKAGE_zoneinfo-asia=y
+
+# --- LuCI Core & Base ---
+CONFIG_PACKAGE_luci-base=y
+CONFIG_PACKAGE_luci-compat=y
+CONFIG_PACKAGE_luci-lib-base=y
+CONFIG_PACKAGE_luci-lib-ipkg=y
+CONFIG_PACKAGE_luci-lua-runtime=y
+CONFIG_PACKAGE_luci-proto-relay=y
+
+# --- LuCI Apps ---
+CONFIG_PACKAGE_luci-app-mosdns=y
+CONFIG_PACKAGE_luci-app-nikki=y
+
+# --- LuCI Theme ---
+CONFIG_PACKAGE_luci-theme-argon=y
