@@ -154,7 +154,7 @@ jobs:
           echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
           echo "TAG_TIME=$(TZ=UTC-8 date +"%Y%m%d-%H%M")" >> "$GITHUB_ENV"
           echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
-          echo "WRT_TARGET=$(grep -m1 -oP '^CONFIG_TARGET_\K[\w]+' "$GITHUB_WORKSPACE/Router/Config/CONFIG.txt")" >> "$GITHUB_ENV"
+          echo "WRT_TARGET=$(grep -m1 -oP '^CONFIG_TARGET_\K[\w]+' "$GITHUB_WORKSPACE/Router/Config/General.txt")" >> "$GITHUB_ENV"
 
       - name: Clone Code
         run: |
@@ -220,7 +220,8 @@ jobs:
       - name: Custom Settings
         working-directory: ./wrt
         run: |
-          cat "$GITHUB_WORKSPACE/Router/Config/CONFIG.txt" >> .config
+          cat "$GITHUB_WORKSPACE/Router/Config/General.txt" >> .config
+          cat "$GITHUB_WORKSPACE/Router/Config/Custom.txt" >> .config
           "$GITHUB_WORKSPACE/Router/Scripts/Settings.sh"
           make defconfig -j"$(nproc)"
           make clean -j"$(nproc)"
