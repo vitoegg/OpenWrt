@@ -13,6 +13,7 @@ env:
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
+  VLAN_ID: ${{ secrets.VLAN_ID }}
   PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
   ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
   LMINI_MAC: ${{ secrets.LMINI_MAC }}

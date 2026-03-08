@@ -80,16 +80,21 @@ cat >> $ZZZ <<-EOF
 # Set Password
 sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /etc/shadow
 
+# Set VLAN Device
+uci add network device
+uci set network.@device[-1].type='8021q'
+uci set network.@device[-1].ifname='eth1'
+uci set network.@device[-1].vid='$VLAN_ID'
+uci set network.@device[-1].name='eth1.$VLAN_ID'
+uci set network.@device[-1].macaddr='$PPPOE_MAC'
+uci set network.@device[-1].ipv6='0'
+uci commit network
+
 # Set PPPOE Dial-up
+uci set network.wan.device='eth1.$VLAN_ID'
 uci set network.wan.proto='pppoe'
 uci set network.wan.username='$PPPOE_USERNAME'
 uci set network.wan.password='$PPPOE_PASSWORD'
-uci commit network
-
-# Set PPPOE Device
-uci add network device
-uci set network.@device[-1].macaddr='$PPPOE_MAC'
-uci set network.@device[-1].name='pppoe-wan'
 uci commit network
 
 # Disable IPV6 Network
