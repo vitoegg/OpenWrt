@@ -10,27 +10,52 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $msg"
 }
 
-# Remove built-in nikki (if exists)
-if [ -d "package/new/lite/luci-app-nikki" ]; then
-    log "Removing existing luci-app-nikki"
-    rm -rf package/new/lite/luci-app-nikki
+# REMOVE_PKG: Remove matching package directories from package/new/
+# Usage: REMOVE_PKG <name> [name2] [name3] ...
+REMOVE_PKG() {
+    for name in "$@"; do
+        log "Searching: $name"
+        local found
+        found=$(find package/new/ -maxdepth 3 -type d -iname "*$name*" 2>/dev/null)
+        if [ -n "$found" ]; then
+            while read -r dir; do
+                rm -rf "$dir"
+                log "Removed: $dir"
+            done <<< "$found"
+        else
+            log "Not found: $name"
+        fi
+    done
+}
+
+# CLONE_PKG: Clone a GitHub repo into a target path under package/new/extd/
+# Usage: CLONE_PKG <repo> <branch> [dest_name]
+#   dest_name: optional directory name (defaults to repo basename)
+CLONE_PKG() {
+    local repo=$1
+    local branch=$2
+    local dest_name=${3:-${repo#*/}}
+    local dest="package/new/extd/$dest_name"
+    log "Cloning $repo ($branch) -> $dest"
+    git clone --depth=1 --single-branch -b "$branch" "https://github.com/${repo}.git" "$dest"
+}
+
+# ===== Package Installation =====
+
+# Nikki - replace built-in with customized version
+REMOVE_PKG "nikki"
+CLONE_PKG "vitoegg/OpenNikki" "master"
+
+# Argon - replace built-in with customized theme
+REMOVE_PKG "luci-theme-argon"
+CLONE_PKG "vitoegg/Argon" "main" "luci-theme-argon"
+
+# Fix smartdns Makefile: remove non-existent rust-bindgen/host build dependency
+if [ -f "package/new/extd/smartdns/Makefile" ]; then
+    log "Fixing smartdns Makefile: removing rust-bindgen/host dependency"
+    sed -i 's/ rust-bindgen\/host//g; s/rust-bindgen\/host //g; s/rust-bindgen\/host//g' \
+        package/new/extd/smartdns/Makefile
 fi
-
-if [ -d "package/new/lite/nikki" ]; then
-    log "Removing existing nikki"
-    rm -rf package/new/lite/nikki
-fi
-
-# Nikki - add personalized package
-log "Adding personalized nikki repository"
-git clone --depth=1 https://github.com/vitoegg/OpenNikki.git package/new/OpenNikk
-
-# Argon - add customized argon theme
-log "Removing existing argon theme"
-rm -rf package/new/extd/luci-theme-argon
-log "Adding customized argon theme"
-git clone --depth=1 https://github.com/vitoegg/Argon package/app/luci-theme-argon
-mv package/app/luci-theme-argon package/new/extd/luci-theme-argon
 
 
 # Modify Hostname
