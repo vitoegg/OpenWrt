@@ -7,15 +7,18 @@ on:
         description: 'ImmortalWrt Branch'
         required: false
         type: choice
-        default: openwrt-24.10
+        default: openwrt-25.12
         options:
           - openwrt-24.10
-          - master
-      enable_dual_wan:
-        description: 'Enable Dual WAN'
+          - openwrt-25.12
+      wan_mode:
+        description: 'WAN Mode'
         required: false
-        type: boolean
-        default: false
+        type: choice
+        default: 'Single WAN'
+        options:
+          - 'Single WAN'
+          - 'Dual WAN'
   schedule:
     - cron: 0 8 6 6 *
     - cron: 0 8 12 12 *
@@ -23,7 +26,7 @@ on:
 permissions: write-all
 
 env:
-  WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-24.10' }}
+  WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-25.12' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
@@ -31,7 +34,7 @@ env:
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
   PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
   VLAN_ID: ${{ secrets.VLAN_ID }}
-  ENABLE_DUAL_WAN: ${{ inputs.enable_dual_wan || 'false' }}
+  ENABLE_DUAL_WAN: ${{ inputs.wan_mode == 'Dual WAN' && 'true' || 'false' }}
   PPPOE_USERNAME_2: ${{ secrets.PPPOE_USERNAME_2 }}
   PPPOE_PASSWORD_2: ${{ secrets.PPPOE_PASSWORD_2 }}
   PPPOE_MAC_2: ${{ secrets.PPPOE_MAC_2 }}

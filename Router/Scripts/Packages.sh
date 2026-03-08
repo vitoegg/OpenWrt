@@ -66,17 +66,9 @@ CLONE_PACKAGE "vitoegg/Argon" "main"
 REMOVE_FEEDS "nikki"
 CLONE_PACKAGE "vitoegg/OpenNikki" "master"
 
-# MosDNS - clone first, then handle backend based on branch
+# MosDNS - use upstream version (backend + luci + v2dat)
+REMOVE_FEEDS "mosdns" "v2dat"
 CLONE_PACKAGE "sbwml/luci-app-mosdns" "v5"
-
-if [[ "$WRT_BRANCH" == "master" ]]; then
-    # master: replace built-in mosdns backend with sbwml's (already cloned above)
-    REMOVE_FEEDS "mosdns" "v2dat"
-else
-    # openwrt-24.10: keep built-in mosdns backend, remove sbwml's incompatible version
-    REMOVE_FEEDS "luci-app-mosdns" "v2dat"
-    rm -rf "package/custom/luci-app-mosdns/mosdns"
-fi
 
 # Remove packages with unsatisfied dependencies (upstream feeds issue)
 REMOVE_FEEDS "onionshare-cli"

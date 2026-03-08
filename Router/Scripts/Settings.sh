@@ -83,6 +83,11 @@ cat > files/etc/uci-defaults/99-custom-settings <<-SETTINGS
 # Set Password
 sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /etc/shadow
 
+# Set Timezone to UTC+8
+uci set system.@system[0].timezone='CST-8'
+uci set system.@system[0].zonename='Asia/Shanghai'
+uci commit system
+
 # Set VLAN Device
 uci add network device
 uci set network.@device[-1].type='8021q'
