@@ -20,7 +20,8 @@ UPDATE_PACKAGE() {
     # Step 1: Clean matching directories in feeds
     for name in "${pkg_list[@]}"; do
         log "Search directory: $name"
-        local found_dirs=$(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname "*$name*" 2>/dev/null)
+        local found_dirs=$(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d \
+            \( -iname "$name" -o -iname "luci-*$name*" \) 2>/dev/null)
         if [ -n "$found_dirs" ]; then
             while read -r dir; do
                 rm -rf "$dir"
@@ -32,18 +33,18 @@ UPDATE_PACKAGE() {
     done
 
     # Step 2: Clone from GitHub
-    local clone_dir="package/vitoegg/$repo_name"
+    local clone_dir="package/custom/$repo_name"
     log "Cloning $pkg_repo ($pkg_branch) to $clone_dir"
     git clone --depth=1 --single-branch -b "$pkg_branch" "https://github.com/${pkg_repo}.git" "$clone_dir"
 
     # Step 3: Handle special modes
     if [[ "$pkg_special" == "pkg" ]]; then
         find "./$clone_dir/" -maxdepth 3 -type d -iname "*$pkg_name*" -prune \
-            -exec cp -rf {} package/vitoegg/ \;
+            -exec cp -rf {} package/custom/ \;
         rm -rf "./$clone_dir"
         log "Extracted $pkg_name from $repo_name"
     elif [[ "$pkg_special" == "name" ]]; then
-        mv -f "$clone_dir" "package/vitoegg/$pkg_name"
+        mv -f "$clone_dir" "package/custom/$pkg_name"
         log "Renamed $repo_name to $pkg_name"
     fi
 }
