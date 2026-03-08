@@ -70,10 +70,6 @@ CLONE_PACKAGE "vitoegg/OpenNikki" "master"
 REMOVE_FEEDS "mosdns" "v2dat"
 CLONE_PACKAGE "sbwml/luci-app-mosdns" "v5"
 
-# Remove packages with unsatisfied dependencies (upstream feeds issue)
-REMOVE_FEEDS "onionshare-cli"
-REMOVE_FEEDS "luci-app-mjpg-streamer" "mjpg-streamer"
-
 # ===== Dynamic Package Extension =====
 
 if [ -n "$WRT_PACKAGE" ]; then
