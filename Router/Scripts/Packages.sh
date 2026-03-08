@@ -4,57 +4,69 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
-# Lightweight UPDATE_PACKAGE function
-# Usage: UPDATE_PACKAGE <pkg_name> <github_repo> <branch> <target_path>
-#   pkg_name:    Package name (used to clean matching directories in feeds)
-#   github_repo: GitHub repository (user/repo)
-#   branch:      Branch name
-#   target_path: Clone target path
+# UPDATE_PACKAGE: Install/update packages from GitHub
+# Usage: UPDATE_PACKAGE <pkg_name> <repo> <branch> [special] [extra_names]
+#   special: "pkg" = extract sub-package; "name" = rename after clone
+#   extra_names: additional directory names to clean (space-separated)
 UPDATE_PACKAGE() {
     local pkg_name=$1
     local pkg_repo=$2
     local pkg_branch=$3
-    local pkg_target=$4
+    local pkg_special=$4
+    local pkg_extra="$5"
+    local repo_name=${pkg_repo#*/}
+    local pkg_list=("$pkg_name" $pkg_extra)
 
     # Step 1: Clean matching directories in feeds
-    for feed_dir in feeds/packages feeds/luci; do
-        if [ -d "$feed_dir" ]; then
-            find "$feed_dir" -maxdepth 3 -type d -iname "*${pkg_name}*" 2>/dev/null | while read -r dir; do
-                log "Removing existing $dir"
+    for name in "${pkg_list[@]}"; do
+        log "Search directory: $name"
+        local found_dirs=$(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d -iname "*$name*" 2>/dev/null)
+        if [ -n "$found_dirs" ]; then
+            while read -r dir; do
                 rm -rf "$dir"
-            done
+                log "Removed: $dir"
+            done <<< "$found_dirs"
+        else
+            log "Not found: $name"
         fi
     done
 
     # Step 2: Clone from GitHub
-    log "Cloning $pkg_repo ($pkg_branch) to $pkg_target"
-    git clone --depth=1 --single-branch -b "$pkg_branch" "https://github.com/${pkg_repo}.git" "$pkg_target"
+    local clone_dir="package/vitoegg/$repo_name"
+    log "Cloning $pkg_repo ($pkg_branch) to $clone_dir"
+    git clone --depth=1 --single-branch -b "$pkg_branch" "https://github.com/${pkg_repo}.git" "$clone_dir"
+
+    # Step 3: Handle special modes
+    if [[ "$pkg_special" == "pkg" ]]; then
+        find "./$clone_dir/" -maxdepth 3 -type d -iname "*$pkg_name*" -prune \
+            -exec cp -rf {} package/vitoegg/ \;
+        rm -rf "./$clone_dir"
+        log "Extracted $pkg_name from $repo_name"
+    elif [[ "$pkg_special" == "name" ]]; then
+        mv -f "$clone_dir" "package/vitoegg/$pkg_name"
+        log "Renamed $repo_name to $pkg_name"
+    fi
 }
 
 # ===== Package Installation =====
 
-# Nikki - personalized proxy package (nikki backend + luci-app-nikki)
-# ImmortalWrt 24.10: NOT built-in (defensive removal with find)
-UPDATE_PACKAGE "nikki" "vitoegg/OpenNikki" "master" "package/custom/OpenNikki"
+# Argon Theme
+UPDATE_PACKAGE "argon" "vitoegg/Argon" "main"
 
-# Argon Theme - customized version (background + footer modifications)
-# ImmortalWrt 24.10: BUILT-IN v2.4.3, MUST remove before installing custom v2.4.2
-UPDATE_PACKAGE "argon" "vitoegg/Argon" "main" "package/custom/luci-theme-argon"
+# Nikki
+UPDATE_PACKAGE "nikki" "vitoegg/OpenNikki" "master"
 
-# MosDNS LuCI - web management interface for mosdns
-# ImmortalWrt 24.10: mosdns backend v5.3.3 built-in, but luci-app-mosdns NOT built-in
-UPDATE_PACKAGE "luci-app-mosdns" "sbwml/luci-app-mosdns" "v5" "package/custom/luci-app-mosdns"
+# MosDNS
+UPDATE_PACKAGE "mosdns" "sbwml/luci-app-mosdns" "v5" "" "v2dat"
 
 # ===== Dynamic Package Extension =====
 
-# Support additional packages via WRT_PACKAGE environment variable
 if [ -n "$WRT_PACKAGE" ]; then
     log "Installing additional packages: $WRT_PACKAGE"
     for pkg_entry in $WRT_PACKAGE; do
-        # Format: name|repo|branch|target
-        IFS='|' read -r name repo branch target <<< "$pkg_entry"
+        IFS='|' read -r name repo branch special extra <<< "$pkg_entry"
         if [ -n "$name" ] && [ -n "$repo" ]; then
-            UPDATE_PACKAGE "$name" "$repo" "${branch:-main}" "${target:-package/custom/$name}"
+            UPDATE_PACKAGE "$name" "$repo" "${branch:-main}" "$special" "$extra"
         fi
     done
 fi
