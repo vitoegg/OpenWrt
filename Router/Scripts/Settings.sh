@@ -9,11 +9,6 @@ log() {
 log "Setting default IP to 192.168.10.1"
 sed -i 's/192\.168\.[0-9]*\.[0-9]*/192.168.10.1/g' package/base-files/files/bin/config_generate
 
-# ===== Modify Hostname =====
-
-log "Modifying hostname to HomeLab"
-sed -i "s/hostname='.*'/hostname='HomeLab'/g" package/base-files/files/bin/config_generate
-
 # ===== Modify LuCI Flash Redirect IP =====
 
 log "Modifying immortalwrt.lan redirect IP"
@@ -22,7 +17,20 @@ if [ -n "$FLASH_JS" ] && [ -f "$FLASH_JS" ]; then
     sed -i 's/192\.168\.[0-9]*\.[0-9]*/192.168.10.1/g' "$FLASH_JS"
 fi
 
-# ===== Set CPU Performance Mode (dynamic kernel version detection) =====
+# ===== Modify Hostname =====
+
+log "Modifying hostname to HomeLab"
+sed -i "s/hostname='.*'/hostname='HomeLab'/g" package/base-files/files/bin/config_generate
+
+# ===== Modify Firmware Version =====
+
+log "Overriding firmware revision in include/version.mk"
+if [ -f "include/version.mk" ]; then
+    BUILD_DATE=$(date +"%y%m%d")
+    sed -i "s|^REVISION:=.*|REVISION:=r${BUILD_DATE}|g" include/version.mk
+fi
+
+# ===== Set CPU Performance Mode =====
 
 log "Setting CPU mode to PERFORMANCE"
 KERNEL_CONFIG=$(find target/linux/x86 -maxdepth 1 -name 'config-*' -type f | head -1)
