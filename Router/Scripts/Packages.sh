@@ -4,46 +4,53 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
-# UPDATE_PACKAGE: Install/update packages from GitHub
-# Usage: UPDATE_PACKAGE <pkg_name> <repo> <branch> [special] [extra_names]
-#   special: "pkg" = extract sub-package; "name" = rename after clone
-#   extra_names: additional directory names to clean (space-separated)
-UPDATE_PACKAGE() {
-    local pkg_name=$1
-    local pkg_repo=$2
-    local pkg_branch=$3
-    local pkg_special=$4
-    local pkg_extra="$5"
-    local repo_name=${pkg_repo#*/}
-    local pkg_list=("$pkg_name" $pkg_extra)
-
-    # Step 1: Clean matching directories in feeds
-    for name in "${pkg_list[@]}"; do
-        log "Search directory: $name"
-        local found_dirs=$(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d \
-            \( -iname "$name" -o -iname "luci-*$name*" \) 2>/dev/null)
-        if [ -n "$found_dirs" ]; then
+# REMOVE_FEEDS: Remove matching directories from feeds
+# Usage: REMOVE_FEEDS <name> [name2] [name3] ...
+#   Matches both exact name and luci-*name* patterns
+REMOVE_FEEDS() {
+    for name in "$@"; do
+        log "Search: $name"
+        local find_args=(-iname "$name")
+        # For short names (e.g. "argon"), also match luci-*name* variants
+        # For full luci names (e.g. "luci-app-mosdns"), exact match only
+        if [[ "$name" != luci-* ]]; then
+            find_args+=(-o -iname "luci-*$name*")
+        fi
+        local found
+        found=$(find feeds/luci/ feeds/packages/ -maxdepth 3 -type d \
+            \( "${find_args[@]}" \) 2>/dev/null)
+        if [ -n "$found" ]; then
             while read -r dir; do
                 rm -rf "$dir"
                 log "Removed: $dir"
-            done <<< "$found_dirs"
+            done <<< "$found"
         else
             log "Not found: $name"
         fi
     done
+}
 
-    # Step 2: Clone from GitHub
+# CLONE_PACKAGE: Clone a GitHub repo into package/custom/
+# Usage: CLONE_PACKAGE <repo> <branch> [mode] [pkg_name]
+#   mode: "pkg" = extract sub-directory matching pkg_name
+#         "name" = rename repo dir to pkg_name
+CLONE_PACKAGE() {
+    local repo=$1
+    local branch=$2
+    local mode=$3
+    local pkg_name=$4
+    local repo_name=${repo#*/}
     local clone_dir="package/custom/$repo_name"
-    log "Cloning $pkg_repo ($pkg_branch) to $clone_dir"
-    git clone --depth=1 --single-branch -b "$pkg_branch" "https://github.com/${pkg_repo}.git" "$clone_dir"
 
-    # Step 3: Handle special modes
-    if [[ "$pkg_special" == "pkg" ]]; then
+    log "Cloning $repo ($branch)"
+    git clone --depth=1 --single-branch -b "$branch" "https://github.com/${repo}.git" "$clone_dir"
+
+    if [[ "$mode" == "pkg" ]]; then
         find "./$clone_dir/" -maxdepth 3 -type d -iname "*$pkg_name*" -prune \
             -exec cp -rf {} package/custom/ \;
         rm -rf "./$clone_dir"
         log "Extracted $pkg_name from $repo_name"
-    elif [[ "$pkg_special" == "name" ]]; then
+    elif [[ "$mode" == "name" ]]; then
         mv -f "$clone_dir" "package/custom/$pkg_name"
         log "Renamed $repo_name to $pkg_name"
     fi
@@ -52,29 +59,37 @@ UPDATE_PACKAGE() {
 # ===== Package Installation =====
 
 # Argon Theme
-UPDATE_PACKAGE "argon" "vitoegg/Argon" "main"
+REMOVE_FEEDS "argon"
+CLONE_PACKAGE "vitoegg/Argon" "main"
 
 # Nikki
-UPDATE_PACKAGE "nikki" "vitoegg/OpenNikki" "master"
+REMOVE_FEEDS "nikki"
+CLONE_PACKAGE "vitoegg/OpenNikki" "master"
 
-# MosDNS - branch-aware handling:
-#   master: use sbwml's full package (backend + luci)
-#   openwrt-24.10: keep ImmortalWrt built-in backend, only add sbwml LuCI frontend
+# MosDNS - clone first, then handle backend based on branch
+CLONE_PACKAGE "sbwml/luci-app-mosdns" "v5"
+
 if [[ "$WRT_BRANCH" == "master" ]]; then
-    UPDATE_PACKAGE "mosdns" "sbwml/luci-app-mosdns" "v5" "" "v2dat"
+    # master: replace built-in mosdns backend with sbwml's (already cloned above)
+    REMOVE_FEEDS "mosdns" "v2dat"
 else
-    UPDATE_PACKAGE "luci-app-mosdns" "sbwml/luci-app-mosdns" "v5" "" "v2dat"
+    # openwrt-24.10: keep built-in mosdns backend, remove sbwml's incompatible version
+    REMOVE_FEEDS "luci-app-mosdns" "v2dat"
     rm -rf "package/custom/luci-app-mosdns/mosdns"
 fi
+
+# Remove packages with unsatisfied dependencies (upstream feeds issue)
+REMOVE_FEEDS "onionshare-cli"
 
 # ===== Dynamic Package Extension =====
 
 if [ -n "$WRT_PACKAGE" ]; then
     log "Installing additional packages: $WRT_PACKAGE"
     for pkg_entry in $WRT_PACKAGE; do
-        IFS='|' read -r name repo branch special extra <<< "$pkg_entry"
-        if [ -n "$name" ] && [ -n "$repo" ]; then
-            UPDATE_PACKAGE "$name" "$repo" "${branch:-main}" "$special" "$extra"
+        IFS='|' read -r name repo branch mode pkg <<< "$pkg_entry"
+        if [ -n "$repo" ]; then
+            REMOVE_FEEDS "$name"
+            CLONE_PACKAGE "$repo" "${branch:-main}" "$mode" "$pkg"
         fi
     done
 fi
