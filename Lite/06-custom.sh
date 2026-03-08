@@ -50,12 +50,8 @@ CLONE_PKG "vitoegg/OpenNikki" "master"
 REMOVE_PKG "luci-theme-argon"
 CLONE_PKG "vitoegg/Argon" "main" "luci-theme-argon"
 
-# Fix smartdns Makefile: remove non-existent rust-bindgen/host build dependency
-if [ -f "package/new/extd/smartdns/Makefile" ]; then
-    log "Fixing smartdns Makefile: removing rust-bindgen/host dependency"
-    sed -i 's/ rust-bindgen\/host//g; s/rust-bindgen\/host //g; s/rust-bindgen\/host//g' \
-        package/new/extd/smartdns/Makefile
-fi
+# SmartDNS - remove due to unsatisfied build dependencies in upstream Makefile
+REMOVE_PKG "smartdns"
 
 
 # Modify Hostname
