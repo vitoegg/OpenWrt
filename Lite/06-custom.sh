@@ -149,10 +149,9 @@ uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
 
-# Enable Shortcut-FE
-uci del firewall.@defaults[0].flow_offloading
-uci set firewall.@defaults[0].shortcut_fe='1'
-uci set firewall.@defaults[0].shortcut_fe_module='shortcut-fe-cm'
+# Enable Flow Offloading
+uci set firewall.@defaults[0].synflood_protect='1'
+uci set firewall.@defaults[0].flow_offloading='1'
 uci commit firewall
 
 # Enable Transmit Firewall
