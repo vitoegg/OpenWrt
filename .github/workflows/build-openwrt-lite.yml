@@ -28,6 +28,7 @@ env:
   REPO_URL: ${{ secrets.REPO_URL }}
   HARDWARE_MODEL: MINISFORUM UN100D
   WORKDIR: /builder
+  CCACHE_DIR: ~/.ccache
 
 permissions: write-all
 
@@ -145,6 +146,7 @@ jobs:
 
     - name: Setup CCache
       run: |
+        mkdir -p $CCACHE_DIR
         ccache --set-config=max_size=3G
         ccache --set-config=compression=true
         ccache -z
@@ -166,7 +168,6 @@ jobs:
       run: |
         export GITHUB_REPO=vitoegg/OpenLite
         export LAN=192.168.10.1
-        export CCACHE_DIR=~/.ccache
         # Download and replace build.sh
         curl -sS https://raw.githubusercontent.com/vitoegg/OpenLite/main/openwrt/build.sh -o build.sh
         sed -i 's|https://\$mirror/openwrt/23-config-musl-x86|https://raw.githubusercontent.com/vitoegg/OpenWrt/main/Lite/23-config-musl-x86|g' build.sh
