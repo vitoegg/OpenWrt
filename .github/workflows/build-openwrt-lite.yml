@@ -14,8 +14,8 @@ env:
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
   VLAN_ID: ${{ secrets.VLAN_ID }}
-  VLAN_MAC: ${{ secrets.VLAN_MAC }}
   PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
+  PPPOE_WAN_MAC: ${{ secrets.PPPOE_WAN_MAC }}
   ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
   LMINI_MAC: ${{ secrets.LMINI_MAC }}
   LMINI_DUID: ${{ secrets.LMINI_DUID }}

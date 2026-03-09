@@ -116,7 +116,7 @@ uci set network.@device[-1].type='8021q'
 uci set network.@device[-1].ifname='eth1'
 uci set network.@device[-1].vid='$VLAN_ID'
 uci set network.@device[-1].name='eth1.$VLAN_ID'
-uci set network.@device[-1].macaddr='$VLAN_MAC'
+uci set network.@device[-1].macaddr='$PPPOE_MAC'
 uci set network.@device[-1].ipv6='0'
 uci commit network
 
@@ -127,7 +127,7 @@ uci set network.wan.username='$PPPOE_USERNAME'
 uci set network.wan.password='$PPPOE_PASSWORD'
 uci add network device
 uci set network.@device[-1].name='pppoe-wan'
-uci set network.@device[-1].macaddr='$PPPOE_MAC'
+uci set network.@device[-1].macaddr='$PPPOE_WAN_MAC'
 uci set network.@device[-1].ipv6='0'
 uci commit network
 
