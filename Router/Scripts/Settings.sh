@@ -22,14 +22,6 @@ fi
 log "Modifying hostname to HomeLab"
 sed -i "s/hostname='.*'/hostname='HomeLab'/g" package/base-files/files/bin/config_generate
 
-# ===== Modify Firmware Version =====
-
-log "Overriding firmware revision in include/version.mk"
-if [ -f "include/version.mk" ]; then
-    BUILD_DATE=$(date +"%y%m%d")
-    sed -i "s|^REVISION:=.*|REVISION:=r${BUILD_DATE}|g" include/version.mk
-fi
-
 # ===== Set CPU Performance Mode =====
 
 log "Setting CPU mode to PERFORMANCE"
@@ -143,11 +135,6 @@ uci set dhcp.@host[-1].ip='192.168.10.5'
 uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
-
-# Enable SYN Flood Protection & Software Flow Offloading
-uci set firewall.@defaults[0].synflood_protect='1'
-uci set firewall.@defaults[0].flow_offloading='1'
-uci commit firewall
 
 # Enable Transmit Firewall
 uci add firewall redirect
