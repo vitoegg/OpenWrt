@@ -52,8 +52,6 @@ env:
 jobs:
   build:
     name: Build OpenWrt Router
-    needs: cleanup
-    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     defaults:
@@ -146,7 +144,7 @@ jobs:
         run: |
           git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt/
           cd ./wrt/ && echo "WRT_HASH=$(git log -1 --format='%H')" >> "$GITHUB_ENV"
-          PROJECT_MIRRORS_FILE='./wrt/scripts/projectsmirrors.json'
+          PROJECT_MIRRORS_FILE='./scripts/projectsmirrors.json'
           if [ -f "$PROJECT_MIRRORS_FILE" ]; then
             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
           fi
@@ -210,7 +208,6 @@ jobs:
           cat "$GITHUB_WORKSPACE/Router/Config/Custom.txt" >> .config
           "$GITHUB_WORKSPACE/Router/Scripts/Settings.sh"
           make defconfig -j"$(nproc)"
-          make clean -j"$(nproc)"
 
       - name: Download Packages
         working-directory: ./wrt
