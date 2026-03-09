@@ -27,6 +27,7 @@ env:
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}
   HARDWARE_MODEL: MINISFORUM UN100D
+  WORKDIR: /builder
 
 permissions: write-all
 
@@ -54,7 +55,7 @@ jobs:
           echo "ℹ️ No sync needed: Already up-to-date"
         else
           MESSAGE=$(echo "$RESPONSE" | grep -o '"message":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
-          echo "⚠️ Sync status: ${MESSAGE:-Unknown}"
+          echo "::warning::Upstream sync failed: ${MESSAGE:-Unknown response}"
         fi
 
     - name: Checkout Repository
@@ -65,15 +66,11 @@ jobs:
 
     - name: Show System Info
       run: |
-        lscpu
+        lscpu | grep -E 'name|Core|Thread'
         free -h
         df -Th
         uname -a
 
-    - name: Set Release ENV
-      run: |
-        echo WORKDIR="/builder" >> "$GITHUB_ENV"
-  
     - name: Free Disk Space
       run: |
         sudo swapoff -a
@@ -136,6 +133,7 @@ jobs:
     - name: Initialization Values
       run: |
         echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+        echo "TAG_TIME=$(TZ=UTC-8 date +"%Y%m%d-%H%M")" >> "$GITHUB_ENV"
 
     - name: Check Caches
       id: check-cache
@@ -147,9 +145,19 @@ jobs:
 
     - name: Setup CCache
       run: |
-        ccache --set-config=max_size=1G
+        ccache --set-config=max_size=3G
         ccache --set-config=compression=true
         ccache -z
+
+    - name: Cleanup Old Caches
+      if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh cache list --key 'ccache-x86-64-lite-' --json id | \
+          jq -r '.[].id' | \
+          xargs -I {} gh cache delete {} 2>/dev/null || true
+        echo 'old caches cleaned'
 
     - name: Compile OpenWrt
       working-directory: /builder
@@ -167,16 +175,18 @@ jobs:
         # Build
         bash build.sh lite x86_64 | tee build.log
 
-    - name: Extensive Failed Logs
+    - name: Verbose Retry on Failure
       working-directory: /builder
+      id: retry
       if: steps.compile.outcome == 'failure'
+      continue-on-error: true
       run: |
         cd openwrt
         make -j1 V=s
 
     - name: Set Compiled ENV
       working-directory: /builder
-      if: steps.compile.outcome == 'success'
+      if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
       run: |
         KERNEL=$(grep -oE 'Kernel: [0-9]+(\.[0-9]+)+(-[0-9]+)?' build.log | head -1 | awk '{print $2}' | grep -oE '^[0-9]+(\.[0-9]+)+')
         echo "KERNEL_PATCHVER=$KERNEL" >> "$GITHUB_ENV"
@@ -194,17 +204,17 @@ jobs:
           BUILD_DURATION="${BUILD_MINUTES}min"
         fi
         echo "BUILD_DURATION=$BUILD_DURATION" >> "$GITHUB_ENV"
-        echo "TAG_TIME=$(TZ=UTC-8 date +"%Y%m%d-%H%M")" >> "$GITHUB_ENV"
 
     - name: Prepare Firmware Files
       working-directory: /builder
+      if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
       run: |
         mkdir -p firmware
         cp -a openwrt/bin/targets/x86/*/*-squashfs-combined-efi.img.gz firmware/openwrt-lite-${{ env.TAG_TIME }}-x86-64-efi.img.gz
 
     - name: Upload to WebDAV
       uses: bxb100/action-upload@main
-      if: steps.compile.outcome == 'success'
+      if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
       with:
         provider: webdav
         provider_options: |
@@ -215,7 +225,7 @@ jobs:
         include: '${{ env.WORKDIR }}/firmware/*'
 
     - name: Send Telegram Message
-      if: steps.compile.outcome == 'success'
+      if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
       run: |
         curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
           -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
@@ -236,6 +246,7 @@ jobs:
           -d parse_mode=Markdown >/dev/null 2>&1
 
     - name: Delete old Releases and Workflows
+      if: always()
       uses: ophub/delete-releases-workflows@main
       with:
         gh_token: ${{ secrets.GITHUB_TOKEN }}
