@@ -184,6 +184,12 @@ jobs:
         cd openwrt
         make -j1 V=s
 
+    - name: Fail Workflow if Build Failed
+      if: steps.compile.outcome == 'failure' && (steps.retry.outcome == 'failure' || steps.retry.outcome == 'skipped')
+      run: |
+        echo "❌ Build failed: both compile and retry steps failed"
+        exit 1
+
     - name: Set Compiled ENV
       working-directory: /builder
       if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'

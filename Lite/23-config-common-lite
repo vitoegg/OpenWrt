@@ -49,10 +49,7 @@ CONFIG_PACKAGE_dnsmasq_full_ipset=y
 # CONFIG_PACKAGE_dnsmasq is not set
 
 ### Luci
-### Disabled: no aria2 backend installed
-# CONFIG_PACKAGE_ariang is not set
-CONFIG_LUCI_LANG_zh_Hans=y
-CONFIG_LUCI_JSMIN=y
+CONFIG_PACKAGE_ariang=y
 CONFIG_PACKAGE_luci=y
 CONFIG_PACKAGE_luci-lib-base=y
 CONFIG_PACKAGE_luci-lib-ip=y
@@ -63,8 +60,9 @@ CONFIG_PACKAGE_luci-theme-argon=y
 # CONFIG_PACKAGE_luci-app-argon-config is not set
 # CONFIG_PACKAGE_luci-theme-material is not set
 # CONFIG_PACKAGE_luci-theme-openwrt-2020 is not set
+CONFIG_LUCI_LANG_zh_Hans=y
 # CONFIG_LUCI_CSSTIDY is not set
-
+CONFIG_LUCI_JSMIN=y
 
 ### OpenSSL
 CONFIG_OPENSSL_ENGINE=y
@@ -80,8 +78,7 @@ CONFIG_PACKAGE_openssl-util=y
 
 ### Kernel Modules
 CONFIG_PACKAGE_kmod-br-netfilter=y
-### Disabled: UN100D has no physical buttons
-# CONFIG_PACKAGE_kmod-button-hotplug is not set
+CONFIG_PACKAGE_kmod-button-hotplug=y
 CONFIG_PACKAGE_kmod-crypto-chacha20poly1305=y
 CONFIG_PACKAGE_kmod-crypto-sha256=y
 CONFIG_PACKAGE_kmod-fs-exfat=y
@@ -89,8 +86,7 @@ CONFIG_PACKAGE_kmod-fs-f2fs=y
 CONFIG_PACKAGE_kmod-fs-ntfs3=y
 CONFIG_PACKAGE_kmod-fs-vfat=y
 CONFIG_PACKAGE_kmod-fs-xfs=y
-### Disabled: UN100D uses passive cooling
-# CONFIG_PACKAGE_kmod-hwmon-pwmfan is not set
+CONFIG_PACKAGE_kmod-hwmon-pwmfan=y
 CONFIG_PACKAGE_kmod-ikconfig=y
 CONFIG_PACKAGE_kmod-inet-diag=y
 # CONFIG_PACKAGE_kmod-ipsec4 is not set
@@ -98,7 +94,6 @@ CONFIG_PACKAGE_kmod-inet-diag=y
 # CONFIG_PACKAGE_kmod-ipt-nat6 is not set
 # CONFIG_PACKAGE_kmod-ipt-tproxy is not set
 CONFIG_PACKAGE_kmod-iptunnel6=y
-CONFIG_PACKAGE_kmod-mac80211=y
 CONFIG_PACKAGE_kmod-nf-socket=y
 CONFIG_PACKAGE_kmod-nft-fullcone=y
 CONFIG_PACKAGE_kmod-nft-offload=y
@@ -108,13 +103,8 @@ CONFIG_PACKAGE_kmod-nft-tproxy=y
 # CONFIG_PACKAGE_kmod-nls-cp950 is not set
 CONFIG_PACKAGE_kmod-tls=y
 CONFIG_PACKAGE_kmod-tun=y
-### Disabled: not needed for router
-# CONFIG_PACKAGE_kmod-usb-audio is not set
 CONFIG_PACKAGE_kmod-usb-hid=y
-### USB Ethernet: use in-kernel driver instead of vendor (vendor fails without ALL_KMODS)
-CONFIG_PACKAGE_kmod-usb-net=y
-CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
-# CONFIG_PACKAGE_kmod-usb-net-rtl8152-vendor is not set
+CONFIG_PACKAGE_kmod-usb-net-rtl8152-vendor=y
 CONFIG_PACKAGE_kmod-usb-storage-uas=y
 CONFIG_PACKAGE_kmod-usb2-pci=y
 CONFIG_PACKAGE_kmod-usb2=y
@@ -131,9 +121,7 @@ CONFIG_PACKAGE_taskset=y
 CONFIG_PACKAGE_unzip=y
 CONFIG_PACKAGE_vim=y
 CONFIG_PACKAGE_wget-ssl=y
-### Disabled: no WiFi function needed
 # CONFIG_PACKAGE_wpad-openssl is not set
-
 
 ### GNU Core Utilities
 CONFIG_PACKAGE_coreutils=y

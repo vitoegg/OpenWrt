@@ -5,58 +5,33 @@ CONFIG_TARGET_x86_64_DEVICE_generic=y
 CONFIG_GRUB_TIMEOUT="1"
 
 ### Basic
+CONFIG_ALL_KMODS=y
+CONFIG_ALL_NONSHARED=y
 CONFIG_KERNEL_MPTCP=y
 CONFIG_KERNEL_MPTCP_IPV6=y
 CONFIG_PACKAGE_autocore-x86=y
 CONFIG_PACKAGE_bind-host=y
 CONFIG_PACKAGE_block-mount=y
+CONFIG_PACKAGE_coremark=y
 CONFIG_PACKAGE_default-settings=y
 CONFIG_TARGET_KERNEL_PARTSIZE=256
-CONFIG_TARGET_ROOTFS_PARTSIZE=2048
+CONFIG_TARGET_ROOTFS_PARTSIZE=2101
 # CONFIG_KERNEL_KALLSYMS is not set
 
-### Removed: builds everything, unnecessary for dedicated router
-# CONFIG_ALL_KMODS is not set
-# CONFIG_ALL_NONSHARED is not set
-
-### Image format (squashfs + EFI only)
-CONFIG_TARGET_ROOTFS_SQUASHFS=y
-CONFIG_TARGET_IMAGES_GZIP=y
-CONFIG_GRUB_EFI_IMAGES=y
-# CONFIG_TARGET_ROOTFS_EXT4 is not set
-# CONFIG_GRUB_IMAGES is not set
-# CONFIG_ISO_IMAGES is not set
-# CONFIG_VDI_IMAGES is not set
-# CONFIG_VMDK_IMAGES is not set
-# CONFIG_VHDX_IMAGES is not set
-# CONFIG_TARGET_ROOTFS_TARGZ is not set
-
-### Kernel driver (UN100D: Intel i226 + NVMe)
+### Kernel driver
+CONFIG_PACKAGE_kmod-igb=y
 CONFIG_PACKAGE_kmod-igc=y
+CONFIG_PACKAGE_kmod-mlx4-core=y
+CONFIG_PACKAGE_kmod-mlx5-core=y
+CONFIG_PACKAGE_kmod-ngbe=y
+CONFIG_PACKAGE_kmod-r8101=y
+CONFIG_PACKAGE_kmod-r8125=y
+CONFIG_PACKAGE_kmod-r8126=y
+CONFIG_PACKAGE_kmod-r8168=y
+CONFIG_PACKAGE_kmod-txgbe=y
+# CONFIG_PACKAGE_kmod-r8169 is not set
 CONFIG_PACKAGE_kmod-nvme=y
 
-### Disabled NIC drivers (not present on UN100D)
-# CONFIG_PACKAGE_kmod-igb is not set
-# CONFIG_PACKAGE_kmod-mlx4-core is not set
-# CONFIG_PACKAGE_kmod-mlx5-core is not set
-# CONFIG_PACKAGE_kmod-ngbe is not set
-# CONFIG_PACKAGE_kmod-r8101 is not set
-# CONFIG_PACKAGE_kmod-r8125 is not set
-# CONFIG_PACKAGE_kmod-r8126 is not set
-# CONFIG_PACKAGE_kmod-r8168 is not set
-# CONFIG_PACKAGE_kmod-r8169 is not set
-# CONFIG_PACKAGE_kmod-txgbe is not set
-
-### Disabled WiFi drivers (no MediaTek adapter on UN100D)
-# CONFIG_PACKAGE_kmod-mt76x2 is not set
-# CONFIG_PACKAGE_kmod-mt7921e is not set
-# CONFIG_PACKAGE_kmod-mt7921u is not set
-# CONFIG_PACKAGE_kmod-mt7922-firmware is not set
-
-### Display (module, for occasional HDMI troubleshooting)
+### Display & Extra Drivers
 CONFIG_PACKAGE_i915-firmware-huc=m
 CONFIG_PACKAGE_kmod-drm-i915=m
-
-### Disabled audio (not needed for router)
-# CONFIG_PACKAGE_kmod-sound-hda-codec-realtek is not set
-# CONFIG_PACKAGE_kmod-sound-hda-intel is not set
