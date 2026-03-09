@@ -53,18 +53,27 @@ CLONE_PKG "vitoegg/Argon" "main" "luci-theme-argon"
 # SmartDNS - remove due to unsatisfied build dependencies in upstream Makefile
 REMOVE_PKG "smartdns"
 
-
 # Modify Hostname
 log "Modifying hostname to HomeLab"
 sed -i 's#OpenWrt#HomeLab#g' package/base-files/files/bin/config_generate
 
 # Set CPU Mode
 log "Setting CPU mode to PERFORMANCE"
-sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.11
-sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
+KERNEL_CONFIG=$(find target/linux/x86 -maxdepth 1 -name 'config-*' -type f | head -1)
+KERNEL_CONFIG_64=$(find target/linux/x86/64 -maxdepth 1 -name 'config-*' -type f 2>/dev/null | head -1)
+
+if [ -n "$KERNEL_CONFIG" ]; then
+    log "Found kernel config: $KERNEL_CONFIG"
+    sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND is not set/g' "$KERNEL_CONFIG"
+    sed -i 's/CONFIG_CPU_FREQ_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_GOV_ONDEMAND is not set/g' "$KERNEL_CONFIG"
+    sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' "$KERNEL_CONFIG"
+fi
+
+if [ -n "$KERNEL_CONFIG_64" ]; then
+    log "Found kernel config (64-bit): $KERNEL_CONFIG_64"
+    sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' "$KERNEL_CONFIG_64"
+    sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' "$KERNEL_CONFIG_64"
+fi
 
 # Delete LED Menu
 log "Removing LED menu from LuCI"
@@ -148,11 +157,6 @@ uci set dhcp.@host[-1].ip='192.168.10.5'
 uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
-
-# Enable Flow Offloading
-uci set firewall.@defaults[0].synflood_protect='1'
-uci set firewall.@defaults[0].flow_offloading='1'
-uci commit firewall
 
 # Enable Transmit Firewall
 uci add firewall redirect
