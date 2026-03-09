@@ -1,134 +1,54 @@
-# ==============================================================================
-# OpenWrt/ImmortalWrt Base Configuration for x86_64
-# 通用配置 — x86-64 固件编译必要项，不建议修改
-# ==============================================================================
-
-# ------------------------------------------------------------------------------
-# 1. Target Platform & Profile Selection
-# ------------------------------------------------------------------------------
+# Target Platform
 CONFIG_TARGET_x86=y
 CONFIG_TARGET_x86_64=y
 
-# ------------------------------------------------------------------------------
-# 2. Global Build Options
-# ------------------------------------------------------------------------------
+# Build Options
 CONFIG_CCACHE=y
 CONFIG_DEVEL=y
 CONFIG_TARGET_ROOTFS_INITRAMFS=n
 
-# ------------------------------------------------------------------------------
-# 3. Firmware Image Format (x86-64 EFI)
-# ------------------------------------------------------------------------------
+# Firmware Image
 CONFIG_TARGET_ROOTFS_SQUASHFS=y
 CONFIG_TARGET_ROOTFS_EXT4FS=n
 CONFIG_GRUB_EFI_IMAGES=y
 
-# ------------------------------------------------------------------------------
-# 4. Kernel Modules: Networking & Firewall (Nftables)
-# ------------------------------------------------------------------------------
-CONFIG_PACKAGE_kmod-nft-core=y
-CONFIG_PACKAGE_kmod-nft-arp=y
-CONFIG_PACKAGE_kmod-nft-bridge=y
-CONFIG_PACKAGE_kmod-nft-connlimit=y
-CONFIG_PACKAGE_kmod-nft-dup-inet=y
-CONFIG_PACKAGE_kmod-nft-fib=y
-CONFIG_PACKAGE_kmod-nft-fullcone=y
-CONFIG_PACKAGE_kmod-nft-nat=y
-CONFIG_PACKAGE_kmod-nft-netdev=y
-CONFIG_PACKAGE_kmod-nft-offload=y
-CONFIG_PACKAGE_kmod-nft-queue=y
-CONFIG_PACKAGE_kmod-nft-socket=y
-CONFIG_PACKAGE_kmod-nft-tproxy=y
-CONFIG_PACKAGE_kmod-nft-xfrm=y
-CONFIG_PACKAGE_kmod-inet-diag=y
-CONFIG_PACKAGE_kmod-inet-mptcp-diag=y
-CONFIG_PACKAGE_kmod-netlink-diag=y
+# Traffic Shaping
 CONFIG_PACKAGE_kmod-sched-cake=y
 CONFIG_PACKAGE_kmod-tcp-bbr=y
-CONFIG_PACKAGE_kmod-tun=y
-CONFIG_PACKAGE_kmod-veth=y
-# Network Bonding, Virtual Interfaces & VPN
-CONFIG_PACKAGE_kmod-bonding=y
-CONFIG_PACKAGE_kmod-dsa=y
-CONFIG_PACKAGE_kmod-dummy=y
-CONFIG_PACKAGE_kmod-wireguard=y
 
-# ------------------------------------------------------------------------------
-# 5. Kernel Modules: USB & External Ethernet Adapters
-# ------------------------------------------------------------------------------
-# USB Core & HCI Controllers (USB 2.0 / USB 3.0 Support)
-CONFIG_PACKAGE_kmod-usb-core=y
-CONFIG_PACKAGE_kmod-usb3=y
-CONFIG_PACKAGE_kmod-usb-dwc3=y
-CONFIG_PACKAGE_kmod-usb-ohci=y
-CONFIG_PACKAGE_kmod-usb-uhci=y
-CONFIG_PACKAGE_kmod-usb-xhci=y
-# USB-to-Ethernet Drivers (ASIX / Realtek Chipsets)
+# Flow Offloading
+CONFIG_PACKAGE_kmod-fast-classifier=y
+CONFIG_PACKAGE_kmod-shortcut-fe-cm=y
+
+# USB Ethernet
 CONFIG_PACKAGE_kmod-usb-net=y
 CONFIG_PACKAGE_kmod-usb-net-asix=y
 CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
 CONFIG_PACKAGE_kmod-usb-net-rtl8150=y
 CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
 
-# ------------------------------------------------------------------------------
-# 6. Kernel Modules: Storage & Filesystems
-# ------------------------------------------------------------------------------
-# USB Mass Storage Drivers (Supports UASP for high-speed drives)
+# USB Storage
 CONFIG_PACKAGE_kmod-usb-storage=y
 CONFIG_PACKAGE_kmod-usb-storage-extras=y
 CONFIG_PACKAGE_kmod-usb-storage-uas=y
 CONFIG_PACKAGE_kmod-mtd-rw=y
-# Filesystem Support
-CONFIG_PACKAGE_kmod-fs-btrfs=y
-CONFIG_PACKAGE_kmod-fuse=y
-CONFIG_PACKAGE_kmod-fs-vfat=y
-# Locale Support (Required for long filenames on FAT/VFAT systems)
-CONFIG_PACKAGE_kmod-nls-cp437=y
-CONFIG_PACKAGE_kmod-nls-iso8859-1=y
 
-# ------------------------------------------------------------------------------
-# 7. System & Storage Utilities
-# ------------------------------------------------------------------------------
-# Disk & Partition Tools
+# Disk Tools
 CONFIG_PACKAGE_automount=y
-CONFIG_PACKAGE_blkid=y
 CONFIG_PACKAGE_cfdisk=y
-CONFIG_PACKAGE_lsblk=y
-# Hardware Monitor & CPU Scheduling
-CONFIG_PACKAGE_autocore=y
-CONFIG_PACKAGE_cpufreq=y
-CONFIG_PACKAGE_dmesg=y
-CONFIG_PACKAGE_htop=y
 
-# ------------------------------------------------------------------------------
-# 8. Network & General Utilities
-# ------------------------------------------------------------------------------
-# Connectivity & Bandwidth Testing
+# Network Utilities
 CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_iperf3=y
-# Advanced Networking Commands (iproute2), Bonding Protocol & USB Device Info
-CONFIG_PACKAGE_ip-full=y
-CONFIG_PACKAGE_proto-bonding=y
-CONFIG_PACKAGE_usbutils=y
-# SSH, Encryption & File Compression
-CONFIG_PACKAGE_openssh-keygen=y
-CONFIG_PACKAGE_openssh-sftp-server=y
-CONFIG_PACKAGE_openssl-util=y
-CONFIG_PACKAGE_xz-utils=y
+CONFIG_PACKAGE_unzip=y
 
-# ------------------------------------------------------------------------------
-# 9. LuCI Core Components
-# ------------------------------------------------------------------------------
+# LuCI Interface
 CONFIG_PACKAGE_luci=y
 CONFIG_PACKAGE_luci-base=y
 CONFIG_LUCI_LANG_zh_Hans=y
-CONFIG_PACKAGE_luci-compat=y
-CONFIG_PACKAGE_luci-lib-base=y
-CONFIG_PACKAGE_luci-lib-ipkg=y
-CONFIG_PACKAGE_luci-lua-runtime=y
-CONFIG_PACKAGE_luci-proto-relay=y
 
-# ------------------------------------------------------------------------------
-# 10. Locale & Timezone
-# ------------------------------------------------------------------------------
+# SFTP Server
+CONFIG_PACKAGE_openssh-sftp-server=y
+
+# Timezone Data
 CONFIG_PACKAGE_zoneinfo-asia=y
