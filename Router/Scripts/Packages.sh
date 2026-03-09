@@ -64,7 +64,7 @@ CLONE_PACKAGE "vitoegg/Argon" "main"
 
 # Nikki
 REMOVE_FEEDS "nikki"
-CLONE_PACKAGE "vitoegg/OpenNikki" "main"
+CLONE_PACKAGE "vitoegg/OpenNikki" "master"
 
 # MosDNS - use upstream version (backend + luci + v2dat)
 REMOVE_FEEDS "mosdns" "v2dat"
