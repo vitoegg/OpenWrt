@@ -116,7 +116,7 @@ uci set network.@device[-1].type='8021q'
 uci set network.@device[-1].ifname='eth1'
 uci set network.@device[-1].vid='$VLAN_ID'
 uci set network.@device[-1].name='eth1.$VLAN_ID'
-uci set network.@device[-1].macaddr='$PPPOE_MAC'
+uci set network.@device[-1].macaddr='$VLAN_MAC'
 uci set network.@device[-1].ipv6='0'
 uci commit network
 
@@ -125,6 +125,10 @@ uci set network.wan.device='eth1.$VLAN_ID'
 uci set network.wan.proto='pppoe'
 uci set network.wan.username='$PPPOE_USERNAME'
 uci set network.wan.password='$PPPOE_PASSWORD'
+uci add network device
+uci set network.@device[-1].name='pppoe-wan'
+uci set network.@device[-1].macaddr='$PPPOE_MAC'
+uci set network.@device[-1].ipv6='0'
 uci commit network
 
 # Disable IPV6 Network
@@ -157,6 +161,12 @@ uci set dhcp.@host[-1].ip='192.168.10.5'
 uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
+
+# Enable Shortcut-FE
+uci del firewall.@defaults[0].flow_offloading
+uci set firewall.@defaults[0].shortcut_fe='1'
+uci set firewall.@defaults[0].shortcut_fe_module='shortcut-fe-cm'
+uci commit firewall
 
 # Enable Transmit Firewall
 uci add firewall redirect
