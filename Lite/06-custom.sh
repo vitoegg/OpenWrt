@@ -180,6 +180,49 @@ uci set firewall.@redirect[-1].dest_port='$REDIRECT_DEST_PORT'
 uci commit firewall
 
 EOF
+
+# Dual WAN Configuration
+if [ "$ENABLE_DUAL_WAN" = "true" ]; then
+    log "Dual WAN enabled, appending WAN2 configuration"
+    cat >> $ZZZ <<-DUALWAN
+
+# Dual WAN - VLAN Device for WAN2
+uci add network device
+uci set network.@device[-1].type='8021q'
+uci set network.@device[-1].ifname='eth2'
+uci set network.@device[-1].vid='$VLAN_ID_2'
+uci set network.@device[-1].name='eth2.$VLAN_ID_2'
+uci set network.@device[-1].macaddr='$PPPOE_MAC_2'
+uci set network.@device[-1].ipv6='0'
+uci commit network
+
+# Dual WAN - Set WAN metric (primary)
+uci set network.wan.metric='10'
+uci commit network
+
+# Dual WAN - PPPOE for WAN2 (backup)
+uci set network.wan2=interface
+uci set network.wan2.device='eth2.$VLAN_ID_2'
+uci set network.wan2.proto='pppoe'
+uci set network.wan2.username='$PPPOE_USERNAME_2'
+uci set network.wan2.password='$PPPOE_PASSWORD_2'
+uci set network.wan2.metric='20'
+uci set network.wan2.ipv6='0'
+uci set network.wan2.sourcefilter='0'
+uci set network.wan2.delegate='0'
+uci add network device
+uci set network.@device[-1].name='pppoe-wan2'
+uci set network.@device[-1].macaddr='$PPPOE_WAN_MAC_2'
+uci set network.@device[-1].ipv6='0'
+uci commit network
+
+# Dual WAN - Add WAN2 to firewall wan zone
+uci add_list firewall.@zone[1].network='wan2'
+uci commit firewall
+
+DUALWAN
+fi
+
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
 
 # Move configuration files
