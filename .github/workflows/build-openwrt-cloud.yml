@@ -22,10 +22,13 @@ env:
   DDNS_SH_URL: ${{ secrets.DDNS_SH_URL }}
   HARDWARE_MODEL: MINISFORUM UN100D
 
+permissions: write-all
+
 jobs:
   build:
     name: Build OpenWrt Cloud
     runs-on: ubuntu-24.04
+    timeout-minutes: 360
     defaults:
       run:
         shell: bash
@@ -49,7 +52,7 @@ jobs:
         fi
 
     - name: Checkout Repository
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
 
     - name: Set Timezone
       run: sudo timedatectl set-timezone 'Asia/Shanghai'
@@ -63,8 +66,6 @@ jobs:
 
     - name: Set Release ENV
       run: |
-        sudo mkdir -p /builder
-        sudo chown -R runner:runner /builder
         echo WORKDIR="/builder" >> "$GITHUB_ENV"
 
     - name: Free Disk Space
@@ -77,7 +78,12 @@ jobs:
         sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php*
         sudo apt-get -y autoremove --purge
         sudo apt-get clean
-        sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
+        sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* \
+          /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel \
+          /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} \
+          /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} \
+          /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 \
+          /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
         sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
         rm -rf ~/{.cargo,.dotnet,.rustup}
         df -Th
@@ -95,7 +101,8 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential flex bison cmake g++ gawk gcc-multilib g++-multilib gettext git libfuse-dev libncurses5-dev libssl-dev python3 python3-pip python3-ply python3-pyelftools rsync unzip zlib1g-dev file wget subversion patch upx-ucl autoconf automake curl asciidoc binutils bzip2 lib32gcc-s1 libc6-dev-i386 uglifyjs msmtp texinfo libreadline-dev libglib2.0-dev xmlto libelf-dev libtool autopoint antlr3 gperf ccache swig coreutils haveged scons libpython3-dev rename qemu-utils
+        sudo apt-get install -y build-essential flex bison cmake g++ gawk gcc-multilib g++-multilib gettext git libfuse-dev libncurses5-dev libssl-dev python3 python3-pip python3-ply python3-pyelftools rsync unzip zlib1g-dev file wget subversion patch upx-ucl autoconf automake curl asciidoc binutils bzip2 lib32gcc-s1 libc6-dev-i386 uglifyjs msmtp texinfo libreadline-dev libglib2.0-dev xmlto libelf-dev libtool autopoint antlr3 gperf ccache swig coreutils haveged scons libpython3-dev rename qemu-utils \
+          dos2unix jq python3-netifaces libdw-dev libbz2-dev liblzma-dev libzstd-dev
         sudo apt-get clean
         git config --global user.name 'GitHub Actions' && git config --global user.email 'noreply@github.com'
 
@@ -120,12 +127,29 @@ jobs:
         sudo chown -R runner:runner /builder
         df -Th
 
+    - name: Initialization Values
+      run: |
+        echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+
+    - name: Check Caches
+      id: check-cache
+      uses: actions/cache@v4
+      with:
+        key: ccache-x86-64-cloud-${{ github.run_id }}
+        restore-keys: ccache-x86-64-cloud-
+        path: ~/.ccache
+
+    - name: Setup CCache
+      run: |
+        ccache --set-config=max_size=1G
+        ccache --set-config=compression=true
+        ccache -z
+
     - name: Compile OpenWrt
       working-directory: /builder
       id: compile
       continue-on-error: true
       run: |
-        echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
         export GITHUB_REPO=vitoegg/OpenLite
         export LAN=192.168.10.2
         # Download and replace build.sh
@@ -142,38 +166,29 @@ jobs:
       if: steps.compile.outcome == 'failure'
       run: |
         cd openwrt
-        make V=s
+        make -j1 V=s
 
     - name: Set Compiled ENV
       working-directory: /builder
       if: steps.compile.outcome == 'success'
       run: |
-        # Set kernel version
         KERNEL=$(grep -oE 'Kernel: [0-9]+(\.[0-9]+)+(-[0-9]+)?' build.log | head -1 | awk '{print $2}' | grep -oE '^[0-9]+(\.[0-9]+)+')
-        echo "KERNEL_PATCHVER=$KERNEL" >> $GITHUB_ENV
-        
-        # Set LuCI version
-        LUCI=$(grep -oE 'Building v[0-9]+(\.[0-9]+)+' build.log | head -1 | awk '{print $2}' | grep -oE '[0-9]+\.[0-9]+')
-        echo "LUCI_VERSION=$LUCI" >> $GITHUB_ENV
+        echo "KERNEL_PATCHVER=$KERNEL" >> "$GITHUB_ENV"
 
-        # Calculate build duration
+        LUCI=$(grep -oE 'Building v[0-9]+(\.[0-9]+)+' build.log | head -1 | awk '{print $2}' | grep -oE '[0-9]+\.[0-9]+')
+        echo "LUCI_VERSION=$LUCI" >> "$GITHUB_ENV"
+
         BUILD_END_TIME=$(date +%s)
-        BUILD_TIME=$((BUILD_END_TIME - ${{ env.BUILD_START_TIME }}))
-        
-        # Calculate hours and minutes
+        BUILD_TIME=$((BUILD_END_TIME - BUILD_START_TIME))
         BUILD_HOURS=$((BUILD_TIME / 3600))
         BUILD_MINUTES=$(((BUILD_TIME % 3600) / 60))
-        
-        # Format build time
-        if [ $BUILD_HOURS -gt 0 ]; then
+        if [ "$BUILD_HOURS" -gt 0 ]; then
           BUILD_DURATION="${BUILD_HOURS}h${BUILD_MINUTES}min"
         else
           BUILD_DURATION="${BUILD_MINUTES}min"
         fi
-        
-        # Set environment variables
-        echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
-        echo "TAG_TIME=$(date "+%Y%m%d-%H%M")" >> $GITHUB_ENV
+        echo "BUILD_DURATION=$BUILD_DURATION" >> "$GITHUB_ENV"
+        echo "TAG_TIME=$(TZ=UTC-8 date +"%Y%m%d-%H%M")" >> "$GITHUB_ENV"
 
     - name: Prepare Firmware Files
       working-directory: /builder
@@ -214,10 +229,12 @@ jobs:
           - 🔗 Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
           -d parse_mode=Markdown >/dev/null 2>&1
 
-    - name: Delete Workflow Runs
-      uses: Mattraks/delete-workflow-runs@v2
+    - name: Delete old Releases and Workflows
+      uses: ophub/delete-releases-workflows@main
       with:
-        token: ${{ env.REPO_TOKEN }}
-        repository: ${{ github.repository }}
-        retain_days: 0
-        keep_minimum_runs: 0
+        gh_token: ${{ secrets.GITHUB_TOKEN }}
+        delete_releases: true
+        releases_keep_latest: 0
+        delete_tags: true
+        delete_workflows: true
+        workflows_keep_day: 0

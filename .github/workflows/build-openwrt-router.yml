@@ -50,20 +50,6 @@ env:
   HARDWARE_MODEL: MINISFORUM UN100D
 
 jobs:
-  cleanup:
-    name: Cleanup Old Resources
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete old Releases and Workflows
-        uses: ophub/delete-releases-workflows@main
-        with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          delete_releases: true
-          releases_keep_latest: 0
-          delete_tags: true
-          delete_workflows: true
-          workflows_keep_day: 0
-
   build:
     name: Build OpenWrt Router
     needs: cleanup
@@ -326,3 +312,13 @@ jobs:
 
           - Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
             -d parse_mode=Markdown >/dev/null 2>&1
+
+      - name: Delete old Releases and Workflows
+        uses: ophub/delete-releases-workflows@main
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_releases: true
+          releases_keep_latest: 0
+          delete_tags: true
+          delete_workflows: true
+          workflows_keep_day: 0
