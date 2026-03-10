@@ -43,7 +43,7 @@ env:
   REPO_URL: ${{ secrets.REPO_URL }}
   HARDWARE_MODEL: MINISFORUM UN100D
   WORKDIR: /builder
-  CCACHE_DIR: ~/.ccache
+  CCACHE_DIR: /home/runner/.ccache
 
 permissions: write-all
 
@@ -157,7 +157,7 @@ jobs:
       with:
         key: ccache-x86-64-lite-${{ github.run_id }}
         restore-keys: ccache-x86-64-lite-
-        path: ~/.ccache
+        path: ${{ env.CCACHE_DIR }}
 
     - name: Setup CCache
       run: |
