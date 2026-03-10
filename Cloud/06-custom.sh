@@ -10,16 +10,49 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $msg"
 }
 
-# Argon - add customized argon theme
-log "Removing existing argon theme"
-rm -rf package/new/extd/luci-theme-argon
-log "Adding customized argon theme"
-git clone --depth=1 https://github.com/vitoegg/Argon package/app/luci-theme-argon
-mv package/app/luci-theme-argon package/new/extd/luci-theme-argon
+# REMOVE_PKG: Remove matching package directories from package/new/
+# Usage: REMOVE_PKG <name> [name2] [name3] ...
+REMOVE_PKG() {
+    for name in "$@"; do
+        log "Searching: $name"
+        local found
+        found=$(find package/new/ -maxdepth 3 -type d -iname "*$name*" 2>/dev/null)
+        if [ -n "$found" ]; then
+            while read -r dir; do
+                rm -rf "$dir"
+                log "Removed: $dir"
+            done <<< "$found"
+        else
+            log "Not found: $name"
+        fi
+    done
+}
+
+# CLONE_PKG: Clone a GitHub repo into a target path under package/new/extd/
+# Usage: CLONE_PKG <repo> <branch> [dest_name]
+#   dest_name: optional directory name (defaults to repo basename)
+CLONE_PKG() {
+    local repo=$1
+    local branch=$2
+    local dest_name=${3:-${repo#*/}}
+    local dest="package/new/extd/$dest_name"
+    log "Cloning $repo ($branch) -> $dest"
+    git clone --depth=1 --single-branch -b "$branch" "https://github.com/${repo}.git" "$dest"
+}
+
+# ===== Package Installation =====
+
+# Argon - replace built-in with customized theme
+REMOVE_PKG "luci-theme-argon"
+CLONE_PKG "vitoegg/Argon" "main" "luci-theme-argon"
 
 # Mio - add personalized ssserver
-log "Adding personalized shadowsocks server"
-git clone --depth=1 https://github.com/vitoegg/Mio.git package/new/Mio
+CLONE_PKG "vitoegg/Mio" "master" "Mio"
+
+# Apps not needed in the Cloud version
+REMOVE_PKG \
+    "smartdns" \
+    "luci-app-dae"
 
 # Modify Hostname
 log "Modifying hostname to HomeCloud"
@@ -27,11 +60,21 @@ sed -i 's#OpenWrt#HomeCloud#g' package/base-files/files/bin/config_generate
 
 # Set CPU Mode
 log "Setting CPU mode to PERFORMANCE"
-sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_GOV_ONDEMAND is not set/g' target/linux/x86/config-6.11
-sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
-sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' target/linux/x86/64/config-6.11
+KERNEL_CONFIG=$(find target/linux/x86 -maxdepth 1 -name 'config-*' -type f | head -1)
+KERNEL_CONFIG_64=$(find target/linux/x86/64 -maxdepth 1 -name 'config-*' -type f 2>/dev/null | head -1)
+
+if [ -n "$KERNEL_CONFIG" ]; then
+    log "Found kernel config: $KERNEL_CONFIG"
+    sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND is not set/g' "$KERNEL_CONFIG"
+    sed -i 's/CONFIG_CPU_FREQ_GOV_ONDEMAND=y/# CONFIG_CPU_FREQ_GOV_ONDEMAND is not set/g' "$KERNEL_CONFIG"
+    sed -i 's/# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' "$KERNEL_CONFIG"
+fi
+
+if [ -n "$KERNEL_CONFIG_64" ]; then
+    log "Found kernel config (64-bit): $KERNEL_CONFIG_64"
+    sed -i 's/CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y/g' "$KERNEL_CONFIG_64"
+    sed -i 's/CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y/CONFIG_CPU_FREQ_GOV_PERFORMANCE=y/g' "$KERNEL_CONFIG_64"
+fi
 
 # Delete LED Menu
 log "Removing LED menu from LuCI"
