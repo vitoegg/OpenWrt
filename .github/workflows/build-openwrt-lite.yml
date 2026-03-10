@@ -151,30 +151,35 @@ jobs:
         echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
         echo "TAG_TIME=$(TZ=UTC-8 date +"%Y%m%d-%H%M")" >> "$GITHUB_ENV"
 
-    - name: Check Caches
-      id: check-cache
-      uses: actions/cache@v4
+    - name: Restore DL Cache
+      id: restore-dl-cache
+      uses: actions/cache/restore@v4
       with:
-        key: ccache-x86-64-lite-${{ github.run_id }}
-        restore-keys: ccache-x86-64-lite-
+        key: dl-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}-${{ github.sha }}
+        restore-keys: |
+          dl-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}-
+          dl-x86-64-lite-${{ runner.os }}-
+        path: /builder/dl.gz
+
+    - name: Restore CCache
+      id: restore-ccache
+      uses: actions/cache/restore@v4
+      with:
+        key: ccache-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}-${{ github.sha }}
+        restore-keys: |
+          ccache-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}-
+          ccache-x86-64-lite-${{ runner.os }}-
         path: ${{ env.CCACHE_DIR }}
 
     - name: Setup CCache
       run: |
-        mkdir -p $CCACHE_DIR
+        mkdir -p "$CCACHE_DIR"
         ccache --set-config=max_size=3G
         ccache --set-config=compression=true
+        ccache --set-config=base_dir=/builder
+        ccache --set-config=hash_dir=false
         ccache -z
-
-    - name: Cleanup Old Caches
-      if: ${{ steps.check-cache.outputs.cache-hit != 'true' }}
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh cache list --key 'ccache-x86-64-lite-' --json id | \
-          jq -r '.[].id' | \
-          xargs -I {} gh cache delete {} 2>/dev/null || true
-        echo 'old caches cleaned'
+        ccache -s
 
     - name: Compile OpenWrt
       working-directory: /builder
@@ -206,6 +211,42 @@ jobs:
       run: |
         echo "❌ Build failed: both compile and retry steps failed"
         exit 1
+
+    - name: Collect Cache Artifacts
+      if: always()
+      working-directory: /builder
+      run: |
+        ccache -s || true
+        if [ -d openwrt/dl ]; then
+          tar -cf dl.gz -C openwrt dl
+          ls -lh dl.gz
+        else
+          echo 'openwrt/dl not found, skip dl cache artifact'
+        fi
+
+    - name: Mark DL Cache Status
+      if: always()
+      id: dl-cache-status
+      run: |
+        if [ -f /builder/dl.gz ]; then
+          echo 'ready=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'ready=false' >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Save DL Cache
+      if: always() && steps.dl-cache-status.outputs.ready == 'true' && steps.restore-dl-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: /builder/dl.gz
+        key: ${{ steps.restore-dl-cache.outputs.cache-primary-key }}
+
+    - name: Save CCache
+      if: always() && steps.restore-ccache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ steps.restore-ccache.outputs.cache-primary-key }}
 
     - name: Set Compiled ENV
       working-directory: /builder
