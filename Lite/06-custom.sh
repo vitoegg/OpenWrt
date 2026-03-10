@@ -50,8 +50,10 @@ CLONE_PKG "vitoegg/OpenNikki" "master"
 REMOVE_PKG "luci-theme-argon"
 CLONE_PKG "vitoegg/Argon" "main" "luci-theme-argon"
 
-# SmartDNS - remove due to unsatisfied build dependencies in upstream Makefile
-REMOVE_PKG "smartdns"
+# Apps not needed in the Lite version
+REMOVE_PKG \
+    "smartdns" \
+    "luci-app-dae"
 
 # Modify Hostname
 log "Modifying hostname to HomeLab"

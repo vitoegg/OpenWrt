@@ -155,9 +155,8 @@ jobs:
       id: restore-dl-cache
       uses: actions/cache/restore@v4
       with:
-        key: dl-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}-${{ github.sha }}
+        key: dl-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}
         restore-keys: |
-          dl-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}-
           dl-x86-64-lite-${{ runner.os }}-
         path: /builder/dl.gz
 
@@ -165,9 +164,8 @@ jobs:
       id: restore-ccache
       uses: actions/cache/restore@v4
       with:
-        key: ccache-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}-${{ github.sha }}
+        key: ccache-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}
         restore-keys: |
-          ccache-x86-64-lite-${{ runner.os }}-${{ hashFiles('Lite/23-config-musl-x86', 'Lite/23-config-common-custom', 'Lite/23-config-common-lite') }}-
           ccache-x86-64-lite-${{ runner.os }}-
         path: ${{ env.CCACHE_DIR }}
 
@@ -180,6 +178,16 @@ jobs:
         ccache --set-config=hash_dir=false
         ccache -z
         ccache -s
+
+    - name: Extract DL Cache
+      if: steps.restore-dl-cache.outputs.cache-matched-key != ''
+      working-directory: /builder
+      run: |
+        if [ -f dl.gz ]; then
+          mkdir -p openwrt
+          tar -xf dl.gz -C openwrt
+          echo "✅ DL cache extracted: $(du -sh openwrt/dl 2>/dev/null || echo 'unknown')"
+        fi
 
     - name: Compile OpenWrt
       working-directory: /builder
@@ -235,14 +243,14 @@ jobs:
         fi
 
     - name: Save DL Cache
-      if: always() && steps.dl-cache-status.outputs.ready == 'true' && steps.restore-dl-cache.outputs.cache-hit != 'true'
+      if: always() && steps.dl-cache-status.outputs.ready == 'true'
       uses: actions/cache/save@v4
       with:
         path: /builder/dl.gz
         key: ${{ steps.restore-dl-cache.outputs.cache-primary-key }}
 
     - name: Save CCache
-      if: always() && steps.restore-ccache.outputs.cache-hit != 'true'
+      if: always()
       uses: actions/cache/save@v4
       with:
         path: ${{ env.CCACHE_DIR }}
