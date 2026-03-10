@@ -140,7 +140,4 @@ CONFIG_PACKAGE_zoneinfo-asia=y
 CONFIG_PACKAGE_openssh-sftp-server=y
 # CONFIG_PACKAGE_kmod-tcp-brutal is not set
 
-### CCache
-CONFIG_CCACHE=y
-
 ### APPS
