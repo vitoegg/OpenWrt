@@ -32,7 +32,9 @@ IMAGE_NAME="openwrt-router-${TAG_TIME}-x86-64-efi.img.gz"
 cp -f "$IMAGE_PATH" "$UPLOAD_DIR/$IMAGE_NAME"
 cp -f ./.config "$UPLOAD_DIR/router-config-${TAG_TIME}.txt"
 
-find ./builder -maxdepth 1 -type f -name '*.buildinfo' -exec cp -f {} "$UPLOAD_DIR/" \;
+if [ -d ./builder ]; then
+  find ./builder -maxdepth 1 -type f -name '*.buildinfo' -exec cp -f {} "$UPLOAD_DIR/" \;
+fi
 find ./bin/targets -type f \( -name '*.manifest' -o -name '*.kernel' -o -name 'profiles.json' \) -exec cp -f {} "$UPLOAD_DIR/" \;
 
 checksum_file "$UPLOAD_DIR/$IMAGE_NAME" > "$UPLOAD_DIR/sha256sums"
