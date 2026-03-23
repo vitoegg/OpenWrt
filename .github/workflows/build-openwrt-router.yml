@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       wrt_branch:
-        description: 'ImmortalWrt Branch'
+        description: ImmortalWrt Branch
         required: false
         type: choice
         default: master
@@ -12,24 +12,39 @@ on:
           - master
           - openwrt-25.12
           - openwrt-24.10
+      wrt_commit:
+        description: Optional pinned ImmortalWrt commit
+        required: false
+        type: string
+        default: ''
       wan_mode:
-        description: 'WAN Mode'
+        description: WAN Mode
         required: false
         type: choice
-        default: 'Single WAN'
+        default: Single WAN
         options:
-          - 'Single WAN'
-          - 'Dual WAN'
+          - Single WAN
+          - Dual WAN
+      upload_enable:
+        description: Upload firmware to WebDAV
+        required: false
+        type: boolean
+        default: true
+      telegram_enable:
+        description: Send Telegram notification
+        required: false
+        type: boolean
+        default: true
   schedule:
-    - cron: 0 8 6 6 *
-    - cron: 0 8 12 12 *
+    - cron: '0 8 6 6 *'
+    - cron: '0 8 12 12 *'
 
 permissions: write-all
 
 env:
-  WRT_BRANCH: ${{ inputs.wrt_branch || 'master' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
-  DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+  WRT_BRANCH: ${{ inputs.wrt_branch || 'master' }}
+  WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
@@ -48,269 +63,132 @@ env:
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}
   HARDWARE_MODEL: MINISFORUM UN100D
+  WEBDAV_ENDPOINT: ${{ secrets.WEBDAV_ENDPOINT }}
+  WEBDAV_USERNAME: ${{ secrets.WEBDAV_USERNAME }}
+  WEBDAV_PASSWORD: ${{ secrets.WEBDAV_PASSWORD }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  FIRMWARE_DOWNLOAD_URL: ${{ secrets.FIRMWARE_DOWNLOAD_URL }}
+  ROUTER_SCRIPT_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/Router/Scripts
+  ROUTER_HOOK_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/Router/hooks
 
 jobs:
   build:
     name: Build OpenWrt Router
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 360
-    defaults:
-      run:
-        shell: bash
 
     steps:
-      - name: Checkout Projects
-        uses: actions/checkout@v6
-
-      - name: Show System Info
+      - name: Set timezone
         run: |
-          lscpu | grep -E 'name|Core|Thread'
+          sudo timedatectl set-timezone Asia/Shanghai
+          date +"%Y-%m-%d %H:%M:%S %Z"
+
+      - name: Display system info
+        run: |
+          date +"%Y-%m-%d %H:%M:%S %Z"
+          lscpu | grep -E '^Architecture|^CPU\(s\):|^Model name'
+          uname -sr
+          lsb_release -a
           free -h
           df -Th
-          uname -a
 
-      - name: Free Disk Space
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Initialize build values
         run: |
-          sudo swapoff -a
-          sudo rm -f /swapfile /mnt/swapfile
-          sudo docker image prune -a -f
-          sudo systemctl stop docker
-          sudo snap set system refresh.retain=2
-          sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php*
-          sudo apt-get -y autoremove --purge
-          sudo apt-get clean
-          sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* \
-            /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel \
-            /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} \
-            /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} \
-            /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 \
-            /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
-          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
-          rm -rf ~/{.cargo,.dotnet,.rustup}
-          df -Th
+          echo "BUILD_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+          echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
 
-      - name: Create Swap
-        run: |
-          sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
-          sudo chmod 600 /mnt/swapfile
-          sudo mkswap /mnt/swapfile
-          sudo swapon /mnt/swapfile
-          free -h | grep -i swap
-
-      - name: Initialization Environment
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo -E apt -yqq update
-          sudo -E apt -yqq install dos2unix python3-netifaces libfuse-dev ccache jq unzip wget \
-            libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
-          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-          sudo -E apt -yqq autoremove --purge
-          sudo -E apt -yqq clean
-          sudo -E systemctl daemon-reload
-          sudo -E timedatectl set-timezone 'Asia/Shanghai'
-
-      - name: Create VG & LV
-        run: |
-          mnt_size=$(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//')
-          root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 2)
-          sudo truncate -s "${mnt_size}"G /mnt/mnt.img
-          sudo truncate -s "${root_size}"G /root.img
-          sudo losetup /dev/loop6 /mnt/mnt.img
-          sudo losetup /dev/loop7 /root.img
-          sudo pvcreate /dev/loop6
-          sudo pvcreate /dev/loop7
-          sudo vgcreate github /dev/loop6 /dev/loop7
-          sudo lvcreate -n runner -l 100%FREE github
-          sudo mkfs.xfs /dev/github/runner
-
-      - name: Mount Build Directory
-        run: |
-          sudo mkdir -p /builder
-          sudo mount /dev/github/runner /builder
-          sudo chown -R "$USER:$(id -gn)" /builder
-          rm -rf "$GITHUB_WORKSPACE/wrt"
-          ln -s /builder "$GITHUB_WORKSPACE/wrt"
-          df -Th
-
-      - name: Initialization Values
-        run: |
-          echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
-          echo "TAG_TIME=$(TZ=UTC-8 date +"%Y%m%d-%H%M")" >> "$GITHUB_ENV"
-          echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
-          echo "WRT_TARGET=$(grep -m1 -oP '^CONFIG_TARGET_\K[\w]+' "$GITHUB_WORKSPACE/Router/Config/General.txt")" >> "$GITHUB_ENV"
-
-      - name: Clone Code
-        run: |
-          git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt/
-          cd ./wrt/ && echo "WRT_HASH=$(git log -1 --format='%H')" >> "$GITHUB_ENV"
-          PROJECT_MIRRORS_FILE='./scripts/projectsmirrors.json'
-          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
-            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
-          fi
-
-      - name: Check Scripts
-        run: |
-          find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
-
-      - name: Check Caches
-        id: check-cache
-        uses: actions/cache@v4
+      - name: Build image
+        id: build
+        uses: apoiston/actions@image
         with:
-          key: toolchain-x86-64-${{ env.WRT_HASH }}
-          restore-keys: toolchain-x86-64-
-          path: |
-            ./wrt/.ccache
-            ./wrt/staging_dir/host*
-            ./wrt/staging_dir/tool*
+          repo_url: ${{ env.WRT_REPO }}
+          repo_branch: ${{ env.WRT_BRANCH }}
+          private_key: ${{ secrets.PRIVATE_KEY }}
+          public_key: ${{ secrets.PUBLIC_KEY }}
+          prepare_compile: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-compile.sh
+          prepare_configure: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-configure.sh
+          prepare_image: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-image.sh
+          config_buildinfo: Router/builder/config.buildinfo
+          enable_prebuilt_tools: true
+          enable_build_toolchain: true
+          enable_build_kernel: true
+          enable_build_everything: true
+          enable_prepare_image: true
 
-      - name: Update Caches
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Collect build metadata
+        if: success()
         run: |
-          if [ -d './wrt/staging_dir' ]; then
-            find './wrt/staging_dir' -type d -name 'stamp' -not -path '*target*' | while read -r dir; do
-              find "$dir" -type f -exec touch {} +
-            done
-            mkdir -p ./wrt/tmp && echo '1' > ./wrt/tmp/.build
-            echo 'toolchain cache ready'
-          else
-            echo 'cache missed'
-          fi
+          BUILD_END_EPOCH=$(date +%s)
+          BUILD_SECONDS=$((BUILD_END_EPOCH - BUILD_START_EPOCH))
+          BUILD_HOURS=$((BUILD_SECONDS / 3600))
+          BUILD_MINUTES=$(((BUILD_SECONDS % 3600) / 60))
+          BUILD_REMAINING_SECONDS=$((BUILD_SECONDS % 60))
+          echo "BUILD_DURATION=${BUILD_HOURS}h ${BUILD_MINUTES}m ${BUILD_REMAINING_SECONDS}s" >> "$GITHUB_ENV"
 
-          if ${{ steps.check-cache.outputs.cache-hit != 'true' }}; then
-            gh cache list --key 'toolchain-x86-64-' --json id,key | \
-              jq -r '.[] | select(.key != "toolchain-x86-64-${{ env.WRT_HASH }}") | .id' | \
-              xargs -I {} gh cache delete {} 2>/dev/null || true
-            echo 'old caches cleaned'
-          fi
-
-      - name: Update Feeds
-        working-directory: ./wrt
-        run: |
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-
-      - name: Custom Packages
-        working-directory: ./wrt
-        run: |
-          "$GITHUB_WORKSPACE/Router/Scripts/Packages.sh"
-
-      - name: Prepare Files
-        working-directory: ./wrt
-        run: |
-          "$GITHUB_WORKSPACE/Router/Scripts/Prepare.sh"
-
-      - name: Custom Settings
-        working-directory: ./wrt
-        run: |
-          cat "$GITHUB_WORKSPACE/Router/Config/General.txt" >> .config
-          cat "$GITHUB_WORKSPACE/Router/Config/Custom.txt" >> .config
-          "$GITHUB_WORKSPACE/Router/Scripts/Settings.sh"
-          make defconfig -j"$(nproc)"
-
-      - name: Download Packages
-        working-directory: ./wrt
-        run: |
-          make download -j8
-          find dl -size -1024c -exec ls -l {} \;
-          find dl -size -1024c -exec rm -f {} \;
-
-      - name: Compile Firmware
-        working-directory: ./wrt
-        id: compile
-        continue-on-error: true
-        run: |
-          make -j"$(nproc)"
-
-      - name: Verbose Retry on Failure
-        working-directory: ./wrt
-        id: retry
-        if: steps.compile.outcome == 'failure'
-        run: |
-          make -j1 V=s
-
-      - name: Machine Information
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
-        working-directory: ./wrt
-        run: |
-          echo '======================='
-          lscpu | grep -E 'name|Core|Thread'
-          echo '======================='
-          df -h
-          echo '======================='
-          du -h --max-depth=1
-          echo '======================='
-
-      - name: Package Firmware
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
-        working-directory: ./wrt
-        run: |
-          mkdir -p ./upload
-          cp -f ./.config ./upload/router-config-${TAG_TIME}.txt
-          cp -f ./bin/targets/x86/*/*-squashfs-combined-efi.img.gz ./upload/openwrt-router-${TAG_TIME}-x86-64-efi.img.gz
-
-      - name: Collect Build Metadata
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
-        working-directory: ./wrt
-        run: |
-          BUILD_END_TIME=$(date +%s)
-          BUILD_TIME=$((BUILD_END_TIME - BUILD_START_TIME))
-          BUILD_HOURS=$((BUILD_TIME / 3600))
-          BUILD_MINUTES=$(((BUILD_TIME % 3600) / 60))
-          if [ "$BUILD_HOURS" -gt 0 ]; then
-            BUILD_DURATION="${BUILD_HOURS}h${BUILD_MINUTES}min"
-          else
-            BUILD_DURATION="${BUILD_MINUTES}min"
-          fi
-          echo "BUILD_DURATION=$BUILD_DURATION" >> "$GITHUB_ENV"
-
-          KERNEL_VER=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^kernel - \K[\d\.]+' {} \; | head -1)
+          KERNEL_VER=$(sed -n 's/^linux_kernel.version: //p' openwrt/upload/kernel.buildinfo 2>/dev/null | head -n 1)
           if [ -z "$KERNEL_VER" ]; then
-            KERNEL_VER=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
+            MANIFEST=$(find openwrt/upload -maxdepth 1 -type f -name '*.manifest' | head -n 1)
+            if [ -n "$MANIFEST" ]; then
+              KERNEL_VER=$(awk -F' - ' '/^kernel - / { print $2; exit }' "$MANIFEST")
+            fi
           fi
-          echo "KERNEL_PATCHVER=$KERNEL_VER" >> "$GITHUB_ENV"
+          echo "KERNEL_PATCHVER=${KERNEL_VER:-unknown}" >> "$GITHUB_ENV"
 
-          LUCI_VER=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^luci-base - \K\S+' {} \; | head -1)
+          LUCI_VER=$(find openwrt/upload -maxdepth 1 -type f -name '*.manifest' -exec awk -F' - ' '/^luci-base - / { print $2; exit }' {} \; | head -n 1)
           if [ -z "$LUCI_VER" ]; then
-            LUCI_VER=$(cd feeds/luci && git log -1 --format="%cd" --date=format:"%Y-%m-%d" 2>/dev/null || echo 'unknown')
+            LUCI_VER=$(git -C openwrt/feeds/luci log -1 --format='%cd' --date=format:'%Y-%m-%d' 2>/dev/null || echo 'unknown')
           fi
-          echo "LUCI_VERSION=$LUCI_VER" >> "$GITHUB_ENV"
+          echo "LUCI_VERSION=${LUCI_VER:-unknown}" >> "$GITHUB_ENV"
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: openwrt-router-${{ env.TAG_TIME }}
+          path: openwrt/upload/
+          if-no-files-found: error
 
       - name: Upload to WebDAV
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+        if: ${{ success() && env.WEBDAV_ENDPOINT != '' && (github.event_name != 'workflow_dispatch' || inputs.upload_enable) }}
         uses: bxb100/action-upload@main
         with:
           provider: webdav
           provider_options: |
-            endpoint=${{ secrets.WEBDAV_ENDPOINT }}
-            username=${{ secrets.WEBDAV_USERNAME }}
-            password=${{ secrets.WEBDAV_PASSWORD }}
+            endpoint=${{ env.WEBDAV_ENDPOINT }}
+            username=${{ env.WEBDAV_USERNAME }}
+            password=${{ env.WEBDAV_PASSWORD }}
             root=/OpenWrt/
-          include: '${{ github.workspace }}/wrt/upload/*.img.gz'
+          include: '${{ github.workspace }}/openwrt/upload/*.img.gz'
 
-      - name: Send Telegram Message
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+      - name: Send Telegram message
+        if: ${{ success() && env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' && (github.event_name != 'workflow_dispatch' || inputs.telegram_enable) }}
+        continue-on-error: true
         run: |
-          curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
-            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+          curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d photo='https://mirror.1991991.xyz/Picture/openwrt.webp' \
             --data-urlencode "caption=#OpenWRT #HomeLab #Router
 
           *Ready to roll! Dive in!*
 
-          - Hardware: ${{ env.HARDWARE_MODEL }}
+          - Hardware: ${HARDWARE_MODEL}
 
-          - Kernel: ${{ env.KERNEL_PATCHVER }}
+          - Kernel: ${KERNEL_PATCHVER}
 
-          - LuCI: ${{ env.LUCI_VERSION }}
+          - LuCI: ${LUCI_VERSION}
 
-          - Build Duration: ${{ env.BUILD_DURATION }}
+          - Build Duration: ${BUILD_DURATION}
 
-          - Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
+          - Firmware: [Click to View](${FIRMWARE_DOWNLOAD_URL})" \
             -d parse_mode=Markdown >/dev/null 2>&1
 
-      - name: Delete old Releases and Workflows
+      - name: Delete old releases and workflows
+        if: always()
+        continue-on-error: true
         uses: ophub/delete-releases-workflows@main
         with:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
