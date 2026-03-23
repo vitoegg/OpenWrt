@@ -96,12 +96,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate Router inputs
+        run: |
+          test -f builder/config.buildinfo
+          test -f Router/hooks/prepare-compile.sh
+          test -f Router/hooks/prepare-configure.sh
+          test -f Router/hooks/prepare-image.sh
+          ls -la builder
+          ls -la Router/hooks
+
       - name: Initialize build values
         run: |
           echo "BUILD_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
           echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
 
-      - name: Build image
+      - name: Build
         id: build
         uses: apoiston/actions@image
         with:
@@ -112,7 +126,7 @@ jobs:
           prepare_compile: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-compile.sh
           prepare_configure: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-configure.sh
           prepare_image: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-image.sh
-          config_buildinfo: Router/builder/config.buildinfo
+          config_buildinfo: builder/config.buildinfo
           enable_prebuilt_tools: true
           enable_build_toolchain: true
           enable_build_kernel: true
