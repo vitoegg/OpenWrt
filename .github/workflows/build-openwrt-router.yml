@@ -10,7 +10,7 @@ on:
         default: openwrt-24.10
         options:
           - openwrt-24.10
-          - master
+          - main
       wan_mode:
         description: 'WAN Mode'
         required: false
@@ -27,7 +27,7 @@ permissions: write-all
 
 env:
   WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-24.10' }}
-  WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
+  WRT_REPO: https://github.com/openwrt/openwrt.git
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
