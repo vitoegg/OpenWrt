@@ -67,7 +67,7 @@ REMOVE_FEEDS "nikki"
 CLONE_PACKAGE "vitoegg/OpenNikki" "master"
 
 # MosDNS - use upstream version (backend + luci + v2dat)
-REMOVE_FEEDS "mosdns" "v2dat"
+REMOVE_FEEDS "v2dat"
 CLONE_PACKAGE "sbwml/luci-app-mosdns" "v5"
 
 # ===== Dynamic Package Extension =====
