@@ -93,34 +93,6 @@ jobs:
           free -h
           df -Th
 
-      - name: Free Disk Space
-        run: |
-          sudo swapoff -a
-          sudo rm -f /swapfile /mnt/swapfile
-          sudo docker image prune -a -f
-          sudo systemctl stop docker
-          sudo snap set system refresh.retain=2
-          sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php*
-          sudo apt-get -y autoremove --purge
-          sudo apt-get clean
-          sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* \
-            /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel \
-            /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} \
-            /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} \
-            /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 \
-            /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
-          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
-          rm -rf ~/{.cargo,.dotnet,.rustup}
-          df -Th
-
-      - name: Create Swap
-        run: |
-          sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
-          sudo chmod 600 /mnt/swapfile
-          sudo mkswap /mnt/swapfile
-          sudo swapon /mnt/swapfile
-          free -h | grep -i swap
-
       - name: Checkout
         uses: actions/checkout@v6
 
