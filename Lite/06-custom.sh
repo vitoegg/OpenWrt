@@ -44,7 +44,7 @@ CLONE_PKG() {
 
 # Nikki - replace built-in with customized version
 REMOVE_PKG "nikki"
-CLONE_PKG "nikkinikki-org/OpenWrt-nikki" "main"
+CLONE_PKG "vitoegg/OpenNikki" "master"
 
 # Argon - replace built-in with customized theme
 REMOVE_PKG "luci-theme-argon"
