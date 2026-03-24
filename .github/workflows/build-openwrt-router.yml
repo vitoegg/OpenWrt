@@ -42,8 +42,6 @@ on:
 permissions: write-all
 
 env:
-  ROUTER_ROOT: ${{ github.workspace }}/Router
-  CONFIG_BUILDINFO_PATH: Router/builder/config.buildinfo
   WRT_REPO: https://github.com/openwrt/openwrt.git
   WRT_BRANCH: ${{ inputs.wrt_branch || 'main' }}
   WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
@@ -71,6 +69,8 @@ env:
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
   FIRMWARE_DOWNLOAD_URL: ${{ secrets.FIRMWARE_DOWNLOAD_URL }}
+  ROUTER_SCRIPT_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/Router/Scripts
+  ROUTER_HOOK_BASE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/Router/hooks
 
 jobs:
   build:
@@ -81,298 +81,80 @@ jobs:
     steps:
       - name: Set timezone
         run: |
-          echo "::group::Set timezone"
           sudo timedatectl set-timezone Asia/Shanghai
           date +"%Y-%m-%d %H:%M:%S %Z"
-          echo "BUILD_START_TIME=$(date +'%Y-%m-%d %H:%M:%S')" >> "$GITHUB_ENV"
-          echo "BUILD_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
-          echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
-          echo "::endgroup::"
 
       - name: Display system info
         run: |
-          echo "::group::Display system info"
           date +"%Y-%m-%d %H:%M:%S %Z"
           lscpu | grep -E '^Architecture|^CPU\(s\):|^Model name'
           uname -sr
           lsb_release -a
           free -h
           df -Th
-          echo "::endgroup::"
 
       - name: Free Disk Space
         run: |
-          echo "::group::Free Disk Space"
-          sudo swapoff -a || true
+          sudo swapoff -a
           sudo rm -f /swapfile /mnt/swapfile
-          sudo docker image prune -a -f || true
-          sudo snap set system refresh.retain=2 || true
-          sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php* || true
-          sudo apt-get -y autoremove --purge || true
+          sudo docker image prune -a -f
+          sudo systemctl stop docker
+          sudo snap set system refresh.retain=2
+          sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php*
+          sudo apt-get -y autoremove --purge
           sudo apt-get clean
-          sudo rm -rf \
-            /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/src/* \
+          sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* \
             /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel \
-            /opt/{microsoft,az,cni,mssql-tools,pipx} \
+            /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} \
             /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} \
             /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 \
             /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
-          sudo sed -i '/NVM_DIR/d;/skel/d' /root/.bashrc /root/.profile || true
-          rm -rf ~/.cargo ~/.dotnet ~/.rustup
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          rm -rf ~/{.cargo,.dotnet,.rustup}
           df -Th
-          echo "::endgroup::"
 
       - name: Create Swap
         run: |
-          echo "::group::Create Swap"
           sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
           sudo chmod 600 /mnt/swapfile
           sudo mkswap /mnt/swapfile
           sudo swapon /mnt/swapfile
           free -h | grep -i swap
-          echo "::endgroup::"
 
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Install buildsystem
-        run: |
-          echo "::group::Install buildsystem"
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            build-essential clang flex bison cmake g++ gawk \
-            gcc-multilib g++-multilib gettext git libfuse-dev libncurses5-dev libssl-dev \
-            python3 python3-pip python3-ply python3-pyelftools python3-setuptools \
-            rsync unzip zlib1g-dev file wget subversion patch upx-ucl autoconf automake \
-            curl asciidoc binutils bzip2 lib32gcc-s1 libc6-dev-i386 uglifyjs msmtp \
-            texinfo libreadline-dev libglib2.0-dev xmlto libelf-dev libtool autopoint \
-            antlr3 gperf ccache swig coreutils haveged scons libpython3-dev rename \
-            qemu-utils dos2unix jq python3-netifaces libdw-dev libbz2-dev liblzma-dev \
-            libzstd-dev \
-            > /dev/null 2>&1
-          echo "::endgroup::"
-
       - name: Validate Router inputs
         run: |
-          test -f "$CONFIG_BUILDINFO_PATH"
-          test -f "$ROUTER_ROOT/hooks/prepare-compile.sh"
-          test -f "$ROUTER_ROOT/hooks/prepare-configure.sh"
-          test -f "$ROUTER_ROOT/hooks/prepare-image.sh"
-          test -f "$ROUTER_ROOT/Scripts/Packages.sh"
-          test -f "$ROUTER_ROOT/Scripts/Prepare.sh"
-          test -f "$ROUTER_ROOT/Scripts/Settings.sh"
-          ls -la "$ROUTER_ROOT/builder"
-          ls -la "$ROUTER_ROOT/hooks"
-          ls -la "$ROUTER_ROOT/Scripts"
+          test -f builder/config.buildinfo
+          test -f Router/hooks/prepare-compile.sh
+          test -f Router/hooks/prepare-configure.sh
+          test -f Router/hooks/prepare-image.sh
+          ls -la builder
+          ls -la Router/hooks
 
-      - name: Checkout repository
+      - name: Initialize build values
         run: |
-          echo "::group::Checkout repository"
-          git clone --quiet --branch "$WRT_BRANCH" --single-branch "$WRT_REPO" openwrt
-          git -C openwrt rev-parse --short=7 HEAD
-          echo "::endgroup::"
+          echo "BUILD_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+          echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
 
-      - name: Setup ccache
-        run: |
-          echo "::group::Setup ccache"
-          mkdir -p "$GITHUB_WORKSPACE/openwrt/ccache"
-          echo "CCACHE_DIR=$GITHUB_WORKSPACE/openwrt/ccache" >> "$GITHUB_ENV"
-          echo "/usr/lib/ccache" >> "$GITHUB_PATH"
-          echo "::endgroup::"
-
-      - name: Restore ccache
-        uses: actions/cache/restore@v5
+      - name: Build
+        id: build
+        uses: apoiston/actions@image
         with:
-          path: ${{ github.workspace }}/openwrt/ccache
-          key: image-x86-64-${{ hashFiles('Router/builder/config.buildinfo') }}
-          restore-keys: |
-            image-x86-64-
-
-      - name: Restore toolchain
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            ${{ github.workspace }}/openwrt/build_dir
-            ${{ github.workspace }}/openwrt/staging_dir
-            ${{ github.workspace }}/openwrt/dl
-            ${{ github.workspace }}/openwrt/tmp
-          key: toolchain-x86-64-${{ hashFiles('Router/builder/config.buildinfo') }}
-          restore-keys: |
-            toolchain-x86-64-
-
-      - name: Prepare prebuilt tools
-        continue-on-error: true
-        working-directory: openwrt
-        run: |
-          echo "::group::Prepare prebuilt tools"
-          [ -d build_dir/host ] && [ -d staging_dir/host/stamp ] && ./scripts/ext-tools.sh --refresh && echo "Already enabled" || echo "Not enabled"
-          echo "::endgroup::"
-
-      - name: Prepare default configuration
-        working-directory: openwrt
-        run: |
-          echo "::group::Prepare default configuration"
-          cp -f "$GITHUB_WORKSPACE/$CONFIG_BUILDINFO_PATH" config.buildinfo
-          ls -l config.buildinfo
-          echo "::endgroup::"
-
-      - name: Prepare compile
-        working-directory: openwrt
-        run: |
-          echo "::group::Prepare compile"
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          bash "$ROUTER_ROOT/hooks/prepare-compile.sh"
-          echo "::endgroup::"
-
-      - name: Configure default feeds
-        working-directory: openwrt
-        run: |
-          echo "::group::Configure default feeds"
-          sed -i \
-            -e 's,https://git.openwrt.org/feed/,https://github.com/openwrt/,' \
-            -e 's,https://git.openwrt.org/openwrt/,https://github.com/openwrt/,' \
-            -e 's,https://git.openwrt.org/project/,https://github.com/openwrt/,' \
-            feeds.conf.default
-          sed -i 's|^\(src-git routing \)|#\1|' feeds.conf.default
-          sed -i 's|^\(src-git telephony \)|#\1|' feeds.conf.default
-          sed -i 's|^\(src-git video \)|#\1|' feeds.conf.default
-          echo "::endgroup::"
-
-      - name: Configure keys
-        working-directory: openwrt
-        run: |
-          echo "::group::Configure keys"
-          printf '%s' "${{ secrets.PRIVATE_KEY }}" > private-key.pem
-          printf '%s' "${{ secrets.PUBLIC_KEY }}" > public-key.pem
-          echo "::endgroup::"
-
-      - name: Update and install feeds
-        working-directory: openwrt
-        run: |
-          echo "::group::Update and install feeds"
-          ./scripts/feeds update -a 2>/dev/null
-          ./scripts/feeds install -a 2>/dev/null
-          echo "::endgroup::"
-
-      - name: Prepare configure
-        working-directory: openwrt
-        run: |
-          echo "::group::Prepare configure"
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          export ROUTER_ROOT="$ROUTER_ROOT"
-          bash "$ROUTER_ROOT/hooks/prepare-configure.sh"
-          echo "::endgroup::"
-
-      - name: Apply default configuration
-        working-directory: openwrt
-        run: |
-          echo "::group::Apply default configuration"
-          while IFS= read -r line; do
-            [ -z "$line" ] && continue
-            echo "$line" >> .config
-          done < config.buildinfo
-          make defconfig 2>/dev/null
-          echo "::endgroup::"
-
-      - name: Build toolchain
-        working-directory: openwrt
-        run: |
-          echo "::group::Build toolchain"
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          make toolchain/compile -j$(nproc) 2>/dev/null || make toolchain/compile V=s
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          echo "::endgroup::"
-
-      - name: Clean toolchain cache
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "::group::Clean toolchain cache"
-          gh cache list | awk -v pfx="toolchain" '$2 ~ pfx { print $2 }' | while read -r cache_key; do
-            echo "toolchain cache key: $cache_key"
-            gh cache delete "$cache_key"
-          done
-          echo "::endgroup::"
-
-      - name: Save toolchain
-        uses: actions/cache/save@v5
-        with:
-          path: |
-            ${{ github.workspace }}/openwrt/build_dir
-            ${{ github.workspace }}/openwrt/staging_dir
-            ${{ github.workspace }}/openwrt/dl
-            ${{ github.workspace }}/openwrt/tmp
-          key: toolchain-x86-64-${{ hashFiles('Router/builder/config.buildinfo') }}
-
-      - name: Build kernel
-        working-directory: openwrt
-        run: |
-          echo "::group::Build kernel"
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          make target/compile -j$(nproc) 2>/dev/null || make target/compile V=s
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          echo "::endgroup::"
-
-      - name: Build everything
-        id: build_everything
-        continue-on-error: true
-        working-directory: openwrt
-        run: |
-          echo "::group::Build everything"
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          make -j$(nproc) 2>/dev/null || make V=s
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          echo "::endgroup::"
-
-      - name: Verbose Retry on Build Failure
-        id: verbose_retry
-        if: steps.build_everything.outcome == 'failure'
-        continue-on-error: true
-        working-directory: openwrt
-        run: |
-          echo "::group::Verbose Retry on Build Failure"
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          make -j1 V=s
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          echo "::endgroup::"
-
-      - name: Fail Workflow if Build Failed
-        if: steps.build_everything.outcome == 'failure' && steps.verbose_retry.outcome != 'success'
-        run: |
-          echo "Build failed in both normal and verbose retry."
-          exit 1
-
-      - name: Clean ccache cache
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "::group::Clean ccache cache"
-          gh cache list | awk -v pfx="image" '$2 ~ pfx { print $2 }' | while read -r cache_key; do
-            echo "ccache cache key: $cache_key"
-            gh cache delete "$cache_key"
-          done
-          echo "::endgroup::"
-
-      - name: Save ccache
-        uses: actions/cache/save@v5
-        with:
-          path: ${{ github.workspace }}/openwrt/ccache
-          key: image-x86-64-${{ hashFiles('Router/builder/config.buildinfo') }}
-
-      - name: Prepare image
-        working-directory: openwrt
-        run: |
-          echo "::group::Prepare image"
-          date +"%Y-%m-%d %H:%M:%S %Z"
-          bash "$ROUTER_ROOT/hooks/prepare-image.sh"
-          echo "::endgroup::"
+          repo_url: ${{ env.WRT_REPO }}
+          repo_branch: ${{ env.WRT_BRANCH }}
+          private_key: ${{ secrets.PRIVATE_KEY }}
+          public_key: ${{ secrets.PUBLIC_KEY }}
+          prepare_compile: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-compile.sh
+          prepare_configure: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-configure.sh
+          prepare_image: ${{ env.ROUTER_HOOK_BASE_URL }}/prepare-image.sh
+          config_buildinfo: builder/config.buildinfo
+          enable_prebuilt_tools: true
+          enable_build_toolchain: true
+          enable_build_kernel: true
+          enable_build_everything: true
+          enable_prepare_image: true
 
       - name: Collect build metadata
         if: success()
