@@ -107,31 +107,16 @@ BEGIN { skip=0; brace_count=0; }
 # Hide empty DHCP/DHCPv6 Leases section on status overview page
 log "Patching DHCP lease display to auto-hide when empty"
 DHCP_FILE="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js"
-awk '
-/return E\(\[/ { hold=1; buf=$0; next }
-hold {
-    buf=buf ORS $0
-    if (/\]\);/) {
-        if (buf ~ /Active DHCPv6 Leases/) {
-            print "\t\tconst result = [];"
-            print "\t\tif (leases.length > 0) {"
-            print "\t\t\tresult.push(E('\''h3'\'', _('\''Active DHCPv4 Leases'\'')));"
-            print "\t\t\tresult.push(table);"
-            print "\t\t}"
-            print "\t\tif (leases6.length > 0) {"
-            print "\t\t\tresult.push(E('\''h3'\'', _('\''Active DHCPv6 Leases'\'')));"
-            print "\t\t\tresult.push(table6);"
-            print "\t\t}"
-            print "\t\treturn E(result);"
-        } else {
-            print buf
-        }
-        hold=0; buf=""
-    }
-    next
+sed -i "
+/Active DHCP Leases/{
+    N
+    s|E('h3', _('Active DHCP Leases')),\n\t*table,|...(leases.length > 0 ? [E('h3', _('Active DHCP Leases')), table] : []),|
 }
-{ print }
-' "$DHCP_FILE" > /tmp/40_dhcp_patched.js && mv /tmp/40_dhcp_patched.js "$DHCP_FILE"
+/Active DHCPv6 Leases/{
+    N
+    s|E('h3', _('Active DHCPv6 Leases')),\n\t*table6|...(leases6.length > 0 ? [E('h3', _('Active DHCPv6 Leases')), table6] : [])|
+}
+" "$DHCP_FILE"
 
 # Setting up etc config
 log "Setting up etc config"

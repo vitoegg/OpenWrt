@@ -108,31 +108,52 @@ BEGIN { skip=0; brace_count=0; }
 # Hide empty DHCP/DHCPv6 Leases section on status overview page
 log "Patching DHCP lease display to auto-hide when empty"
 DHCP_FILE="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js"
-awk '
-/return E\(\[/ { hold=1; buf=$0; next }
-hold {
-    buf=buf ORS $0
-    if (/\]\);/) {
-        if (buf ~ /Active DHCPv6 Leases/) {
-            print "\t\tconst result = [];"
-            print "\t\tif (leases.length > 0) {"
-            print "\t\t\tresult.push(E('\''h3'\'', _('\''Active DHCPv4 Leases'\'')));"
-            print "\t\t\tresult.push(table);"
-            print "\t\t}"
-            print "\t\tif (leases6.length > 0) {"
-            print "\t\t\tresult.push(E('\''h3'\'', _('\''Active DHCPv6 Leases'\'')));"
-            print "\t\t\tresult.push(table6);"
-            print "\t\t}"
-            print "\t\treturn E(result);"
-        } else {
-            print buf
-        }
-        hold=0; buf=""
-    }
-    next
-}
-{ print }
-' "$DHCP_FILE" > /tmp/40_dhcp_patched.js && mv /tmp/40_dhcp_patched.js "$DHCP_FILE"
+python3 - "$DHCP_FILE" <<'PY'
+from pathlib import Path
+import sys
+
+dhcp_file = Path(sys.argv[1])
+text = dhcp_file.read_text()
+
+old = """\t\treturn E([
+\t\t\tE('h3', _('Active DHCP Leases')),
+\t\t\ttable,
+\t\t\tE('h3', _('Active DHCPv6 Leases')),
+\t\t\ttable6
+\t\t]);
+"""
+
+new = """\t\tconst result = [];
+\t\tif (leases.length > 0) {
+\t\t\tresult.push(E('h3', _('Active DHCP Leases')));
+\t\t\tresult.push(table);
+\t\t}
+\t\tif (leases6.length > 0) {
+\t\t\tresult.push(E('h3', _('Active DHCPv6 Leases')));
+\t\t\tresult.push(table6);
+\t\t}
+\t\treturn E(result);
+"""
+
+matches = text.count(old)
+if matches != 1:
+    raise SystemExit(f"Unexpected DHCP render block match count: {matches}")
+
+patched = text.replace(old, new, 1)
+
+required = (
+    "if (leases.length > 0)",
+    "if (leases6.length > 0)",
+    "return E(result);",
+)
+
+for needle in required:
+    if needle not in patched:
+        raise SystemExit(f"Missing expected DHCP patch marker: {needle}")
+
+dhcp_file.write_text(patched)
+PY
+log "DHCP lease display patch applied successfully"
 
 # Default settings
 log "Setting up network configuration"
