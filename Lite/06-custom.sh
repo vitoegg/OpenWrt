@@ -44,7 +44,7 @@ CLONE_PKG() {
 
 # Nikki - replace built-in with customized version
 REMOVE_PKG "nikki"
-CLONE_PKG "vitoegg/OpenNikki" "master"
+CLONE_PKG "nikkinikki-org/OpenWrt-nikki" "main"
 
 # Argon - replace built-in with customized theme
 REMOVE_PKG "luci-theme-argon"
@@ -81,10 +81,10 @@ fi
 log "Removing LED menu from LuCI"
 awk '
 BEGIN { skip=0; brace_count=0; }
-/[[:space:]]*"admin\/system\/leds": {/ { 
-  skip=1; 
-  brace_count=1; 
-  next; 
+/[[:space:]]*"admin\/system\/leds": {/ {
+  skip=1;
+  brace_count=1;
+  next;
 }
 {
   if(skip==1) {
