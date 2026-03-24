@@ -9,7 +9,7 @@ on:
         type: choice
         default: master
         options:
-          - master
+          - main
           - openwrt-25.12
           - openwrt-24.10
       wrt_commit:
@@ -44,8 +44,8 @@ permissions: write-all
 env:
   ROUTER_ROOT: ${{ github.workspace }}/Router
   CONFIG_BUILDINFO_PATH: Router/builder/config.buildinfo
-  WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
-  WRT_BRANCH: ${{ inputs.wrt_branch || 'master' }}
+  WRT_REPO: https://github.com/openwrt/openwrt.git
+  WRT_BRANCH: ${{ inputs.wrt_branch || 'main' }}
   WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
