@@ -70,6 +70,17 @@ REMOVE_CONFLICT() {
     done
 }
 
+# ===== Go Toolchain Upgrade (non-master branches) =====
+
+if [ -n "$WRT_BRANCH" ] && [ "$WRT_BRANCH" != "master" ]; then
+    log "Upgrading Go toolchain for branch: $WRT_BRANCH"
+    rm -rf feeds/packages/lang/golang
+    git clone --depth=1 --single-branch -b 26.x \
+        https://github.com/sbwml/packages_lang_golang.git \
+        feeds/packages/lang/golang
+    log "Go toolchain upgraded successfully"
+fi
+
 # ===== Package Installation (parallel) =====
 
 pids=()
@@ -87,8 +98,8 @@ pids+=($!)
 pids+=($!)
 
 (
+    REMOVE_FEEDS "mosdns" "v2dat"
     CLONE_PACKAGE "sbwml/luci-app-mosdns" "v5"
-    REMOVE_CONFLICT "luci-app-mosdns" "mosdns"
 ) &
 pids+=($!)
 
