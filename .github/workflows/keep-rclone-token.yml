@@ -12,4 +12,4 @@ jobs:
       - uses: AnimMouse/setup-rclone@v1
         with:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
-      - run: rclone about remote:
+      - run: "rclone about remote:"
