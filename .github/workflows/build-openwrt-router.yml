@@ -304,7 +304,7 @@ jobs:
         if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
         run: |
           rclone copy ${{ github.workspace }}/wrt/upload/ remote:/OpenWrt/ \
-            --include "*.img.gz" --transfers=1 --chunk-size=10M -v
+            --include "*.img.gz" --transfers=1 -v
 
       - name: Send Telegram Message
         if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
