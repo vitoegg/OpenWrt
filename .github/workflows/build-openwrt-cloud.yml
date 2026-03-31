@@ -189,17 +189,17 @@ jobs:
         mkdir -p firmware
         cp -a openwrt/bin/targets/x86/*/*-squashfs-combined-efi.img.gz firmware/openwrt-server-${{ env.TAG_TIME }}-x86-64-efi.img.gz
 
-    - name: Upload to WebDAV
-      uses: bxb100/action-upload@main
+    - name: Setup Rclone
       if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+      uses: AnimMouse/setup-rclone@v1
       with:
-        provider: webdav
-        provider_options: |
-          endpoint=${{ secrets.WEBDAV_ENDPOINT }}
-          username=${{ secrets.WEBDAV_USERNAME }}
-          password=${{ secrets.WEBDAV_PASSWORD }}
-          root=/OpenWrt/
-        include: '${{ env.WORKDIR }}/firmware/*'
+        rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+    - name: Upload Firmware
+      if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+      run: |
+        rclone copy ${{ env.WORKDIR }}/firmware/ remote:/OpenWrt/ \
+          --include "*" --transfers=1 --chunk-size=10M -v
 
     - name: Send Telegram Message
       if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'

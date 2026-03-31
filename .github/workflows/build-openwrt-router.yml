@@ -294,17 +294,17 @@ jobs:
           fi
           echo "LUCI_VERSION=$LUCI_VER" >> "$GITHUB_ENV"
 
-      - name: Upload to WebDAV
+      - name: Setup Rclone
         if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
-        uses: bxb100/action-upload@main
+        uses: AnimMouse/setup-rclone@v1
         with:
-          provider: webdav
-          provider_options: |
-            endpoint=${{ secrets.WEBDAV_ENDPOINT }}
-            username=${{ secrets.WEBDAV_USERNAME }}
-            password=${{ secrets.WEBDAV_PASSWORD }}
-            root=/OpenWrt/
-          include: '${{ github.workspace }}/wrt/upload/*.img.gz'
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: Upload Firmware
+        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+        run: |
+          rclone copy ${{ github.workspace }}/wrt/upload/ remote:/OpenWrt/ \
+            --include "*.img.gz" --transfers=1 --chunk-size=10M -v
 
       - name: Send Telegram Message
         if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'

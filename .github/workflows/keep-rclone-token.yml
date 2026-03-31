@@ -1,0 +1,14 @@
+name: Keep Rclone Token Alive
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+      - run: rclone about remote:
