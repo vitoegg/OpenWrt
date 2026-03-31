@@ -9,11 +9,13 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Drive Capacity
-      - uses: AnimMouse/setup-rclone@v1
+      - name: Setup Rclone
+        uses: AnimMouse/setup-rclone@v1
         with:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
-      - run: "rclone about remote:"
+
+      - name: Check Drive Capacity
+        run: "rclone about remote:"
 
       - name: Delete old Workflows
         uses: ophub/delete-releases-workflows@main
