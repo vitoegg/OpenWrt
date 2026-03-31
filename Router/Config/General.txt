@@ -40,6 +40,8 @@ CONFIG_PACKAGE_kmod-tcp-bbr=y
 # Flow Offloading & NFT Firewall
 CONFIG_PACKAGE_kmod-nft-offload=y
 CONFIG_PACKAGE_kmod-nft-fullcone=y
+CONFIG_PACKAGE_kmod-tls=y
+CONFIG_PACKAGE_kmod-tun=y
 
 # Firewall
 CONFIG_PACKAGE_firewall4=y
@@ -94,6 +96,7 @@ CONFIG_PACKAGE_lm-sensors=y
 CONFIG_PACKAGE_usbutils=y
 CONFIG_PACKAGE_irqbalance=y
 CONFIG_PACKAGE_ethtool=y
+CONFIG_PACKAGE_ip-full=y
 
 # LuCI Interface
 CONFIG_PACKAGE_luci=y

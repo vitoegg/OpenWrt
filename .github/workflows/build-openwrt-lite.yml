@@ -219,7 +219,7 @@ jobs:
       if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
       run: |
         rclone copy ${{ env.WORKDIR }}/firmware/ remote:/OpenWrt/ \
-          --include "*" --transfers=1 --chunk-size=10M -v
+          --include "*" --transfers=1 -v
 
     - name: Send Telegram Message
       if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'

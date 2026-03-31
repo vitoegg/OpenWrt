@@ -1,4 +1,4 @@
-name: Keep Rclone Token Alive
+name: Refresh-Rclone-Token
 
 on:
   workflow_dispatch:
