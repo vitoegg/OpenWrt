@@ -34,15 +34,29 @@ REMOVE_PKG() {
 }
 
 # CLONE_PKG: Clone a GitHub repo into $PKG_CLONE_BASE/
-# Usage: CLONE_PKG <repo> <branch> [dest_name]
+# Usage: CLONE_PKG <repo> [--branch <branch>] [--name <dest_name>]
+#   Omit --branch to use the repo's default branch
 CLONE_PKG() {
-    local repo=$1
-    local branch=$2
-    local dest_name=${3:-${repo#*/}}
+    local repo=$1; shift
+    local branch="" dest_name=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --branch) branch=$2; shift 2 ;;
+            --name)   dest_name=$2; shift 2 ;;
+            *)        shift ;;
+        esac
+    done
+    dest_name=${dest_name:-${repo#*/}}
     local dest="$PKG_CLONE_BASE/$dest_name"
     local start=$SECONDS
-    log "Cloning $repo ($branch) -> $dest"
-    if ! git clone --depth=1 --single-branch -b "$branch" \
+    local branch_args=""
+    local branch_label="default"
+    if [ -n "$branch" ]; then
+        branch_args="-b $branch"
+        branch_label="$branch"
+    fi
+    log "Cloning $repo ($branch_label) -> $dest"
+    if ! git clone --depth=1 --single-branch $branch_args \
         "https://github.com/${repo}.git" "$dest"; then
         log "ERROR: Failed to clone $repo"
         return 1
@@ -71,15 +85,19 @@ section "Package Installation"
 
 # Argon - replace built-in with customized theme
 REMOVE_PKG "argon"
-CLONE_PKG "vitoegg/Argon" "main" "luci-theme-argon"
+CLONE_PKG "vitoegg/Argon" --name "luci-theme-argon"
 
 # Nikki - replace built-in with customized version
 REMOVE_PKG "nikki"
-CLONE_PKG "vitoegg/OpenNikki" "master"
+CLONE_PKG "vitoegg/OpenNikki"
 
 # MosDNS - replace built-in with customized version
 REMOVE_PKG "mosdns" "v2dat"
-CLONE_PKG "sbwml/luci-app-mosdns" "v5"
+CLONE_PKG "sbwml/luci-app-mosdns" --branch "v5"
+
+# v2ray-geodata - replace built-in with customized version
+REMOVE_PKG "v2ray-geodata"
+CLONE_PKG "sbwml/v2ray-geodata"
 
 # Apps not needed
 REMOVE_PKG \
@@ -94,7 +112,10 @@ if [ -n "$WRT_PACKAGE" ]; then
         IFS='|' read -r name repo branch dest_name <<< "$pkg_entry"
         if [ -n "$repo" ]; then
             REMOVE_PKG "$name"
-            CLONE_PKG "$repo" "${branch:-main}" "$dest_name"
+            local clone_args=("$repo")
+            [ -n "$branch" ] && clone_args+=(--branch "$branch")
+            [ -n "$dest_name" ] && clone_args+=(--name "$dest_name")
+            CLONE_PKG "${clone_args[@]}"
         fi
     done
 fi
