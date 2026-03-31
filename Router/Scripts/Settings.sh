@@ -148,8 +148,17 @@ remove_json_key "$LED_MENU_FILE" "admin/system/leds" "LED menu removal"
 
 log "Patching DHCP lease display to auto-hide when empty"
 DHCP_FILE="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js"
-DHCP_OLD_BLOCK=$'\t\treturn E([\n\t\t\tE(\'h3\', _(\'Active DHCP Leases\')),\n\t\t\ttable,\n\t\t\tE(\'h3\', _(\'Active DHCPv6 Leases\')),\n\t\t\ttable6\n\t\t]);\n'
-DHCP_NEW_BLOCK=$'\t\tconst result = [];\n\t\tif (leases.length > 0) {\n\t\t\tresult.push(E(\'h3\', _(\'Active DHCP Leases\')));\n\t\t\tresult.push(table);\n\t\t}\n\t\tif (leases6.length > 0) {\n\t\t\tresult.push(E(\'h3\', _(\'Active DHCPv6 Leases\')));\n\t\t\tresult.push(table6);\n\t\t}\n\t\treturn E(result);\n'
+
+# Detect DHCPv4 heading variant (25.12+) vs legacy DHCP heading
+if grep -q "Active DHCPv4 Leases" "$DHCP_FILE" 2>/dev/null; then
+    DHCP_V4_TITLE="Active DHCPv4 Leases"
+else
+    DHCP_V4_TITLE="Active DHCP Leases"
+fi
+log "Detected DHCPv4 heading: $DHCP_V4_TITLE"
+
+DHCP_OLD_BLOCK=$'\t\treturn E([\n\t\t\tE(\'h3\', _(\''"$DHCP_V4_TITLE"$'\')),\n\t\t\ttable,\n\t\t\tE(\'h3\', _(\'Active DHCPv6 Leases\')),\n\t\t\ttable6\n\t\t]);\n'
+DHCP_NEW_BLOCK=$'\t\tconst result = [];\n\t\tif (leases.length > 0) {\n\t\t\tresult.push(E(\'h3\', _(\''"$DHCP_V4_TITLE"$'\')));\n\t\t\tresult.push(table);\n\t\t}\n\t\tif (leases6.length > 0) {\n\t\t\tresult.push(E(\'h3\', _(\'Active DHCPv6 Leases\')));\n\t\t\tresult.push(table6);\n\t\t}\n\t\treturn E(result);\n'
 replace_text_once \
     "$DHCP_FILE" \
     "DHCP lease display patch" \
