@@ -189,6 +189,10 @@ uci set network.wan.device='eth1.$VLAN_ID'
 uci set network.wan.proto='pppoe'
 uci set network.wan.username='$PPPOE_USERNAME'
 uci set network.wan.password='$PPPOE_PASSWORD'
+uci add network device
+uci set network.@device[-1].name='pppoe-wan'
+uci set network.@device[-1].macaddr='$PPPOE_WAN_MAC'
+uci set network.@device[-1].ipv6='0'
 uci commit network
 
 # Disable IPV6 Network
@@ -270,6 +274,10 @@ uci set network.wan2.metric='20'
 uci set network.wan2.ipv6='0'
 uci set network.wan2.sourcefilter='0'
 uci set network.wan2.delegate='0'
+uci add network device
+uci set network.@device[-1].name='pppoe-wan2'
+uci set network.@device[-1].macaddr='$PPPOE_WAN_MAC_2'
+uci set network.@device[-1].ipv6='0'
 uci commit network
 
 # Dual WAN - Add WAN2 to firewall wan zone
