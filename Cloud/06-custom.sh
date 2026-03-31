@@ -1,22 +1,27 @@
 #!/bin/bash -e
 
-### Add new packages or patches below
-### For example, download alist from a third-party repository to package/new/alist
-### Then, add CONFIG_PACKAGE_luci-app-alist=y to the end of openwrt/23-config-common-custom
+# ===== Variant Configuration =====
+PKG_SEARCH_PATHS="package/new/"
+PKG_CLONE_BASE="package/new/extd"
 
-# Logging function
+# ===== Common Helper Functions =====
+
 log() {
-    local msg="$1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $msg"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
-# REMOVE_PKG: Remove matching package directories from package/new/
+section() {
+    echo ""
+    echo "========== $1 =========="
+}
+
+# REMOVE_PKG: Remove matching package directories
 # Usage: REMOVE_PKG <name> [name2] [name3] ...
 REMOVE_PKG() {
     for name in "$@"; do
-        log "Searching: $name"
+        log "Removing: $name"
         local found
-        found=$(find package/new/ -maxdepth 3 -type d -iname "*$name*" 2>/dev/null)
+        found=$(find $PKG_SEARCH_PATHS -maxdepth 3 -type d -iname "*$name*" 2>/dev/null)
         if [ -n "$found" ]; then
             while read -r dir; do
                 rm -rf "$dir"
@@ -28,16 +33,21 @@ REMOVE_PKG() {
     done
 }
 
-# CLONE_PKG: Clone a GitHub repo into a target path under package/new/extd/
+# CLONE_PKG: Clone a GitHub repo into $PKG_CLONE_BASE/
 # Usage: CLONE_PKG <repo> <branch> [dest_name]
-#   dest_name: optional directory name (defaults to repo basename)
 CLONE_PKG() {
     local repo=$1
     local branch=$2
     local dest_name=${3:-${repo#*/}}
-    local dest="package/new/extd/$dest_name"
+    local dest="$PKG_CLONE_BASE/$dest_name"
+    local start=$SECONDS
     log "Cloning $repo ($branch) -> $dest"
-    git clone --depth=1 --single-branch -b "$branch" "https://github.com/${repo}.git" "$dest"
+    if ! git clone --depth=1 --single-branch -b "$branch" \
+        "https://github.com/${repo}.git" "$dest"; then
+        log "ERROR: Failed to clone $repo"
+        return 1
+    fi
+    log "Cloned $repo ($((SECONDS - start))s)"
 }
 
 remove_json_key() {
@@ -132,6 +142,8 @@ PY
 
 # ===== Package Installation =====
 
+section "Package Installation"
+
 # Argon - replace built-in with customized theme
 REMOVE_PKG "luci-theme-argon"
 CLONE_PKG "vitoegg/Argon" "main" "luci-theme-argon"
@@ -143,6 +155,10 @@ CLONE_PKG "vitoegg/Mio" "master" "Mio"
 REMOVE_PKG \
     "smartdns" \
     "luci-app-dae"
+
+# ===== System Settings =====
+
+section "System Settings"
 
 # Modify Hostname
 log "Modifying hostname to HomeCloud"
@@ -196,6 +212,10 @@ uci set fstab.@global[0].anon_mount='1'
 uci commit fstab
 EOF
 sed -i '/exit 0/d' $ZZZ && echo "exit 0" >> $ZZZ
+
+# ===== Configuration Files =====
+
+section "Configuration Files"
 
 # Move configuration files
 log "Downloading pre-configuration files"
