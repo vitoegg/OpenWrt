@@ -49,6 +49,7 @@ fi
 
 pids=()
 
+# ===== Apps to install =====
 (
     REMOVE_PKG "argon"
     CLONE_PKG "vitoegg/Argon" "main" "luci-theme-argon"
@@ -64,6 +65,14 @@ pids+=($!)
 (
     REMOVE_PKG "mosdns" "v2dat"
     CLONE_PKG "sbwml/luci-app-mosdns" "v5"
+) &
+pids+=($!)
+
+# ===== Apps not needed =====
+(
+    REMOVE_PKG \
+        "onionshare-cli" \
+        "luci-app-mjpg-streamer"
 ) &
 pids+=($!)
 
