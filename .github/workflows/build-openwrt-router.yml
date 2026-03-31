@@ -12,6 +12,11 @@ on:
           - master
           - openwrt-25.12
           - openwrt-24.10
+      wrt_commit:
+        description: 'ImmortalWrt Commit Hash (leave empty for latest)'
+        required: false
+        type: string
+        default: ''
       wan_mode:
         description: 'WAN Mode'
         required: false
@@ -28,6 +33,7 @@ permissions: write-all
 
 env:
   WRT_BRANCH: ${{ inputs.wrt_branch || 'master' }}
+  WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
@@ -144,8 +150,17 @@ jobs:
 
       - name: Clone Code
         run: |
-          git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt/
-          cd ./wrt/ && echo "WRT_HASH=$(git log -1 --format='%H')" >> "$GITHUB_ENV"
+          if [ -n "$WRT_COMMIT" ]; then
+            git init ./wrt
+            cd ./wrt
+            git remote add origin "$WRT_REPO"
+            git fetch --depth=1 origin "$WRT_COMMIT"
+            git checkout FETCH_HEAD
+          else
+            git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt/
+            cd ./wrt
+          fi
+          echo "WRT_HASH=$(git log -1 --format='%H')" >> "$GITHUB_ENV"
           PROJECT_MIRRORS_FILE='./scripts/projectsmirrors.json'
           if [ -f "$PROJECT_MIRRORS_FILE" ]; then
             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
