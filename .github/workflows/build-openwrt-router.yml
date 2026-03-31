@@ -7,13 +7,13 @@ on:
         description: 'ImmortalWrt Branch'
         required: false
         type: choice
-        default: master
+        default: openwrt-25.12
         options:
-          - master
           - openwrt-25.12
           - openwrt-24.10
+          - master
       wrt_commit:
-        description: 'ImmortalWrt Commit Hash (leave empty for latest)'
+        description: 'ImmortalWrt Commit Hash'
         required: false
         type: string
         default: ''
@@ -32,7 +32,7 @@ on:
 permissions: write-all
 
 env:
-  WRT_BRANCH: ${{ inputs.wrt_branch || 'master' }}
+  WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-25.12' }}
   WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
   DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
