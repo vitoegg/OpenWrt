@@ -84,7 +84,7 @@ fi
 section "Package Installation"
 
 # Argon - replace built-in with customized theme
-REMOVE_PKG "argon"
+REMOVE_PKG "luci-theme-argon"
 CLONE_PKG "vitoegg/Argon" --name "luci-theme-argon"
 
 # Nikki - replace built-in with customized version
