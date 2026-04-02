@@ -311,6 +311,7 @@ uci commit network
 
 # Dual WAN - Set WAN metric (primary)
 uci set network.wan.metric='10'
+uci set network.wan.dns_metric='10'
 uci commit network
 
 # Dual WAN - PPPOE for WAN2 (backup)
@@ -320,6 +321,7 @@ uci set network.wan2.proto='pppoe'
 uci set network.wan2.username='$PPPOE_USERNAME_2'
 uci set network.wan2.password='$PPPOE_PASSWORD_2'
 uci set network.wan2.metric='20'
+uci set network.wan2.dns_metric='20'
 uci set network.wan2.ipv6='0'
 uci set network.wan2.sourcefilter='0'
 uci set network.wan2.delegate='0'
