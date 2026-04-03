@@ -115,6 +115,24 @@ sed -i "s/hostname='.*'/hostname='HomeLab'/g" package/base-files/files/bin/confi
 # ===== Customize Firmware Version =====
 
 BUILD_DATE=$(TZ=UTC-8 date +'%y.%m.%d')
+
+# ===== Remove APK Cheatsheet =====
+
+APK_CHEATSHEET="package/base-files/files/etc/profile.d/apk-cheatsheet.sh"
+if [ -f "$APK_CHEATSHEET" ]; then
+    log "Removing APK cheatsheet"
+    echo "# Intentionally left empty" > "$APK_CHEATSHEET"
+fi
+
+# ===== Customize Banner =====
+
+log "Customizing banner"
+rm -f files/etc/banner
+BRANCH_VER=$(echo "$WRT_BRANCH" | sed 's/openwrt-//')
+sed -i "s| %D %V, %C Dave's Guitar| ImmortalWrt $BRANCH_VER · Build $BUILD_DATE via GitHub|" package/base-files/files/etc/banner
+
+# ===== Customize Firmware Version =====
+
 log "Setting firmware version to: ImmortalWrt @ Build ${BUILD_DATE}"
 sed -i "s/boardinfo.release.description/'ImmortalWrt @ Build ${BUILD_DATE}'/" \
   feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
