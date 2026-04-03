@@ -21,10 +21,9 @@ CONFIG_PACKAGE_nat6=y
 # CONFIG_PACKAGE_xtables-nft is not set
 # CONFIG_PACKAGE_iptables-legacy is not set
 
-### Disable SFE & Flow Offloading
-# CONFIG_PACKAGE_kmod-fast-classifier is not set
-# CONFIG_PACKAGE_kmod-shortcut-fe-cm is not set
-# CONFIG_PACKAGE_kmod-nft-offload is not set
+### SFE
+CONFIG_PACKAGE_kmod-fast-classifier=y
+CONFIG_PACKAGE_kmod-shortcut-fe-cm=y
 
 ### Curl
 CONFIG_PACKAGE_curl=y
@@ -90,6 +89,7 @@ CONFIG_PACKAGE_kmod-inet-diag=y
 CONFIG_PACKAGE_kmod-iptunnel6=y
 CONFIG_PACKAGE_kmod-nf-socket=y
 CONFIG_PACKAGE_kmod-nft-fullcone=y
+CONFIG_PACKAGE_kmod-nft-offload=y
 CONFIG_PACKAGE_kmod-nft-socket=y
 CONFIG_PACKAGE_kmod-nft-tproxy=y
 # CONFIG_PACKAGE_kmod-nls-cp936 is not set
