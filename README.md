@@ -26,7 +26,6 @@ OpenWrt/
 - [x] TCP BBRv3
 - [x] TCP Brutal
 - [x] LLVM-BPF
-- [x] Shortcut-FE
 - [x] Multipath TCP
 - [x] CAKE QoS
 
