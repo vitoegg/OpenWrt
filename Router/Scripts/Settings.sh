@@ -136,7 +136,8 @@ sed -i "s| %D %V, %C Dave's Guitar| ImmortalWrt $BRANCH_VER · Build $BUILD_DATE
 
 # ===== Customize Firmware Version =====
 
-log "Firmware version will be set at first boot via uci-defaults: ImmortalWrt @ Build ${BUILD_DATE}"
+log "Setting firmware version: ImmortalWrt @ Build ${BUILD_DATE}"
+sed -i "s/DISTRIB_DESCRIPTION='%D %V %C'/DISTRIB_DESCRIPTION='ImmortalWrt @ Build $BUILD_DATE'/" package/base-files/files/etc/openwrt_release
 
 # ===== Set CPU Performance Mode =====
 
@@ -193,9 +194,6 @@ log "Generating uci-defaults settings"
 mkdir -p files/etc/uci-defaults
 cat > files/etc/uci-defaults/99-custom-settings <<-SETTINGS
 #!/bin/sh
-
-# Set Firmware Version
-sed -i "s/^DISTRIB_DESCRIPTION=.*/DISTRIB_DESCRIPTION='ImmortalWrt @ Build $BUILD_DATE'/" /etc/openwrt_release
 
 # Set Password
 sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /etc/shadow
