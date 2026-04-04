@@ -305,6 +305,10 @@ uci set network.@device[-1].name='pppoe-wan2'
 uci set network.@device[-1].macaddr='$PPPOE_WAN_MAC_2'
 uci set network.@device[-1].ipv6='0'
 uci commit network
+uci set dhcp.wan2=dhcp
+uci set dhcp.wan2.interface='wan2'
+uci set dhcp.wan2.ignore='1'
+uci commit dhcp
 
 # Dual WAN - Add WAN2 to firewall wan zone
 uci add_list firewall.@zone[1].network='wan2'

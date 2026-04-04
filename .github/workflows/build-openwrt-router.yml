@@ -242,19 +242,31 @@ jobs:
 
       - name: Report Cache Status
         run: |
-          dl_cache='${{ steps.cache-dl.outputs.cache-hit }}'
-          ccache_cache='${{ steps.cache-ccache.outputs.cache-hit }}'
-          toolchain_cache='${{ steps.cache-toolchain.outputs.cache-hit }}'
-
-          cache_label() {
-            if [ "$1" = "true" ]; then
-              printf 'exact-hit'
-            else
-              printf 'restored-or-miss'
-            fi
+          cache_state() {
+            case "$1" in
+              true)
+                printf 'exact-hit'
+                ;;
+              false)
+                printf 'restore-hit'
+                ;;
+              *)
+                printf 'miss'
+                ;;
+            esac
           }
 
-          echo "::notice::Cache status | dl=$(cache_label "$dl_cache") | ccache=$(cache_label "$ccache_cache") | toolchain=$(cache_label "$toolchain_cache")"
+          dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
+          ccache_state=$(cache_state '${{ steps.cache-ccache.outputs.cache-hit }}')
+          toolchain_state=$(cache_state '${{ steps.cache-toolchain.outputs.cache-hit }}')
+
+          echo "::notice::Download cache: ${dl_state}"
+          echo "::notice::Compiler cache: ${ccache_state}"
+          if [ "$toolchain_state" = 'miss' ]; then
+            echo "::warning::Toolchain cache: ${toolchain_state}"
+          else
+            echo "::notice::Toolchain cache: ${toolchain_state}"
+          fi
 
           if [ -d "./wrt/staging_dir" ]; then
             find ./wrt/staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
@@ -333,17 +345,23 @@ jobs:
         run: |
           compile_outcome='${{ steps.compile.outcome }}'
           retry_outcome='${{ steps.retry.outcome }}'
-          dl_cache='${{ steps.cache-dl.outputs.cache-hit }}'
-          ccache_cache='${{ steps.cache-ccache.outputs.cache-hit }}'
-          toolchain_cache='${{ steps.cache-toolchain.outputs.cache-hit }}'
-
-          cache_label() {
-            if [ "$1" = "true" ]; then
-              printf 'exact-hit'
-            else
-              printf 'restored-or-miss'
-            fi
+          cache_state() {
+            case "$1" in
+              true)
+                printf 'exact-hit'
+                ;;
+              false)
+                printf 'restore-hit'
+                ;;
+              *)
+                printf 'miss'
+                ;;
+            esac
           }
+
+          dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
+          ccache_state=$(cache_state '${{ steps.cache-ccache.outputs.cache-hit }}')
+          toolchain_state=$(cache_state '${{ steps.cache-toolchain.outputs.cache-hit }}')
 
           {
             echo "## Router Build Summary"
@@ -352,10 +370,10 @@ jobs:
             echo "| --- | --- |"
             echo "| Branch | \`$WRT_BRANCH\` |"
             echo "| Commit | \`$WRT_HASH\` |"
-            echo "| WAN Mode | \`${{ inputs.wan_mode || 'Dual WAN' }}\` |"
-            echo "| Download Cache | $(cache_label "$dl_cache") |"
-            echo "| Compiler Cache | $(cache_label "$ccache_cache") |"
-            echo "| Toolchain Cache | $(cache_label "$toolchain_cache") |"
+            echo "| WAN Mode | \`${{ inputs.wan_mode || 'Single WAN' }}\` |"
+            echo "| Download Cache | ${dl_state} |"
+            echo "| Compiler Cache | ${ccache_state} |"
+            echo "| Toolchain Cache | ${toolchain_state} |"
             echo "| Parallel Build | \`$compile_outcome\` |"
             echo "| Verbose Retry | \`${retry_outcome:-skipped}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
