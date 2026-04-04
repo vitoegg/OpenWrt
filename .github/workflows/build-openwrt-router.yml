@@ -159,14 +159,6 @@ jobs:
           echo "TAG_TIME=$(TZ=UTC-8 date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
           echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
 
-          wrt_target=$(sed -n 's/^CONFIG_TARGET_\([A-Za-z0-9]*\)=y$/\1/p' "$GITHUB_WORKSPACE/Router/Config/General.txt" | head -n1)
-          wrt_platform=$(sed -n 's/^CONFIG_TARGET_\([A-Za-z0-9_]*\)=y$/\1/p' "$GITHUB_WORKSPACE/Router/Config/General.txt" | awk '/_/ {print; exit}')
-          if [ -z "$wrt_platform" ]; then
-            wrt_platform="$wrt_target"
-          fi
-          echo "WRT_TARGET=$wrt_target" >> "$GITHUB_ENV"
-          echo "WRT_PLATFORM=$wrt_platform" >> "$GITHUB_ENV"
-
           find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
 
       - name: Clone Source
@@ -191,21 +183,6 @@ jobs:
             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$project_mirrors_file"
           fi
 
-          toolchain_target_makefile="target/linux/${WRT_TARGET}/Makefile"
-          toolchain_signature=$(
-            {
-              printf '%s\n' "$WRT_BRANCH" "$WRT_TARGET" "$WRT_PLATFORM"
-              for file in \
-                include/kernel-version.mk \
-                include/toolchain-build.mk \
-                include/toolchain.mk \
-                toolchain/Makefile \
-                "$toolchain_target_makefile"; do
-                [ -f "$file" ] && sha256sum "$file"
-              done
-            } | sha256sum | cut -d' ' -f1 | cut -c1-16
-          )
-          echo "TOOLCHAIN_SIGNATURE=$toolchain_signature" >> "$GITHUB_ENV"
           echo "::endgroup::"
           echo "::notice::Upstream commit: $wrt_hash"
 
@@ -219,24 +196,15 @@ jobs:
             wrt-dl-
           path: ./wrt/dl
 
-      - name: Restore Compiler Cache
-        id: cache-ccache
+      - name: Restore Build Cache
+        id: cache-build
         uses: actions/cache@v5
         with:
-          key: wrt-ccache-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-${{ env.CACHE_BUCKET }}-${{ hashFiles('Router/Config/General.txt', 'Router/Config/Custom.txt', 'Router/Scripts/Packages.sh', 'Router/Scripts/Prepare.sh', 'Router/Scripts/Settings.sh') }}
+          key: toolchain-x86-64-${{ env.WRT_HASH }}
           restore-keys: |
-            wrt-ccache-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-${{ hashFiles('Router/Config/General.txt', 'Router/Config/Custom.txt', 'Router/Scripts/Packages.sh', 'Router/Scripts/Prepare.sh', 'Router/Scripts/Settings.sh') }}-
-            wrt-ccache-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-
-          path: ./wrt/.ccache
-
-      - name: Restore Toolchain Cache
-        id: cache-toolchain
-        uses: actions/cache@v5
-        with:
-          key: wrt-toolchain-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-${{ env.TOOLCHAIN_SIGNATURE }}
-          restore-keys: |
-            wrt-toolchain-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-
+            toolchain-x86-64-
           path: |
+            ./wrt/.ccache
             ./wrt/staging_dir/host*
             ./wrt/staging_dir/tool*
 
@@ -257,15 +225,13 @@ jobs:
           }
 
           dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
-          ccache_state=$(cache_state '${{ steps.cache-ccache.outputs.cache-hit }}')
-          toolchain_state=$(cache_state '${{ steps.cache-toolchain.outputs.cache-hit }}')
+          build_state=$(cache_state '${{ steps.cache-build.outputs.cache-hit }}')
 
           echo "::notice::Download cache: ${dl_state}"
-          echo "::notice::Compiler cache: ${ccache_state}"
-          if [ "$toolchain_state" = 'miss' ]; then
-            echo "::warning::Toolchain cache: ${toolchain_state}"
+          if [ "$build_state" = 'miss' ]; then
+            echo "::warning::Build cache: ${build_state}"
           else
-            echo "::notice::Toolchain cache: ${toolchain_state}"
+            echo "::notice::Build cache: ${build_state}"
           fi
 
           if [ -d "./wrt/staging_dir" ]; then
@@ -352,9 +318,13 @@ jobs:
         continue-on-error: true
         working-directory: ./wrt
         run: |
-          echo "::group::Parallel build"
-          make -j"$(nproc)" 2>&1 | tee build.log
-          echo "::endgroup::"
+          if command -v ccache >/dev/null 2>&1; then
+            ccache -z || true
+          fi
+
+          echo "::notice::Starting parallel build with $(nproc) jobs"
+          make -j"$(nproc)" > build.log 2>&1
+          echo "::notice::Parallel build completed"
 
       - name: Retry With Verbose Logs
         id: retry
@@ -363,6 +333,9 @@ jobs:
         working-directory: ./wrt
         run: |
           echo "::warning::Parallel build failed, retrying with make -j1 V=s"
+          echo "::group::Last 200 lines from parallel build"
+          tail -n 200 build.log || true
+          echo "::endgroup::"
           echo "::group::Verbose retry"
           make -j1 V=s 2>&1 | tee -a build.log
           echo "::endgroup::"
@@ -387,8 +360,7 @@ jobs:
           }
 
           dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
-          ccache_state=$(cache_state '${{ steps.cache-ccache.outputs.cache-hit }}')
-          toolchain_state=$(cache_state '${{ steps.cache-toolchain.outputs.cache-hit }}')
+          build_state=$(cache_state '${{ steps.cache-build.outputs.cache-hit }}')
 
           {
             echo "## Router Build Summary"
@@ -399,8 +371,7 @@ jobs:
             echo "| Commit | \`$WRT_HASH\` |"
             echo "| WAN Mode | \`${{ inputs.wan_mode || 'Single WAN' }}\` |"
             echo "| Download Cache | ${dl_state} |"
-            echo "| Compiler Cache | ${ccache_state} |"
-            echo "| Toolchain Cache | ${toolchain_state} |"
+            echo "| Build Cache | ${build_state} |"
             echo "| Parallel Build | \`$compile_outcome\` |"
             echo "| Verbose Retry | \`${retry_outcome:-skipped}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
