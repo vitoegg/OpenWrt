@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     env:
-      BASH_ENV: ${{ runner.temp }}/router-ci.log.env
+      BASH_ENV: /tmp/router-ci.log.env
     defaults:
       run:
         shell: bash --noprofile --norc -eo pipefail {0}
