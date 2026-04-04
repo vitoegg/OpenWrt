@@ -469,13 +469,17 @@ jobs:
             -d photo='https://mirror.1991991.xyz/Picture/openwrt.webp' \
             --data-urlencode "caption=#OpenWRT #HomeLab #Router
 
-          *Build Ready*
+          *🎉 Ready to roll! Dive in! 🎉*
 
-          - Hardware: ${{ env.HARDWARE_MODEL }}
-          - Kernel: ${{ env.KERNEL_PATCHVER }}
-          - LuCI: ${{ env.LUCI_VERSION }}
-          - Duration: ${{ env.BUILD_DURATION }}
-          - Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
+          - 🛠 Hardware: ${{ env.HARDWARE_MODEL }}
+
+          - 🌐 Kernel: ${{ env.KERNEL_PATCHVER }}
+
+          - 📦 LuCI: ${{ env.LUCI_VERSION }}
+
+          - ⌛ Build Duration: ${{ env.BUILD_DURATION }}
+
+          - 🔗 Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
             -d parse_mode=Markdown >/dev/null 2>&1
 
       - name: Delete Old Releases And Workflows
@@ -483,6 +487,7 @@ jobs:
         uses: ophub/delete-releases-workflows@main
         with:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
+          out_log: false
           delete_releases: true
           releases_keep_latest: 0
           delete_tags: true
