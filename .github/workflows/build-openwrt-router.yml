@@ -302,6 +302,14 @@ jobs:
       - name: Download Sources
         working-directory: ./wrt
         run: |
+          list_suspicious_files() {
+            find dl -maxdepth 1 -type f -size -1024c | sort
+          }
+
+          count_suspicious_files() {
+            list_suspicious_files | wc -l | tr -d ' '
+          }
+
           download_jobs=$(( $(nproc) * 2 ))
           if [ "$download_jobs" -gt 16 ]; then
             download_jobs=16
@@ -311,11 +319,30 @@ jobs:
           make download -j"$download_jobs"
           echo "::endgroup::"
 
-          bad_files=$(find dl -type f -size -1024c | wc -l | tr -d ' ')
+          bad_files=$(count_suspicious_files)
           if [ "$bad_files" -gt 0 ]; then
-            find dl -type f -size -1024c -exec ls -l {} \;
-            find dl -type f -size -1024c -exec rm -f {} \;
-            echo "::warning::Removed ${bad_files} suspicious download files smaller than 1 KB"
+            echo "::warning::Found ${bad_files} suspicious root-level download files smaller than 1 KB"
+            while IFS= read -r file; do
+              [ -n "$file" ] || continue
+              ls -l "$file"
+              rm -f "$file"
+            done < <(list_suspicious_files)
+
+            echo "::group::Retry source archives download"
+            make download -j"$download_jobs"
+            echo "::endgroup::"
+
+            remaining_bad_files=$(count_suspicious_files)
+            if [ "$remaining_bad_files" -gt 0 ]; then
+              while IFS= read -r file; do
+                [ -n "$file" ] || continue
+                ls -l "$file"
+              done < <(list_suspicious_files)
+              echo "::error::Download retry still found ${remaining_bad_files} suspicious root-level files smaller than 1 KB"
+              exit 1
+            fi
+
+            echo "::notice::Suspicious root-level download files were removed and successfully re-downloaded"
           else
             echo "::notice::All downloaded source archives look valid"
           fi
