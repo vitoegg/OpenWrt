@@ -136,8 +136,20 @@ sed -i "s| %D %V, %C Dave's Guitar| ImmortalWrt $BRANCH_VER · Build $BUILD_DATE
 
 # ===== Customize Firmware Version =====
 
-log "Setting firmware version: ImmortalWrt @ Build ${BUILD_DATE}"
-sed -i "s/DISTRIB_DESCRIPTION='%D %V %C'/DISTRIB_DESCRIPTION='ImmortalWrt @ Build $BUILD_DATE'/" package/base-files/files/etc/openwrt_release
+FIRMWARE_VERSION="ImmortalWrt @ Build $BUILD_DATE"
+log "Setting firmware version: ${FIRMWARE_VERSION}"
+replace_text_once \
+    "package/base-files/files/usr/lib/os-release" \
+    "Firmware version os-release patch" \
+    'OPENWRT_RELEASE="%D %V %C"' \
+    "OPENWRT_RELEASE=\"$FIRMWARE_VERSION\"" \
+    "OPENWRT_RELEASE=\"$FIRMWARE_VERSION\""
+replace_text_once \
+    "package/base-files/files/etc/openwrt_release" \
+    "Firmware version openwrt_release patch" \
+    "DISTRIB_DESCRIPTION='%D %V %C'" \
+    "DISTRIB_DESCRIPTION='$FIRMWARE_VERSION'" \
+    "DISTRIB_DESCRIPTION='$FIRMWARE_VERSION'"
 
 # ===== Set CPU Performance Mode =====
 
