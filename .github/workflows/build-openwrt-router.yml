@@ -68,6 +68,8 @@ jobs:
     name: Build OpenWrt Router
     runs-on: ubuntu-24.04
     timeout-minutes: 360
+    env:
+      BASH_ENV: ${{ runner.temp }}/router-ci.log.env
     defaults:
       run:
         shell: bash --noprofile --norc -eo pipefail {0}
@@ -75,6 +77,51 @@ jobs:
     steps:
       - name: Checkout Projects
         uses: actions/checkout@v6
+
+      - name: Init CI Log Helpers
+        run: |
+          cat > "$BASH_ENV" <<'EOF'
+          CI_SEPARATOR='══════════════════════════════════════════════════'
+
+          ci_banner() {
+            local color="$1"
+            printf '\033[%sm%s\033[0m\n' "$color" "$CI_SEPARATOR"
+          }
+
+          ci_emit() {
+            local banner_color="$1"
+            local text_color="$2"
+            local icon="$3"
+            shift 3
+            if [ -n "$banner_color" ]; then
+              ci_banner "$banner_color"
+            fi
+            printf '\033[%sm%s %s\033[0m\n' "$text_color" "$icon" "$*"
+          }
+
+          ci_success_banner() { ci_banner '32'; }
+          ci_section() { ci_emit '32' '36' '●' "$*"; }
+          ci_highlight() { ci_emit '32' '36' '✓' "$*"; }
+          ci_success() { ci_emit '' '32' '✓' "$*"; }
+          ci_success_section() { ci_emit '32' '32' '✓' "$*"; }
+          ci_warn() { ci_emit '' '33' '⚠' "$*"; }
+          ci_warn_section() { ci_emit '33' '33' '⚠' "$*"; }
+          ci_error() { ci_emit '' '31' '✗' "$*"; }
+
+          cache_state() {
+            case "$1" in
+              true)
+                printf 'exact-hit'
+                ;;
+              false)
+                printf 'restore-hit'
+                ;;
+              *)
+                printf 'miss'
+                ;;
+            esac
+          }
+          EOF
 
       - name: Bootstrap Runner
         env:
@@ -155,8 +202,7 @@ jobs:
           find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
           echo "::endgroup::"
 
-          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
-          echo -e "\033[32m✓ Runner ready\033[0m"
+          ci_success_section "Runner ready"
 
       - name: Clone Source
         run: |
@@ -181,8 +227,7 @@ jobs:
           fi
 
           echo "::endgroup::"
-          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
-          echo -e "\033[36m✓ Upstream commit: $wrt_hash\033[0m"
+          ci_highlight "Upstream commit: $wrt_hash"
 
       - name: Restore Download Cache
         id: cache-dl
@@ -209,33 +254,19 @@ jobs:
       - name: Prepare Build
         working-directory: ./wrt
         run: |
-          cache_state() {
-            case "$1" in
-              true)
-                printf 'exact-hit'
-                ;;
-              false)
-                printf 'restore-hit'
-                ;;
-              *)
-                printf 'miss'
-                ;;
-            esac
-          }
-
           dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
           build_state=$(cache_state '${{ steps.cache-build.outputs.cache-hit }}')
 
-          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+          ci_success_banner
           if [ "$dl_state" = 'miss' ]; then
-            echo -e "\033[33m⚠ Download cache: ${dl_state}\033[0m"
+            ci_warn "Download cache: ${dl_state}"
           else
-            echo -e "\033[32m✓ Download cache: ${dl_state}\033[0m"
+            ci_success "Download cache: ${dl_state}"
           fi
           if [ "$build_state" = 'miss' ]; then
-            echo -e "\033[33m⚠ Build cache: ${build_state}\033[0m"
+            ci_warn "Build cache: ${build_state}"
           else
-            echo -e "\033[32m✓ Build cache: ${build_state}\033[0m"
+            ci_success "Build cache: ${build_state}"
           fi
 
           echo "::group::Restore cache timestamps"
@@ -257,8 +288,7 @@ jobs:
           "$GITHUB_WORKSPACE/Router/Scripts/Packages.sh"
           "$GITHUB_WORKSPACE/Router/Scripts/Prepare.sh"
           echo "::endgroup::"
-          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
-          echo -e "\033[32m✓ Sources prepared\033[0m"
+          ci_success_section "Sources prepared"
 
           echo "::group::Generate .config"
           cat "$GITHUB_WORKSPACE/Router/Config/General.txt" >> .config
@@ -266,8 +296,7 @@ jobs:
           "$GITHUB_WORKSPACE/Router/Scripts/Settings.sh"
           make defconfig -j"$(nproc)"
           echo "::endgroup::"
-          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
-          echo -e "\033[32m✓ Router config applied\033[0m"
+          ci_success_section "Router config applied"
 
           list_suspicious_files() {
             find dl -maxdepth 1 -type f -size -1024c | sort
@@ -282,15 +311,14 @@ jobs:
             download_jobs=16
           fi
 
-          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
-          echo -e "\033[36m● Downloading source archives\033[0m"
+          ci_section "Downloading source archives"
           echo "::group::Download source archives"
           make download -j"$download_jobs"
           echo "::endgroup::"
 
           bad_files=$(count_suspicious_files)
           if [ "$bad_files" -gt 0 ]; then
-            echo -e "\033[33m⚠ Found ${bad_files} suspicious root-level download files smaller than 1 KB\033[0m"
+            ci_warn "Found ${bad_files} suspicious root-level download files smaller than 1 KB"
             while IFS= read -r file; do
               [ -n "$file" ] || continue
               ls -l "$file"
@@ -307,36 +335,35 @@ jobs:
                 [ -n "$file" ] || continue
                 ls -l "$file"
               done < <(list_suspicious_files)
-              echo -e "\033[31m✗ Download retry still found ${remaining_bad_files} suspicious root-level files smaller than 1 KB\033[0m"
+              ci_error "Download retry still found ${remaining_bad_files} suspicious root-level files smaller than 1 KB"
               exit 1
             fi
 
-            echo -e "\033[33m⚠ Suspicious files removed and successfully re-downloaded\033[0m"
+            ci_warn "Suspicious files removed and successfully re-downloaded"
           else
-            echo -e "\033[32m✓ All downloaded source archives look valid\033[0m"
+            ci_success "All downloaded source archives look valid"
           fi
 
       - name: Compile Firmware
         working-directory: ./wrt
         run: |
-          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
-          echo -e "\033[36m● Starting parallel build with $(nproc) jobs\033[0m"
+          ci_section "Starting parallel build with $(nproc) jobs"
+          compile_failed=false
           echo "::group::Parallel build output"
-          make -j"$(nproc)" || compile_failed=true
+          if ! make -j"$(nproc)"; then
+            compile_failed=true
+          fi
           echo "::endgroup::"
 
           if [ "$compile_failed" = true ]; then
-            echo -e "\033[33m══════════════════════════════════════════════════\033[0m"
-            echo -e "\033[33m⚠ Parallel build failed, retrying with make -j1 V=s\033[0m"
+            ci_warn_section "Parallel build failed, retrying with make -j1 V=s"
             echo "::group::Verbose retry"
             make -j1 V=s
             echo "::endgroup::"
 
-            echo -e "\033[33m══════════════════════════════════════════════════\033[0m"
-            echo -e "\033[33m⚠ Build succeeded after verbose retry\033[0m"
+            ci_warn_section "Build succeeded after verbose retry"
           else
-            echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
-            echo -e "\033[32m✓ Build succeeded on the first pass\033[0m"
+            ci_success_section "Build succeeded on the first pass"
           fi
 
           echo "BUILD_OK=true" >> "$GITHUB_ENV"
@@ -389,8 +416,7 @@ jobs:
           echo "FIRMWARE_NAME=$firmware_name" >> "$GITHUB_ENV"
           echo "::endgroup::"
 
-          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
-          echo -e "\033[32m✓ Firmware ready: $firmware_name ($build_duration)\033[0m"
+          ci_success_section "Firmware ready: $firmware_name ($build_duration)"
 
           echo "::group::Upload firmware"
           rclone copy "${{ github.workspace }}/wrt/upload/" remote:/OpenWrt/ \
@@ -399,7 +425,7 @@ jobs:
             --stats-one-line \
             --stats=20s
           echo "::endgroup::"
-          echo -e "\033[32m✓ Firmware uploaded to remote:/OpenWrt/\033[0m"
+          ci_success "Firmware uploaded to remote:/OpenWrt/"
 
           echo "::group::Send notification"
           curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
@@ -420,7 +446,7 @@ jobs:
           - 🔗 Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
             -d parse_mode=Markdown >/dev/null 2>&1
           echo "::endgroup::"
-          echo -e "\033[32m✓ Notification sent\033[0m"
+          ci_success "Notification sent"
 
       - name: Purge Stale Caches
         if: env.BUILD_OK == 'true'
@@ -431,14 +457,14 @@ jobs:
             gh cache list --key 'toolchain-x86-64-' --json id,key | \
               jq -r '.[] | select(.key != "toolchain-x86-64-${{ env.WRT_HASH }}") | .id' | \
               xargs -I {} gh cache delete {} 2>/dev/null || true
-            echo -e "\033[32m✓ Old build caches purged\033[0m"
+            ci_success "Old build caches purged"
           fi
 
           if [ '${{ steps.cache-dl.outputs.cache-hit }}' != 'true' ]; then
             gh cache list --key 'wrt-dl-' --json id,key | \
               jq -r '.[] | select(.key != "wrt-dl-${{ env.WRT_BRANCH }}-${{ env.CACHE_BUCKET }}") | .id' | \
               xargs -I {} gh cache delete {} 2>/dev/null || true
-            echo -e "\033[32m✓ Old download caches purged\033[0m"
+            ci_success "Old download caches purged"
           fi
 
       - name: Delete Old Releases And Workflows
