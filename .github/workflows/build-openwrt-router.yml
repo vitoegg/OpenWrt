@@ -319,12 +319,6 @@ jobs:
       - name: Compile Firmware
         working-directory: ./wrt
         run: |
-          echo "::group::Initialize ccache"
-          if command -v ccache >/dev/null 2>&1; then
-            ccache -z || true
-          fi
-          echo "::endgroup::"
-
           echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
           echo -e "\033[36m● Starting parallel build with $(nproc) jobs\033[0m"
           echo "::group::Parallel build output"
@@ -395,12 +389,6 @@ jobs:
           echo "FIRMWARE_NAME=$firmware_name" >> "$GITHUB_ENV"
           echo "::endgroup::"
 
-          if command -v ccache >/dev/null 2>&1; then
-            echo "::group::ccache stats"
-            ccache -s || true
-            echo "::endgroup::"
-          fi
-
           echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
           echo -e "\033[32m✓ Firmware ready: $firmware_name ($build_duration)\033[0m"
 
@@ -433,6 +421,25 @@ jobs:
             -d parse_mode=Markdown >/dev/null 2>&1
           echo "::endgroup::"
           echo -e "\033[32m✓ Notification sent\033[0m"
+
+      - name: Purge Stale Caches
+        if: env.BUILD_OK == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ '${{ steps.cache-build.outputs.cache-hit }}' != 'true' ]; then
+            gh cache list --key 'toolchain-x86-64-' --json id,key | \
+              jq -r '.[] | select(.key != "toolchain-x86-64-${{ env.WRT_HASH }}") | .id' | \
+              xargs -I {} gh cache delete {} 2>/dev/null || true
+            echo -e "\033[32m✓ Old build caches purged\033[0m"
+          fi
+
+          if [ '${{ steps.cache-dl.outputs.cache-hit }}' != 'true' ]; then
+            gh cache list --key 'wrt-dl-' --json id,key | \
+              jq -r '.[] | select(.key != "wrt-dl-${{ env.WRT_BRANCH }}-${{ env.CACHE_BUCKET }}") | .id' | \
+              xargs -I {} gh cache delete {} 2>/dev/null || true
+            echo -e "\033[32m✓ Old download caches purged\033[0m"
+          fi
 
       - name: Delete Old Releases And Workflows
         if: always()
