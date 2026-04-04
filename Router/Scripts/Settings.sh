@@ -253,6 +253,11 @@ uci set dhcp.@host[-1].dns="1"
 uci set dhcp.@host[-1].leasetime='infinite'
 uci commit dhcp
 
+# Disable Flow Offloading
+uci del firewall.@defaults[0].flow_offloading
+uci del firewall.@defaults[0].flow_offloading_hw
+uci commit firewall
+
 # Enable Transmit Firewall
 uci add firewall redirect
 uci set firewall.@redirect[-1].name='Transmit'
