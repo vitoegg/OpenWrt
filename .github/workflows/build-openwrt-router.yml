@@ -126,9 +126,7 @@ jobs:
           sudo -E timedatectl set-timezone "Asia/Shanghai"
           echo "::endgroup::"
 
-      - name: Create Build Workspace
-        run: |
-          echo "::group::Create volume group"
+          echo "::group::Create workspace"
           mnt_size=$(df -BG /mnt | awk 'END {gsub(/G/, "", $4); print $4}')
           root_size=$(df -BG / | awk 'END {gsub(/G/, "", $4); print $4 - 2}')
           sudo truncate -s "${mnt_size}G" /mnt/mnt.img
@@ -140,9 +138,6 @@ jobs:
           sudo vgcreate github "$loop_mnt" "$loop_root"
           sudo lvcreate -n runner -l 100%FREE github
           sudo mkfs.xfs /dev/github/runner
-          echo "::endgroup::"
-
-          echo "::group::Mount workspace"
           sudo mkdir -p /builder
           sudo mount /dev/github/runner /builder
           sudo chown -R "$USER:$(id -gn)" /builder
@@ -150,18 +145,17 @@ jobs:
           ln -s /builder "$GITHUB_WORKSPACE/wrt"
           df -Th
           echo "::endgroup::"
-          echo "::notice::Build workspace mounted at /builder"
 
-      - name: Init Build Context
-        run: |
+          echo "::group::Init build context"
           echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
           echo "CACHE_BUCKET=$(date -u +%G%V)" >> "$GITHUB_ENV"
           echo "TAG_TIME=$(TZ=UTC-8 date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
           echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
-
-          echo "::group::Prepare script files"
           find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
           echo "::endgroup::"
+
+          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+          echo -e "\033[32m✓ Runner ready\033[0m"
 
       - name: Clone Source
         run: |
@@ -186,7 +180,8 @@ jobs:
           fi
 
           echo "::endgroup::"
-          echo "::notice::Upstream commit: $wrt_hash"
+          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+          echo -e "\033[36m✓ Upstream commit: $wrt_hash\033[0m"
 
       - name: Restore Download Cache
         id: cache-dl
@@ -210,7 +205,8 @@ jobs:
             ./wrt/staging_dir/host*
             ./wrt/staging_dir/tool*
 
-      - name: Report Cache Status
+      - name: Prepare Build
+        working-directory: ./wrt
         run: |
           cache_state() {
             case "$1" in
@@ -229,55 +225,49 @@ jobs:
           dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
           build_state=$(cache_state '${{ steps.cache-build.outputs.cache-hit }}')
 
+          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
           if [ "$dl_state" = 'miss' ]; then
-            echo "::warning::Download cache: ${dl_state}"
+            echo -e "\033[33m⚠ Download cache: ${dl_state}\033[0m"
           else
-            echo "::notice::Download cache: ${dl_state}"
+            echo -e "\033[32m✓ Download cache: ${dl_state}\033[0m"
           fi
           if [ "$build_state" = 'miss' ]; then
-            echo "::warning::Build cache: ${build_state}"
+            echo -e "\033[33m⚠ Build cache: ${build_state}\033[0m"
           else
-            echo "::notice::Build cache: ${build_state}"
+            echo -e "\033[32m✓ Build cache: ${build_state}\033[0m"
           fi
 
           echo "::group::Restore cache timestamps"
-          if [ -d "./wrt/staging_dir" ]; then
-            find ./wrt/staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
+          if [ -d "./staging_dir" ]; then
+            find ./staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
               find "$dir" -type f -exec touch {} +
             done
-            mkdir -p ./wrt/tmp
-            echo '1' > ./wrt/tmp/.build
+            mkdir -p ./tmp
+            echo '1' > ./tmp/.build
           fi
           echo "::endgroup::"
 
-      - name: Prepare Sources
-        working-directory: ./wrt
-        run: |
           echo "::group::Update feeds"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
           echo "::endgroup::"
 
-          echo "::group::Apply custom packages and files"
+          echo "::group::Custom packages and files"
           "$GITHUB_WORKSPACE/Router/Scripts/Packages.sh"
           "$GITHUB_WORKSPACE/Router/Scripts/Prepare.sh"
           echo "::endgroup::"
-          echo "::notice::Sources prepared"
+          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+          echo -e "\033[32m✓ Sources prepared\033[0m"
 
-      - name: Apply Router Config
-        working-directory: ./wrt
-        run: |
           echo "::group::Generate .config"
           cat "$GITHUB_WORKSPACE/Router/Config/General.txt" >> .config
           cat "$GITHUB_WORKSPACE/Router/Config/Custom.txt" >> .config
           "$GITHUB_WORKSPACE/Router/Scripts/Settings.sh"
           make defconfig -j"$(nproc)"
           echo "::endgroup::"
-          echo "::notice::Router config applied"
+          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+          echo -e "\033[32m✓ Router config applied\033[0m"
 
-      - name: Download Sources
-        working-directory: ./wrt
-        run: |
           list_suspicious_files() {
             find dl -maxdepth 1 -type f -size -1024c | sort
           }
@@ -291,14 +281,15 @@ jobs:
             download_jobs=16
           fi
 
-          echo "::notice::Downloading source archives"
+          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+          echo -e "\033[36m● Downloading source archives\033[0m"
           echo "::group::Download source archives"
           make download -j"$download_jobs"
           echo "::endgroup::"
 
           bad_files=$(count_suspicious_files)
           if [ "$bad_files" -gt 0 ]; then
-            echo "::warning::Found ${bad_files} suspicious root-level download files smaller than 1 KB"
+            echo -e "\033[33m⚠ Found ${bad_files} suspicious root-level download files smaller than 1 KB\033[0m"
             while IFS= read -r file; do
               [ -n "$file" ] || continue
               ls -l "$file"
@@ -315,18 +306,16 @@ jobs:
                 [ -n "$file" ] || continue
                 ls -l "$file"
               done < <(list_suspicious_files)
-              echo "::error::Download retry still found ${remaining_bad_files} suspicious root-level files smaller than 1 KB"
+              echo -e "\033[31m✗ Download retry still found ${remaining_bad_files} suspicious root-level files smaller than 1 KB\033[0m"
               exit 1
             fi
 
-            echo "::warning::Suspicious root-level download files were removed and successfully re-downloaded"
+            echo -e "\033[33m⚠ Suspicious files removed and successfully re-downloaded\033[0m"
           else
-            echo "::notice::All downloaded source archives look valid"
+            echo -e "\033[32m✓ All downloaded source archives look valid\033[0m"
           fi
 
       - name: Compile Firmware
-        id: compile
-        continue-on-error: true
         working-directory: ./wrt
         run: |
           echo "::group::Initialize ccache"
@@ -335,45 +324,49 @@ jobs:
           fi
           echo "::endgroup::"
 
-          echo "::notice::Starting parallel build with $(nproc) jobs"
+          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+          echo -e "\033[36m● Starting parallel build with $(nproc) jobs\033[0m"
           echo "::group::Parallel build output"
+          set +eo pipefail
           make -j"$(nproc)" 2>&1 | tee build.log
-          echo "::endgroup::"
-          echo "::notice::Parallel build completed"
-
-      - name: Retry With Verbose Logs
-        id: retry
-        if: steps.compile.outcome == 'failure'
-        continue-on-error: true
-        working-directory: ./wrt
-        run: |
-          echo "::warning::Parallel build failed, retrying with make -j1 V=s"
-          echo "::group::Last 200 lines from parallel build"
-          tail -n 200 build.log || true
-          echo "::endgroup::"
-          echo "::group::Verbose retry"
-          make -j1 V=s 2>&1 | tee -a build.log
+          compile_rc=${PIPESTATUS[0]}
+          set -eo pipefail
           echo "::endgroup::"
 
-      - name: Resolve Build Result
-        if: always() && !cancelled()
-        run: |
-          compile_outcome='${{ steps.compile.outcome }}'
-          retry_outcome='${{ steps.retry.outcome }}'
+          if [ "$compile_rc" -ne 0 ]; then
+            echo -e "\033[33m══════════════════════════════════════════════════\033[0m"
+            echo -e "\033[33m⚠ Parallel build failed, retrying with make -j1 V=s\033[0m"
+            echo "::group::Last 200 lines from parallel build"
+            tail -n 200 build.log || true
+            echo "::endgroup::"
+            echo "::group::Verbose retry"
+            set +eo pipefail
+            make -j1 V=s 2>&1 | tee -a build.log
+            retry_rc=${PIPESTATUS[0]}
+            set -eo pipefail
+            echo "::endgroup::"
 
-          if [ "$compile_outcome" = "success" ] || [ "$retry_outcome" = "success" ]; then
-            echo "BUILD_OK=true" >> "$GITHUB_ENV"
-            if [ "$retry_outcome" = "success" ]; then
-              echo "::warning::Build succeeded after verbose retry"
-            else
-              echo "::notice::Build succeeded on the first pass"
+            if [ "$retry_rc" -ne 0 ]; then
+              echo -e "\033[31m══════════════════════════════════════════════════\033[0m"
+              echo -e "\033[31m✗ Build failed in both parallel build and verbose retry\033[0m"
+              exit 1
             fi
+            echo -e "\033[33m══════════════════════════════════════════════════\033[0m"
+            echo -e "\033[33m⚠ Build succeeded after verbose retry\033[0m"
           else
-            echo "::error::Build failed in both parallel build and verbose retry"
-            exit 1
+            echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+            echo -e "\033[32m✓ Build succeeded on the first pass\033[0m"
           fi
 
-      - name: Package Firmware And Collect Metadata
+          echo "BUILD_OK=true" >> "$GITHUB_ENV"
+
+      - name: Setup Rclone
+        if: env.BUILD_OK == 'true'
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: Package And Deliver
         if: env.BUILD_OK == 'true'
         working-directory: ./wrt
         run: |
@@ -421,17 +414,9 @@ jobs:
             echo "::endgroup::"
           fi
 
-          echo "::notice::Firmware ready: $firmware_name ($build_duration)"
+          echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
+          echo -e "\033[32m✓ Firmware ready: $firmware_name ($build_duration)\033[0m"
 
-      - name: Setup Rclone
-        if: env.BUILD_OK == 'true'
-        uses: AnimMouse/setup-rclone@v1
-        with:
-          rclone_config: ${{ secrets.RCLONE_CONFIG }}
-
-      - name: Upload Firmware
-        if: env.BUILD_OK == 'true'
-        run: |
           echo "::group::Upload firmware"
           rclone copy "${{ github.workspace }}/wrt/upload/" remote:/OpenWrt/ \
             --include "*.img.gz" \
@@ -439,11 +424,9 @@ jobs:
             --stats-one-line \
             --stats=20s
           echo "::endgroup::"
-          echo "::notice::Firmware uploaded to remote:/OpenWrt/"
+          echo -e "\033[32m✓ Firmware uploaded to remote:/OpenWrt/\033[0m"
 
-      - name: Send Telegram Message
-        if: env.BUILD_OK == 'true'
-        run: |
+          echo "::group::Send notification"
           curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
             -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
             -d photo='https://mirror.1991991.xyz/Picture/openwrt.webp' \
@@ -453,14 +436,16 @@ jobs:
 
           - 🛠 Hardware: ${{ env.HARDWARE_MODEL }}
 
-          - 🌐 Kernel: ${{ env.KERNEL_PATCHVER }}
+          - 🌐 Kernel: ${kernel_ver}
 
-          - 📦 LuCI: ${{ env.LUCI_VERSION }}
+          - 📦 LuCI: ${luci_ver}
 
-          - ⌛ Build Duration: ${{ env.BUILD_DURATION }}
+          - ⌛ Build Duration: ${build_duration}
 
           - 🔗 Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
             -d parse_mode=Markdown >/dev/null 2>&1
+          echo "::endgroup::"
+          echo -e "\033[32m✓ Notification sent\033[0m"
 
       - name: Delete Old Releases And Workflows
         if: always()
