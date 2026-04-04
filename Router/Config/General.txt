@@ -1,22 +1,41 @@
-# Target Platform
+# Target
 CONFIG_TARGET_x86=y
 CONFIG_TARGET_x86_64=y
 
-# Build Options
+# Build
 CONFIG_CCACHE=y
-CONFIG_DEVEL=y
-CONFIG_TARGET_ROOTFS_INITRAMFS=n
 
-# Firmware Image
+# Images
 CONFIG_GRUB_EFI_IMAGES=y
 CONFIG_TARGET_ROOTFS_SQUASHFS=y
+CONFIG_TARGET_ROOTFS_INITRAMFS=n
 CONFIG_TARGET_ROOTFS_EXT4FS=n
 
-# SSL Certificates
+# Certificates
 CONFIG_PACKAGE_ca-bundle=y
 CONFIG_PACKAGE_ca-certificates=y
 
-# Ethernet NIC Drivers (x86 common adapters)
+# LuCI
+CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_luci-base=y
+CONFIG_LUCI_LANG_zh_Hans=y
+CONFIG_PACKAGE_luci-proto-ipv6=y
+CONFIG_PACKAGE_luci-proto-ppp=y
+CONFIG_PACKAGE_default-settings=y
+CONFIG_PACKAGE_default-settings-chn=y
+
+# DNS
+CONFIG_PACKAGE_dnsmasq-full=y
+CONFIG_PACKAGE_dnsmasq_full_ipset=y
+
+# Firewall
+CONFIG_PACKAGE_firewall4=y
+CONFIG_PACKAGE_nat6=y
+CONFIG_PACKAGE_kmod-nft-fullcone=y
+CONFIG_PACKAGE_kmod-tls=y
+CONFIG_PACKAGE_kmod-tun=y
+
+# NIC Drivers
 CONFIG_PACKAGE_kmod-e1000=y
 CONFIG_PACKAGE_kmod-e1000e=y
 CONFIG_PACKAGE_kmod-i40e=y
@@ -29,32 +48,21 @@ CONFIG_PACKAGE_kmod-r8125=y
 CONFIG_PACKAGE_kmod-r8126=y
 CONFIG_PACKAGE_kmod-r8168=y
 
-# Hardware Monitoring
+# Hwmon
 CONFIG_PACKAGE_kmod-hwmon-core=y
 CONFIG_PACKAGE_kmod-hwmon-coretemp=y
 
-# Traffic Shaping
-CONFIG_PACKAGE_kmod-sched-cake=y
-CONFIG_PACKAGE_kmod-tcp-bbr=y
-
-# Firewall
-CONFIG_PACKAGE_firewall4=y
-CONFIG_PACKAGE_nat6=y
-CONFIG_PACKAGE_kmod-nft-fullcone=y
-CONFIG_PACKAGE_kmod-tls=y
-CONFIG_PACKAGE_kmod-tun=y
-
-# File System Kernel Modules
+# Storage FS
 CONFIG_PACKAGE_kmod-fs-ext4=y
 CONFIG_PACKAGE_kmod-fs-exfat=y
 CONFIG_PACKAGE_kmod-fs-ntfs3=y
 CONFIG_PACKAGE_kmod-fs-vfat=y
 
-# USB Controller
+# USB Core
 CONFIG_PACKAGE_kmod-usb3=y
 CONFIG_PACKAGE_kmod-usb-hid=y
 
-# USB Ethernet
+# USB NIC
 CONFIG_PACKAGE_kmod-usb-net=y
 CONFIG_PACKAGE_kmod-usb-net-asix=y
 CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
@@ -73,16 +81,21 @@ CONFIG_PACKAGE_cfdisk=y
 CONFIG_PACKAGE_lsblk=y
 CONFIG_PACKAGE_parted=y
 
-# File System Utilities
+# FS Tools
 CONFIG_PACKAGE_e2fsprogs=y
 CONFIG_PACKAGE_ntfs3-mount=y
 CONFIG_PACKAGE_resize2fs=y
 
-# DNS
-CONFIG_PACKAGE_dnsmasq-full=y
-CONFIG_PACKAGE_dnsmasq_full_ipset=y
+# Library Opts
+CONFIG_ZLIB_OPTIMIZE_SPEED=y
+CONFIG_OPENSSL_OPTIMIZE_SPEED=y
+CONFIG_OPENSSL_WITH_ASM=y
 
-# System Utilities
+# Traffic Control
+CONFIG_PACKAGE_kmod-sched-cake=y
+CONFIG_PACKAGE_kmod-tcp-bbr=y
+
+# Optional Tools
 CONFIG_PACKAGE_autocore=y
 CONFIG_PACKAGE_htop=y
 CONFIG_PACKAGE_lm-sensors=y
@@ -90,27 +103,9 @@ CONFIG_PACKAGE_usbutils=y
 CONFIG_PACKAGE_irqbalance=y
 CONFIG_PACKAGE_ethtool=y
 CONFIG_PACKAGE_ip-full=y
-
-# ZLIB
-CONFIG_ZLIB_OPTIMIZE_SPEED=y
-
-# LuCI Interface
-CONFIG_PACKAGE_luci=y
-CONFIG_PACKAGE_luci-base=y
-CONFIG_LUCI_LANG_zh_Hans=y
-CONFIG_PACKAGE_luci-proto-ipv6=y
-CONFIG_PACKAGE_luci-proto-ppp=y
-CONFIG_PACKAGE_default-settings=y
-CONFIG_PACKAGE_default-settings-chn=y
-
-# Network Utilities
 CONFIG_PACKAGE_bash=y
 CONFIG_PACKAGE_unzip=y
 CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_wget-ssl=y
-
-# SFTP Server
 CONFIG_PACKAGE_openssh-sftp-server=y
-
-# Timezone Data
 CONFIG_PACKAGE_zoneinfo-asia=y
