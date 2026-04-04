@@ -159,7 +159,9 @@ jobs:
           echo "TAG_TIME=$(TZ=UTC-8 date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
           echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
 
+          echo "::group::Prepare script files"
           find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
+          echo "::endgroup::"
 
       - name: Clone Source
         run: |
@@ -227,13 +229,18 @@ jobs:
           dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
           build_state=$(cache_state '${{ steps.cache-build.outputs.cache-hit }}')
 
-          echo "::notice::Download cache: ${dl_state}"
+          if [ "$dl_state" = 'miss' ]; then
+            echo "::warning::Download cache: ${dl_state}"
+          else
+            echo "::notice::Download cache: ${dl_state}"
+          fi
           if [ "$build_state" = 'miss' ]; then
             echo "::warning::Build cache: ${build_state}"
           else
             echo "::notice::Build cache: ${build_state}"
           fi
 
+          echo "::group::Restore cache timestamps"
           if [ -d "./wrt/staging_dir" ]; then
             find ./wrt/staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
               find "$dir" -type f -exec touch {} +
@@ -241,6 +248,7 @@ jobs:
             mkdir -p ./wrt/tmp
             echo '1' > ./wrt/tmp/.build
           fi
+          echo "::endgroup::"
 
       - name: Prepare Sources
         working-directory: ./wrt
@@ -254,6 +262,7 @@ jobs:
           "$GITHUB_WORKSPACE/Router/Scripts/Packages.sh"
           "$GITHUB_WORKSPACE/Router/Scripts/Prepare.sh"
           echo "::endgroup::"
+          echo "::notice::Sources prepared"
 
       - name: Apply Router Config
         working-directory: ./wrt
@@ -264,6 +273,7 @@ jobs:
           "$GITHUB_WORKSPACE/Router/Scripts/Settings.sh"
           make defconfig -j"$(nproc)"
           echo "::endgroup::"
+          echo "::notice::Router config applied"
 
       - name: Download Sources
         working-directory: ./wrt
@@ -281,6 +291,7 @@ jobs:
             download_jobs=16
           fi
 
+          echo "::notice::Downloading source archives"
           echo "::group::Download source archives"
           make download -j"$download_jobs"
           echo "::endgroup::"
@@ -308,7 +319,7 @@ jobs:
               exit 1
             fi
 
-            echo "::notice::Suspicious root-level download files were removed and successfully re-downloaded"
+            echo "::warning::Suspicious root-level download files were removed and successfully re-downloaded"
           else
             echo "::notice::All downloaded source archives look valid"
           fi
@@ -318,12 +329,16 @@ jobs:
         continue-on-error: true
         working-directory: ./wrt
         run: |
+          echo "::group::Initialize ccache"
           if command -v ccache >/dev/null 2>&1; then
             ccache -z || true
           fi
+          echo "::endgroup::"
 
           echo "::notice::Starting parallel build with $(nproc) jobs"
-          make -j"$(nproc)" > build.log 2>&1
+          echo "::group::Parallel build output"
+          make -j"$(nproc)" 2>&1 | tee build.log
+          echo "::endgroup::"
           echo "::notice::Parallel build completed"
 
       - name: Retry With Verbose Logs
@@ -345,41 +360,11 @@ jobs:
         run: |
           compile_outcome='${{ steps.compile.outcome }}'
           retry_outcome='${{ steps.retry.outcome }}'
-          cache_state() {
-            case "$1" in
-              true)
-                printf 'exact-hit'
-                ;;
-              false)
-                printf 'restore-hit'
-                ;;
-              *)
-                printf 'miss'
-                ;;
-            esac
-          }
-
-          dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
-          build_state=$(cache_state '${{ steps.cache-build.outputs.cache-hit }}')
-
-          {
-            echo "## Router Build Summary"
-            echo ""
-            echo "| Item | Value |"
-            echo "| --- | --- |"
-            echo "| Branch | \`$WRT_BRANCH\` |"
-            echo "| Commit | \`$WRT_HASH\` |"
-            echo "| WAN Mode | \`${{ inputs.wan_mode || 'Single WAN' }}\` |"
-            echo "| Download Cache | ${dl_state} |"
-            echo "| Build Cache | ${build_state} |"
-            echo "| Parallel Build | \`$compile_outcome\` |"
-            echo "| Verbose Retry | \`${retry_outcome:-skipped}\` |"
-          } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$compile_outcome" = "success" ] || [ "$retry_outcome" = "success" ]; then
             echo "BUILD_OK=true" >> "$GITHUB_ENV"
             if [ "$retry_outcome" = "success" ]; then
-              echo "::notice::Build succeeded after verbose retry"
+              echo "::warning::Build succeeded after verbose retry"
             else
               echo "::notice::Build succeeded on the first pass"
             fi
@@ -392,6 +377,7 @@ jobs:
         if: env.BUILD_OK == 'true'
         working-directory: ./wrt
         run: |
+          echo "::group::Collect build metadata"
           build_end_time=$(date +%s)
           build_time=$((build_end_time - BUILD_START_TIME))
           build_hours=$((build_time / 3600))
@@ -417,7 +403,9 @@ jobs:
             luci_ver='unknown'
           fi
           echo "LUCI_VERSION=$luci_ver" >> "$GITHUB_ENV"
+          echo "::endgroup::"
 
+          echo "::group::Package firmware"
           firmware_path=$(find ./bin/targets/x86 -type f -name '*-squashfs-combined-efi.img.gz' | head -n1)
           firmware_name="openwrt-router-${TAG_TIME}-x86-64-efi.img.gz"
 
@@ -425,6 +413,7 @@ jobs:
           cp -f ./.config "./upload/router-config-${TAG_TIME}.txt"
           cp -f "$firmware_path" "./upload/$firmware_name"
           echo "FIRMWARE_NAME=$firmware_name" >> "$GITHUB_ENV"
+          echo "::endgroup::"
 
           if command -v ccache >/dev/null 2>&1; then
             echo "::group::ccache stats"
@@ -432,14 +421,7 @@ jobs:
             echo "::endgroup::"
           fi
 
-          echo "::notice::Firmware ready: $firmware_name"
-
-          {
-            echo "| Build Duration | \`$build_duration\` |"
-            echo "| Kernel | \`$kernel_ver\` |"
-            echo "| LuCI | \`$luci_ver\` |"
-            echo "| Artifact | \`$firmware_name\` |"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice::Firmware ready: $firmware_name ($build_duration)"
 
       - name: Setup Rclone
         if: env.BUILD_OK == 'true'
