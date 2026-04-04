@@ -149,7 +149,8 @@ jobs:
           echo "::group::Init build context"
           echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
           echo "CACHE_BUCKET=$(date -u +%G%V)" >> "$GITHUB_ENV"
-          echo "TAG_TIME=$(TZ=UTC-8 date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
+          echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(TZ=Asia/Shanghai date +'%y.%m.%d')" >> "$GITHUB_ENV"
           echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
           find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
           echo "::endgroup::"
@@ -326,31 +327,18 @@ jobs:
 
           echo -e "\033[32m══════════════════════════════════════════════════\033[0m"
           echo -e "\033[36m● Starting parallel build with $(nproc) jobs\033[0m"
-          echo "::group::Parallel build output"
-          set +eo pipefail
-          make -j"$(nproc)" 2>&1 | tee build.log
-          compile_rc=${PIPESTATUS[0]}
-          set -eo pipefail
-          echo "::endgroup::"
+          make -j"$(nproc)" > build.log 2>&1 || compile_failed=true
 
-          if [ "$compile_rc" -ne 0 ]; then
+          if [ "$compile_failed" = true ]; then
             echo -e "\033[33m══════════════════════════════════════════════════\033[0m"
             echo -e "\033[33m⚠ Parallel build failed, retrying with make -j1 V=s\033[0m"
             echo "::group::Last 200 lines from parallel build"
             tail -n 200 build.log || true
             echo "::endgroup::"
             echo "::group::Verbose retry"
-            set +eo pipefail
             make -j1 V=s 2>&1 | tee -a build.log
-            retry_rc=${PIPESTATUS[0]}
-            set -eo pipefail
             echo "::endgroup::"
 
-            if [ "$retry_rc" -ne 0 ]; then
-              echo -e "\033[31m══════════════════════════════════════════════════\033[0m"
-              echo -e "\033[31m✗ Build failed in both parallel build and verbose retry\033[0m"
-              exit 1
-            fi
             echo -e "\033[33m══════════════════════════════════════════════════\033[0m"
             echo -e "\033[33m⚠ Build succeeded after verbose retry\033[0m"
           else

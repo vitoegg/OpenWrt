@@ -114,7 +114,10 @@ sed -i "s/hostname='.*'/hostname='HomeLab'/g" package/base-files/files/bin/confi
 
 # ===== Customize Firmware Version =====
 
-BUILD_DATE=$(TZ=UTC-8 date +'%y.%m.%d')
+if [ -z "$BUILD_DATE" ]; then
+    BUILD_DATE=$(TZ=Asia/Shanghai date +'%y.%m.%d')
+    log "BUILD_DATE not set by workflow, using local: $BUILD_DATE"
+fi
 
 # ===== Remove APK Cheatsheet =====
 
@@ -133,9 +136,7 @@ sed -i "s| %D %V, %C Dave's Guitar| ImmortalWrt $BRANCH_VER · Build $BUILD_DATE
 
 # ===== Customize Firmware Version =====
 
-log "Setting firmware version to: ImmortalWrt @ Build ${BUILD_DATE}"
-sed -i "s/boardinfo.release.description/'ImmortalWrt @ Build ${BUILD_DATE}'/" \
-  feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
+log "Firmware version will be set at first boot via uci-defaults: ImmortalWrt @ Build ${BUILD_DATE}"
 
 # ===== Set CPU Performance Mode =====
 
@@ -192,6 +193,9 @@ log "Generating uci-defaults settings"
 mkdir -p files/etc/uci-defaults
 cat > files/etc/uci-defaults/99-custom-settings <<-SETTINGS
 #!/bin/sh
+
+# Set Firmware Version
+sed -i "s/^DISTRIB_DESCRIPTION=.*/DISTRIB_DESCRIPTION='ImmortalWrt @ Build $BUILD_DATE'/" /etc/openwrt_release
 
 # Set Password
 sed -i 's|root:::0:99999:7:::|root:$ROOT_PASSWORD_HASH:20211:0:99999:7:::|g' /etc/shadow
