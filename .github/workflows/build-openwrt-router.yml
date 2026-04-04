@@ -29,7 +29,13 @@ on:
     - cron: 0 8 6 6 *
     - cron: 0 8 12 12 *
 
-permissions: write-all
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: "build-openwrt-router-${{ github.ref_name }}-${{ inputs.wan_mode || 'Single WAN' }}"
+  cancel-in-progress: true
 
 env:
   WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-25.12' }}
@@ -64,27 +70,30 @@ jobs:
     timeout-minutes: 360
     defaults:
       run:
-        shell: bash
+        shell: bash --noprofile --norc -eo pipefail {0}
 
     steps:
       - name: Checkout Projects
         uses: actions/checkout@v6
 
-      - name: Show System Info
+      - name: Bootstrap Runner
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
+          echo "::group::System snapshot"
           lscpu | grep -E 'name|Core|Thread'
           free -h
           df -Th
           uname -a
+          echo "::endgroup::"
 
-      - name: Free Disk Space
-        run: |
-          sudo swapoff -a
+          echo "::group::Free disk space"
+          sudo swapoff -a || true
           sudo rm -f /swapfile /mnt/swapfile
-          sudo docker image prune -a -f
-          sudo systemctl stop docker
-          sudo snap set system refresh.retain=2
-          sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php*
+          sudo docker image prune -a -f || true
+          sudo systemctl stop docker || true
+          sudo snap set system refresh.retain=2 || true
+          sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php* || true
           sudo apt-get -y autoremove --purge
           sudo apt-get clean
           sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* \
@@ -93,63 +102,76 @@ jobs:
             /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} \
             /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 \
             /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
-          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile}
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile} || true
           rm -rf ~/{.cargo,.dotnet,.rustup}
           df -Th
+          echo "::endgroup::"
 
-      - name: Create Swap
-        run: |
-          sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
+          echo "::group::Create swap"
+          sudo fallocate -l 8G /mnt/swapfile || sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
           sudo chmod 600 /mnt/swapfile
           sudo mkswap /mnt/swapfile
           sudo swapon /mnt/swapfile
           free -h | grep -i swap
+          echo "::endgroup::"
 
-      - name: Initialization Environment
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
+          echo "::group::Install build dependencies"
           sudo -E apt -yqq update
           sudo -E apt -yqq install dos2unix python3-netifaces libfuse-dev ccache jq unzip wget \
             libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
-          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+          sudo bash -c 'bash <(curl -fsSL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
           sudo -E apt -yqq autoremove --purge
           sudo -E apt -yqq clean
           sudo -E systemctl daemon-reload
-          sudo -E timedatectl set-timezone 'Asia/Shanghai'
+          sudo -E timedatectl set-timezone "Asia/Shanghai"
+          echo "::endgroup::"
 
-      - name: Create VG & LV
+      - name: Create Build Workspace
         run: |
-          mnt_size=$(df -h /mnt | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//')
-          root_size=$(expr $(df -h / | tail -1 | awk '{print $4}' | sed 's/[[:alpha:]]//g' | sed 's/\..*//') - 2)
-          sudo truncate -s "${mnt_size}"G /mnt/mnt.img
-          sudo truncate -s "${root_size}"G /root.img
-          sudo losetup /dev/loop6 /mnt/mnt.img
-          sudo losetup /dev/loop7 /root.img
-          sudo pvcreate /dev/loop6
-          sudo pvcreate /dev/loop7
-          sudo vgcreate github /dev/loop6 /dev/loop7
+          echo "::group::Create volume group"
+          mnt_size=$(df -BG /mnt | awk 'END {gsub(/G/, "", $4); print $4}')
+          root_size=$(df -BG / | awk 'END {gsub(/G/, "", $4); print $4 - 2}')
+          sudo truncate -s "${mnt_size}G" /mnt/mnt.img
+          sudo truncate -s "${root_size}G" /root.img
+          loop_mnt=$(sudo losetup -f --show /mnt/mnt.img)
+          loop_root=$(sudo losetup -f --show /root.img)
+          sudo pvcreate "$loop_mnt"
+          sudo pvcreate "$loop_root"
+          sudo vgcreate github "$loop_mnt" "$loop_root"
           sudo lvcreate -n runner -l 100%FREE github
           sudo mkfs.xfs /dev/github/runner
+          echo "::endgroup::"
 
-      - name: Mount Build Directory
-        run: |
+          echo "::group::Mount workspace"
           sudo mkdir -p /builder
           sudo mount /dev/github/runner /builder
           sudo chown -R "$USER:$(id -gn)" /builder
           rm -rf "$GITHUB_WORKSPACE/wrt"
           ln -s /builder "$GITHUB_WORKSPACE/wrt"
           df -Th
+          echo "::endgroup::"
+          echo "::notice::Build workspace mounted at /builder"
 
-      - name: Initialization Values
+      - name: Init Build Context
         run: |
           echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
-          echo "TAG_TIME=$(TZ=UTC-8 date +"%Y%m%d-%H%M")" >> "$GITHUB_ENV"
+          echo "CACHE_BUCKET=$(date -u +%G%V)" >> "$GITHUB_ENV"
+          echo "TAG_TIME=$(TZ=UTC-8 date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
           echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
-          echo "WRT_TARGET=$(grep -m1 -oP '^CONFIG_TARGET_\K[\w]+' "$GITHUB_WORKSPACE/Router/Config/General.txt")" >> "$GITHUB_ENV"
 
-      - name: Clone Code
+          wrt_target=$(sed -n 's/^CONFIG_TARGET_\([A-Za-z0-9]*\)=y$/\1/p' "$GITHUB_WORKSPACE/Router/Config/General.txt" | head -n1)
+          wrt_platform=$(sed -n 's/^CONFIG_TARGET_\([A-Za-z0-9_]*\)=y$/\1/p' "$GITHUB_WORKSPACE/Router/Config/General.txt" | awk '/_/ {print; exit}')
+          if [ -z "$wrt_platform" ]; then
+            wrt_platform="$wrt_target"
+          fi
+          echo "WRT_TARGET=$wrt_target" >> "$GITHUB_ENV"
+          echo "WRT_PLATFORM=$wrt_platform" >> "$GITHUB_ENV"
+
+          find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
+
+      - name: Clone Source
         run: |
+          echo "::group::Clone source"
           if [ -n "$WRT_COMMIT" ]; then
             git init ./wrt
             cd ./wrt
@@ -157,180 +179,289 @@ jobs:
             git fetch --depth=1 origin "$WRT_COMMIT"
             git checkout FETCH_HEAD
           else
-            git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt/
+            git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt
             cd ./wrt
           fi
-          echo "WRT_HASH=$(git log -1 --format='%H')" >> "$GITHUB_ENV"
-          PROJECT_MIRRORS_FILE='./scripts/projectsmirrors.json'
-          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
-            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
+
+          wrt_hash=$(git log -1 --format='%H')
+          echo "WRT_HASH=$wrt_hash" >> "$GITHUB_ENV"
+
+          project_mirrors_file="./scripts/projectsmirrors.json"
+          if [ -f "$project_mirrors_file" ]; then
+            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$project_mirrors_file"
           fi
 
-      - name: Check Scripts
-        run: |
-          find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
+          toolchain_target_makefile="target/linux/${WRT_TARGET}/Makefile"
+          toolchain_signature=$(
+            {
+              printf '%s\n' "$WRT_BRANCH" "$WRT_TARGET" "$WRT_PLATFORM"
+              for file in \
+                include/kernel-version.mk \
+                include/toolchain-build.mk \
+                include/toolchain.mk \
+                toolchain/Makefile \
+                "$toolchain_target_makefile"; do
+                [ -f "$file" ] && sha256sum "$file"
+              done
+            } | sha256sum | cut -d' ' -f1 | cut -c1-16
+          )
+          echo "TOOLCHAIN_SIGNATURE=$toolchain_signature" >> "$GITHUB_ENV"
+          echo "::endgroup::"
+          echo "::notice::Upstream commit: $wrt_hash"
 
-      - name: Check Caches
-        id: check-cache
+      - name: Restore Download Cache
+        id: cache-dl
         uses: actions/cache@v5
         with:
-          key: toolchain-x86-64-${{ env.WRT_HASH }}
-          restore-keys: toolchain-x86-64-
+          key: wrt-dl-${{ env.WRT_BRANCH }}-${{ env.CACHE_BUCKET }}
+          restore-keys: |
+            wrt-dl-${{ env.WRT_BRANCH }}-
+            wrt-dl-
+          path: ./wrt/dl
+
+      - name: Restore Compiler Cache
+        id: cache-ccache
+        uses: actions/cache@v5
+        with:
+          key: wrt-ccache-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-${{ env.CACHE_BUCKET }}-${{ hashFiles('Router/Config/General.txt', 'Router/Config/Custom.txt', 'Router/Scripts/Packages.sh', 'Router/Scripts/Prepare.sh', 'Router/Scripts/Settings.sh') }}
+          restore-keys: |
+            wrt-ccache-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-${{ hashFiles('Router/Config/General.txt', 'Router/Config/Custom.txt', 'Router/Scripts/Packages.sh', 'Router/Scripts/Prepare.sh', 'Router/Scripts/Settings.sh') }}-
+            wrt-ccache-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-
+          path: ./wrt/.ccache
+
+      - name: Restore Toolchain Cache
+        id: cache-toolchain
+        uses: actions/cache@v5
+        with:
+          key: wrt-toolchain-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-${{ env.TOOLCHAIN_SIGNATURE }}
+          restore-keys: |
+            wrt-toolchain-${{ env.WRT_BRANCH }}-${{ env.WRT_PLATFORM }}-
           path: |
-            ./wrt/.ccache
             ./wrt/staging_dir/host*
             ./wrt/staging_dir/tool*
 
-      - name: Update Caches
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Report Cache Status
         run: |
-          if [ -d './wrt/staging_dir' ]; then
-            find './wrt/staging_dir' -type d -name 'stamp' -not -path '*target*' | while read -r dir; do
+          dl_cache='${{ steps.cache-dl.outputs.cache-hit }}'
+          ccache_cache='${{ steps.cache-ccache.outputs.cache-hit }}'
+          toolchain_cache='${{ steps.cache-toolchain.outputs.cache-hit }}'
+
+          cache_label() {
+            if [ "$1" = "true" ]; then
+              printf 'exact-hit'
+            else
+              printf 'restored-or-miss'
+            fi
+          }
+
+          echo "::notice::Cache status | dl=$(cache_label "$dl_cache") | ccache=$(cache_label "$ccache_cache") | toolchain=$(cache_label "$toolchain_cache")"
+
+          if [ -d "./wrt/staging_dir" ]; then
+            find ./wrt/staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
               find "$dir" -type f -exec touch {} +
             done
-            mkdir -p ./wrt/tmp && echo '1' > ./wrt/tmp/.build
-            echo 'toolchain cache ready'
-          else
-            echo 'cache missed'
+            mkdir -p ./wrt/tmp
+            echo '1' > ./wrt/tmp/.build
           fi
 
-          if ${{ steps.check-cache.outputs.cache-hit != 'true' }}; then
-            gh cache list --key 'toolchain-x86-64-' --json id,key | \
-              jq -r '.[] | select(.key != "toolchain-x86-64-${{ env.WRT_HASH }}") | .id' | \
-              xargs -I {} gh cache delete {} 2>/dev/null || true
-            echo 'old caches cleaned'
-          fi
-
-      - name: Update Feeds
+      - name: Prepare Sources
         working-directory: ./wrt
         run: |
+          echo "::group::Update feeds"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          echo "::endgroup::"
 
-      - name: Custom Packages
-        working-directory: ./wrt
-        run: |
+          echo "::group::Apply custom packages and files"
           "$GITHUB_WORKSPACE/Router/Scripts/Packages.sh"
-
-      - name: Prepare Files
-        working-directory: ./wrt
-        run: |
           "$GITHUB_WORKSPACE/Router/Scripts/Prepare.sh"
+          echo "::endgroup::"
 
-      - name: Custom Settings
+      - name: Apply Router Config
         working-directory: ./wrt
         run: |
+          echo "::group::Generate .config"
           cat "$GITHUB_WORKSPACE/Router/Config/General.txt" >> .config
           cat "$GITHUB_WORKSPACE/Router/Config/Custom.txt" >> .config
           "$GITHUB_WORKSPACE/Router/Scripts/Settings.sh"
           make defconfig -j"$(nproc)"
+          echo "::endgroup::"
 
-      - name: Download Packages
+      - name: Download Sources
         working-directory: ./wrt
         run: |
-          make download -j8
-          find dl -size -1024c -exec ls -l {} \;
-          find dl -size -1024c -exec rm -f {} \;
+          download_jobs=$(( $(nproc) * 2 ))
+          if [ "$download_jobs" -gt 16 ]; then
+            download_jobs=16
+          fi
+
+          echo "::group::Download source archives"
+          make download -j"$download_jobs"
+          echo "::endgroup::"
+
+          bad_files=$(find dl -type f -size -1024c | wc -l | tr -d ' ')
+          if [ "$bad_files" -gt 0 ]; then
+            find dl -type f -size -1024c -exec ls -l {} \;
+            find dl -type f -size -1024c -exec rm -f {} \;
+            echo "::warning::Removed ${bad_files} suspicious download files smaller than 1 KB"
+          else
+            echo "::notice::All downloaded source archives look valid"
+          fi
 
       - name: Compile Firmware
-        working-directory: ./wrt
         id: compile
         continue-on-error: true
-        run: |
-          make -j"$(nproc)"
-
-      - name: Verbose Retry on Failure
         working-directory: ./wrt
+        run: |
+          echo "::group::Parallel build"
+          make -j"$(nproc)" 2>&1 | tee build.log
+          echo "::endgroup::"
+
+      - name: Retry With Verbose Logs
         id: retry
         if: steps.compile.outcome == 'failure'
-        run: |
-          make -j1 V=s
-
-      - name: Machine Information
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+        continue-on-error: true
         working-directory: ./wrt
         run: |
-          echo '======================='
-          lscpu | grep -E 'name|Core|Thread'
-          echo '======================='
-          df -h
-          echo '======================='
-          du -h --max-depth=1
-          echo '======================='
+          echo "::warning::Parallel build failed, retrying with make -j1 V=s"
+          echo "::group::Verbose retry"
+          make -j1 V=s 2>&1 | tee -a build.log
+          echo "::endgroup::"
 
-      - name: Package Firmware
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
-        working-directory: ./wrt
+      - name: Resolve Build Result
+        if: always() && !cancelled()
         run: |
-          mkdir -p ./upload
-          cp -f ./.config ./upload/router-config-${TAG_TIME}.txt
-          cp -f ./bin/targets/x86/*/*-squashfs-combined-efi.img.gz ./upload/openwrt-router-${TAG_TIME}-x86-64-efi.img.gz
+          compile_outcome='${{ steps.compile.outcome }}'
+          retry_outcome='${{ steps.retry.outcome }}'
+          dl_cache='${{ steps.cache-dl.outputs.cache-hit }}'
+          ccache_cache='${{ steps.cache-ccache.outputs.cache-hit }}'
+          toolchain_cache='${{ steps.cache-toolchain.outputs.cache-hit }}'
 
-      - name: Collect Build Metadata
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
-        working-directory: ./wrt
-        run: |
-          BUILD_END_TIME=$(date +%s)
-          BUILD_TIME=$((BUILD_END_TIME - BUILD_START_TIME))
-          BUILD_HOURS=$((BUILD_TIME / 3600))
-          BUILD_MINUTES=$(((BUILD_TIME % 3600) / 60))
-          if [ "$BUILD_HOURS" -gt 0 ]; then
-            BUILD_DURATION="${BUILD_HOURS}h${BUILD_MINUTES}min"
+          cache_label() {
+            if [ "$1" = "true" ]; then
+              printf 'exact-hit'
+            else
+              printf 'restored-or-miss'
+            fi
+          }
+
+          {
+            echo "## Router Build Summary"
+            echo ""
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Branch | \`$WRT_BRANCH\` |"
+            echo "| Commit | \`$WRT_HASH\` |"
+            echo "| WAN Mode | \`${{ inputs.wan_mode || 'Single WAN' }}\` |"
+            echo "| Download Cache | $(cache_label "$dl_cache") |"
+            echo "| Compiler Cache | $(cache_label "$ccache_cache") |"
+            echo "| Toolchain Cache | $(cache_label "$toolchain_cache") |"
+            echo "| Parallel Build | \`$compile_outcome\` |"
+            echo "| Verbose Retry | \`${retry_outcome:-skipped}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$compile_outcome" = "success" ] || [ "$retry_outcome" = "success" ]; then
+            echo "BUILD_OK=true" >> "$GITHUB_ENV"
+            if [ "$retry_outcome" = "success" ]; then
+              echo "::notice::Build succeeded after verbose retry"
+            else
+              echo "::notice::Build succeeded on the first pass"
+            fi
           else
-            BUILD_DURATION="${BUILD_MINUTES}min"
+            echo "::error::Build failed in both parallel build and verbose retry"
+            exit 1
           fi
-          echo "BUILD_DURATION=$BUILD_DURATION" >> "$GITHUB_ENV"
 
-          KERNEL_VER=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^kernel - \K[\d\.]+' {} \; | head -1)
-          if [ -z "$KERNEL_VER" ]; then
-            KERNEL_VER=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
+      - name: Package Firmware And Collect Metadata
+        if: env.BUILD_OK == 'true'
+        working-directory: ./wrt
+        run: |
+          build_end_time=$(date +%s)
+          build_time=$((build_end_time - BUILD_START_TIME))
+          build_hours=$((build_time / 3600))
+          build_minutes=$(((build_time % 3600) / 60))
+          if [ "$build_hours" -gt 0 ]; then
+            build_duration="${build_hours}h${build_minutes}min"
+          else
+            build_duration="${build_minutes}min"
           fi
-          echo "KERNEL_PATCHVER=$KERNEL_VER" >> "$GITHUB_ENV"
+          echo "BUILD_DURATION=$build_duration" >> "$GITHUB_ENV"
 
-          LUCI_VER=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^luci-base - .* openwrt-\K[0-9]+\.[0-9]+' {} \; | head -1)
-          if [ -z "$LUCI_VER" ]; then
-            LUCI_VER=$(cd feeds/luci && git rev-parse --abbrev-ref HEAD 2>/dev/null | grep -oP 'openwrt-\K[0-9]+\.[0-9]+')
+          kernel_ver=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^kernel - \K[\d\.]+' {} \; | head -1)
+          if [ -z "$kernel_ver" ]; then
+            kernel_ver=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
           fi
-          if [ -z "$LUCI_VER" ]; then
-            LUCI_VER='unknown'
+          echo "KERNEL_PATCHVER=$kernel_ver" >> "$GITHUB_ENV"
+
+          luci_ver=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^luci-base - .* openwrt-\K[0-9]+\.[0-9]+' {} \; | head -1)
+          if [ -z "$luci_ver" ]; then
+            luci_ver=$(cd feeds/luci && git rev-parse --abbrev-ref HEAD 2>/dev/null | grep -oP 'openwrt-\K[0-9]+\.[0-9]+' || true)
           fi
-          echo "LUCI_VERSION=$LUCI_VER" >> "$GITHUB_ENV"
+          if [ -z "$luci_ver" ]; then
+            luci_ver='unknown'
+          fi
+          echo "LUCI_VERSION=$luci_ver" >> "$GITHUB_ENV"
+
+          firmware_path=$(find ./bin/targets/x86 -type f -name '*-squashfs-combined-efi.img.gz' | head -n1)
+          firmware_name="openwrt-router-${TAG_TIME}-x86-64-efi.img.gz"
+
+          mkdir -p ./upload
+          cp -f ./.config "./upload/router-config-${TAG_TIME}.txt"
+          cp -f "$firmware_path" "./upload/$firmware_name"
+          echo "FIRMWARE_NAME=$firmware_name" >> "$GITHUB_ENV"
+
+          if command -v ccache >/dev/null 2>&1; then
+            echo "::group::ccache stats"
+            ccache -s || true
+            echo "::endgroup::"
+          fi
+
+          echo "::notice::Firmware ready: $firmware_name"
+
+          {
+            echo "| Build Duration | \`$build_duration\` |"
+            echo "| Kernel | \`$kernel_ver\` |"
+            echo "| LuCI | \`$luci_ver\` |"
+            echo "| Artifact | \`$firmware_name\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Rclone
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+        if: env.BUILD_OK == 'true'
         uses: AnimMouse/setup-rclone@v1
         with:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
 
       - name: Upload Firmware
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+        if: env.BUILD_OK == 'true'
         run: |
-          rclone copy ${{ github.workspace }}/wrt/upload/ remote:/OpenWrt/ \
-            --include "*.img.gz" --transfers=1 -v
+          echo "::group::Upload firmware"
+          rclone copy "${{ github.workspace }}/wrt/upload/" remote:/OpenWrt/ \
+            --include "*.img.gz" \
+            --transfers=1 \
+            --stats-one-line \
+            --stats=20s
+          echo "::endgroup::"
+          echo "::notice::Firmware uploaded to remote:/OpenWrt/"
 
       - name: Send Telegram Message
-        if: steps.compile.outcome == 'success' || steps.retry.outcome == 'success'
+        if: env.BUILD_OK == 'true'
         run: |
           curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
             -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
             -d photo='https://mirror.1991991.xyz/Picture/openwrt.webp' \
             --data-urlencode "caption=#OpenWRT #HomeLab #Router
 
-          *🎉 Ready to roll! Dive in! 🎉*
+          *Build Ready*
 
-          - 🛠 Hardware: ${{ env.HARDWARE_MODEL }}
-
-          - 🌐 Kernel: ${{ env.KERNEL_PATCHVER }}
-
-          - 📦 LuCI: ${{ env.LUCI_VERSION }}
-
-          - ⌛ Build Duration: ${{ env.BUILD_DURATION }}
-
-          - 🔗 Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
+          - Hardware: ${{ env.HARDWARE_MODEL }}
+          - Kernel: ${{ env.KERNEL_PATCHVER }}
+          - LuCI: ${{ env.LUCI_VERSION }}
+          - Duration: ${{ env.BUILD_DURATION }}
+          - Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
             -d parse_mode=Markdown >/dev/null 2>&1
 
-      - name: Delete old Releases and Workflows
+      - name: Delete Old Releases And Workflows
+        if: always()
         uses: ophub/delete-releases-workflows@main
         with:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
