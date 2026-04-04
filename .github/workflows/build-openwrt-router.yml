@@ -3,6 +3,14 @@ name: Build-OpenWrt-Router
 on:
   workflow_dispatch:
     inputs:
+      wan_mode:
+        description: 'WAN Mode'
+        required: false
+        type: choice
+        default: 'Dual WAN'
+        options:
+          - 'Single WAN'
+          - 'Dual WAN'
       wrt_branch:
         description: 'ImmortalWrt Branch'
         required: false
@@ -17,14 +25,6 @@ on:
         required: false
         type: string
         default: ''
-      wan_mode:
-        description: 'WAN Mode'
-        required: false
-        type: choice
-        default: 'Single WAN'
-        options:
-          - 'Single WAN'
-          - 'Dual WAN'
   schedule:
     - cron: 0 8 6 6 *
     - cron: 0 8 12 12 *
@@ -34,7 +34,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: "build-openwrt-router-${{ github.ref_name }}-${{ inputs.wan_mode || 'Single WAN' }}"
+  group: "build-openwrt-router-${{ github.ref_name }}-${{ inputs.wan_mode || 'Dual WAN' }}"
   cancel-in-progress: true
 
 env:
@@ -352,7 +352,7 @@ jobs:
             echo "| --- | --- |"
             echo "| Branch | \`$WRT_BRANCH\` |"
             echo "| Commit | \`$WRT_HASH\` |"
-            echo "| WAN Mode | \`${{ inputs.wan_mode || 'Single WAN' }}\` |"
+            echo "| WAN Mode | \`${{ inputs.wan_mode || 'Dual WAN' }}\` |"
             echo "| Download Cache | $(cache_label "$dl_cache") |"
             echo "| Compiler Cache | $(cache_label "$ccache_cache") |"
             echo "| Toolchain Cache | $(cache_label "$toolchain_cache") |"
