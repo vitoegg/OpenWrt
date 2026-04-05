@@ -103,6 +103,8 @@ jobs:
           }
           EOF
 
+          source "$BASH_ENV"
+
           echo "::group::System snapshot"
           lscpu | grep -E 'name|Core|Thread'
           free -h
@@ -257,12 +259,12 @@ jobs:
             ./toolchain \
             ./tools \
             ./include/toolchain*.mk \
-            "./target/linux/$target_board" \
             ./feeds/packages/lang/golang)
           cache_run_suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           dl_cache_prefix="wrt-dl-${WRT_BRANCH}"
           toolchain_cache_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-${toolchain_sig}"
+          toolchain_cache_clean_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-"
 
           echo "TARGET_BOARD=$target_board" >> "$GITHUB_ENV"
           echo "TARGET_SUBTARGET=$target_subtarget" >> "$GITHUB_ENV"
@@ -271,6 +273,7 @@ jobs:
           echo "DL_CACHE_KEY=${dl_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
           echo "TOOLCHAIN_CACHE_PREFIX=$toolchain_cache_prefix" >> "$GITHUB_ENV"
           echo "TOOLCHAIN_CACHE_KEY=${toolchain_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_CACHE_CLEAN_PREFIX=$toolchain_cache_clean_prefix" >> "$GITHUB_ENV"
 
           ci_success_banner
           ci_success "Target detected: ${target_board}/${target_subtarget}"
@@ -444,8 +447,55 @@ jobs:
             ci_success "Old ${label} caches purged"
           }
 
+          purge_latest_cache_by_prefix() {
+            local label="$1"
+            local list_prefix="$2"
+            local save_outcome="$3"
+            local cache_entries
+            local keep_key
+            local stale_ids
+            local cache_count
+            local stale_count
+
+            if [ "$save_outcome" != 'success' ]; then
+              ci_warn "${label} cache save skipped or failed, keeping previous cache"
+              return 0
+            fi
+
+            cache_entries=$(gh cache list --limit 1000 --key "$list_prefix" --json id,key,createdAt | \
+              jq -c --arg list_prefix "$list_prefix" '
+                map(select(.key | startswith($list_prefix))) |
+                sort_by(.createdAt) |
+                reverse
+              ')
+
+            cache_count=$(printf '%s\n' "$cache_entries" | jq 'length')
+            if [ "$cache_count" -eq 0 ]; then
+              ci_warn "No ${label} caches found for prefix ${list_prefix}"
+              return 0
+            fi
+
+            keep_key=$(printf '%s\n' "$cache_entries" | jq -r '.[0].key')
+            stale_ids=$(printf '%s\n' "$cache_entries" | jq -r '.[1:][]?.id')
+            stale_count=$(printf '%s\n' "$cache_entries" | jq '.[1:] | length')
+
+            ci_success "${label} cache retained: ${keep_key}"
+
+            if [ "$stale_count" -eq 0 ]; then
+              ci_success "No stale ${label} caches to purge"
+              return 0
+            fi
+
+            while IFS= read -r cache_id; do
+              [ -n "$cache_id" ] || continue
+              gh cache delete "$cache_id" >/dev/null 2>&1 || true
+            done <<< "$stale_ids"
+
+            ci_success "Old ${label} caches purged: ${stale_count}"
+          }
+
           purge_cache_family 'Download' "${DL_CACHE_PREFIX}" "${DL_CACHE_KEY}" '${{ steps.cache-dl-save.outcome }}'
-          purge_cache_family 'Toolchain' "${TOOLCHAIN_CACHE_PREFIX}" "${TOOLCHAIN_CACHE_KEY}" '${{ steps.cache-toolchain-save.outcome }}'
+          purge_latest_cache_by_prefix 'Toolchain' "${TOOLCHAIN_CACHE_CLEAN_PREFIX}" '${{ steps.cache-toolchain-save.outcome }}'
 
       - name: Setup Rclone
         if: always()
