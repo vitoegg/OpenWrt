@@ -1,16 +1,8 @@
-name: Warm-OpenWrt-Cache
+name: Cache-Maintenance
 
 on:
   workflow_dispatch:
     inputs:
-      wan_mode:
-        description: 'WAN Mode'
-        required: false
-        type: choice
-        default: 'Dual WAN'
-        options:
-          - 'Single WAN'
-          - 'Dual WAN'
       wrt_branch:
         description: 'ImmortalWrt Branch'
         required: false
@@ -20,25 +12,19 @@ on:
           - openwrt-25.12
           - openwrt-24.10
           - master
-      wrt_commit:
-        description: 'ImmortalWrt Commit Hash'
-        required: false
-        type: string
-        default: ''
   schedule:
     - cron: 0 2 * * 0
 
 permissions:
   actions: write
-  contents: read
+  contents: write
 
 concurrency:
-  group: "warm-openwrt-cache-${{ github.ref_name }}-${{ inputs.wan_mode || 'Dual WAN' }}"
+  group: "cache-maintenance-${{ github.ref_name }}-${{ inputs.wrt_branch || 'openwrt-25.12' }}"
   cancel-in-progress: true
 
 env:
   WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-25.12' }}
-  WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
@@ -46,12 +32,7 @@ env:
   PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
   PPPOE_WAN_MAC: ${{ secrets.PPPOE_WAN_MAC }}
   VLAN_ID: ${{ secrets.VLAN_ID }}
-  ENABLE_DUAL_WAN: ${{ inputs.wan_mode == 'Dual WAN' && 'true' || 'false' }}
-  PPPOE_USERNAME_2: ${{ secrets.PPPOE_USERNAME_2 }}
-  PPPOE_PASSWORD_2: ${{ secrets.PPPOE_PASSWORD_2 }}
-  PPPOE_MAC_2: ${{ secrets.PPPOE_MAC_2 }}
-  PPPOE_WAN_MAC_2: ${{ secrets.PPPOE_WAN_MAC_2 }}
-  VLAN_ID_2: ${{ secrets.VLAN_ID_2 }}
+  ENABLE_DUAL_WAN: 'false'
   ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
   LMINI_MAC: ${{ secrets.LMINI_MAC }}
   REDIRECT_SRC_DPORT: ${{ secrets.REDIRECT_SRC_DPORT }}
@@ -62,7 +43,7 @@ env:
 
 jobs:
   warm-cache:
-    name: Warm OpenWrt Cache
+    name: Cache Maintenance
     runs-on: ubuntu-24.04
     timeout-minutes: 240
     env:
@@ -200,16 +181,8 @@ jobs:
       - name: Clone Source
         run: |
           echo "::group::Clone source"
-          if [ -n "$WRT_COMMIT" ]; then
-            git init ./wrt
-            cd ./wrt
-            git remote add origin "$WRT_REPO"
-            git fetch --depth=1 origin "$WRT_COMMIT"
-            git checkout FETCH_HEAD
-          else
-            git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt
-            cd ./wrt
-          fi
+          git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt
+          cd ./wrt
 
           wrt_hash=$(git log -1 --format='%H')
           echo "WRT_HASH=$wrt_hash" >> "$GITHUB_ENV"
@@ -486,3 +459,26 @@ jobs:
 
           purge_cache_family 'Download' "${DL_CACHE_PREFIX}" "${DL_CACHE_KEY}" '${{ steps.cache-dl-save.outcome }}'
           purge_cache_family 'Toolchain' "${TOOLCHAIN_CACHE_PREFIX}" "${TOOLCHAIN_CACHE_KEY}" '${{ steps.cache-toolchain-save.outcome }}'
+
+      - name: Setup Rclone
+        if: always()
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: Check Drive Capacity
+        if: always()
+        run: "rclone about remote:"
+
+      - name: Delete Old Releases And Non-Build Workflows
+        if: always()
+        uses: ophub/delete-releases-workflows@main
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          out_log: false
+          delete_releases: true
+          releases_keep_latest: 0
+          delete_tags: true
+          delete_workflows: true
+          workflows_keep_day: 0
+          workflows_keep_keyword: "Build"
