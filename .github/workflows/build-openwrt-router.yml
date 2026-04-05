@@ -516,7 +516,7 @@ jobs:
           if [ '${{ steps.cache-ccache-save.outcome }}' != 'success' ]; then
             ci_warn "Ccache save skipped or failed, keeping previous cache"
           else
-            cache_entries=$(gh cache list --limit 1000 --key "${CCACHE_CACHE_CLEAN_PREFIX}" --json id,key,createdAt | \
+            cache_entries=$(gh cache list --limit 1000 --repo "$GITHUB_REPOSITORY" --key "${CCACHE_CACHE_CLEAN_PREFIX}" --json id,key,createdAt | \
               jq -c --arg list_prefix "${CCACHE_CACHE_CLEAN_PREFIX}" '
                 map(select(.key | startswith($list_prefix))) |
                 sort_by(.createdAt) |
@@ -538,7 +538,7 @@ jobs:
               else
                 while IFS= read -r cache_id; do
                   [ -n "$cache_id" ] || continue
-                  gh cache delete "$cache_id" >/dev/null 2>&1 || true
+                  gh cache delete "$cache_id" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true
                 done <<< "$stale_ids"
 
                 ci_success "Old ccache entries purged: ${stale_count}"
