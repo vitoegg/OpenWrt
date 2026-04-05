@@ -1,4 +1,4 @@
-name: Build-OpenWrt-Router
+name: Warm-OpenWrt-Cache
 
 on:
   workflow_dispatch:
@@ -26,22 +26,20 @@ on:
         type: string
         default: ''
   schedule:
-    - cron: 0 8 6 6 *
-    - cron: 0 8 12 12 *
+    - cron: 0 2 * * 0
 
 permissions:
   actions: write
-  contents: write
+  contents: read
 
 concurrency:
-  group: "build-openwrt-router-${{ github.ref_name }}-${{ inputs.wan_mode || 'Dual WAN' }}"
+  group: "warm-openwrt-cache-${{ github.ref_name }}-${{ inputs.wan_mode || 'Dual WAN' }}"
   cancel-in-progress: true
 
 env:
   WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-25.12' }}
   WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
-  DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
@@ -61,13 +59,12 @@ env:
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}
-  HARDWARE_MODEL: MINISFORUM UN100D
 
 jobs:
-  build:
-    name: Build OpenWrt Router
+  warm-cache:
+    name: Warm OpenWrt Cache
     runs-on: ubuntu-24.04
-    timeout-minutes: 360
+    timeout-minutes: 240
     env:
       BASH_ENV: /tmp/router-ci.log.env
     defaults:
@@ -194,10 +191,7 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Init build context"
-          echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
-          echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
           echo "BUILD_DATE=$(TZ=Asia/Shanghai date +'%y.%m.%d')" >> "$GITHUB_ENV"
-          echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
           find ./Router -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
           echo "::endgroup::"
 
@@ -294,28 +288,22 @@ jobs:
             ./include/toolchain*.mk \
             "./target/linux/$target_board" \
             ./feeds/packages/lang/golang)
-          config_sig=$(sha256sum .config | cut -c1-16)
           cache_run_suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           dl_cache_prefix="wrt-dl-${WRT_BRANCH}"
           toolchain_cache_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-${toolchain_sig}"
-          ccache_cache_prefix="ccache-${WRT_BRANCH}-${target_board}-${target_subtarget}-${config_sig}"
 
           echo "TARGET_BOARD=$target_board" >> "$GITHUB_ENV"
           echo "TARGET_SUBTARGET=$target_subtarget" >> "$GITHUB_ENV"
           echo "TOOLCHAIN_SIG=$toolchain_sig" >> "$GITHUB_ENV"
-          echo "CONFIG_SIG=$config_sig" >> "$GITHUB_ENV"
           echo "DL_CACHE_PREFIX=$dl_cache_prefix" >> "$GITHUB_ENV"
           echo "DL_CACHE_KEY=${dl_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
           echo "TOOLCHAIN_CACHE_PREFIX=$toolchain_cache_prefix" >> "$GITHUB_ENV"
           echo "TOOLCHAIN_CACHE_KEY=${toolchain_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
-          echo "CCACHE_CACHE_PREFIX=$ccache_cache_prefix" >> "$GITHUB_ENV"
-          echo "CCACHE_CACHE_KEY=${ccache_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
 
           ci_success_banner
           ci_success "Target detected: ${target_board}/${target_subtarget}"
           ci_success "Toolchain signature: ${toolchain_sig}"
-          ci_success "Config signature: ${config_sig}"
 
       - name: Restore Download Cache
         id: cache-dl-restore
@@ -337,15 +325,6 @@ jobs:
             ./wrt/staging_dir/host*
             ./wrt/staging_dir/tool*
 
-      - name: Restore Ccache
-        id: cache-ccache-restore
-        uses: actions/cache/restore@v5
-        with:
-          key: ${{ env.CCACHE_CACHE_KEY }}
-          restore-keys: |
-            ${{ env.CCACHE_CACHE_PREFIX }}-
-          path: ./wrt/.ccache
-
       - name: Report Cache Status
         working-directory: ./wrt
         run: |
@@ -353,6 +332,7 @@ jobs:
             local label="$1"
             local state="$2"
             local prefix="$3"
+            local save_key="$4"
 
             if [ "$state" = 'miss' ]; then
               ci_warn "${label} cache: ${state}"
@@ -361,17 +341,15 @@ jobs:
             fi
 
             ci_success "${label} cache namespace: ${prefix}-"
+            ci_success "${label} cache save key: ${save_key}"
           }
 
           dl_state=$(cache_state '${{ steps.cache-dl-restore.outputs.cache-hit }}')
           toolchain_state=$(cache_state '${{ steps.cache-toolchain-restore.outputs.cache-hit }}')
-          ccache_state=$(cache_state '${{ steps.cache-ccache-restore.outputs.cache-hit }}')
 
           ci_success_banner
-          report_cache_status 'Download' "$dl_state" "${DL_CACHE_PREFIX}"
-          report_cache_status 'Toolchain' "$toolchain_state" "${TOOLCHAIN_CACHE_PREFIX}"
-          report_cache_status 'Ccache' "$ccache_state" "${CCACHE_CACHE_PREFIX}"
-          ci_success "Ccache save key: ${CCACHE_CACHE_KEY}"
+          report_cache_status 'Download' "$dl_state" "${DL_CACHE_PREFIX}" "${DL_CACHE_KEY}"
+          report_cache_status 'Toolchain' "$toolchain_state" "${TOOLCHAIN_CACHE_PREFIX}" "${TOOLCHAIN_CACHE_KEY}"
 
           echo "::group::Restore cache timestamps"
           if [ -d "./staging_dir" ]; then
@@ -383,7 +361,7 @@ jobs:
           fi
           echo "::endgroup::"
 
-      - name: Download Source Archives
+      - name: Warm Download Cache
         working-directory: ./wrt
         run: |
           list_suspicious_files() {
@@ -432,154 +410,79 @@ jobs:
             ci_success "All downloaded source archives look valid"
           fi
 
-      - name: Compile Firmware
+      - name: Warm Toolchain Cache
         working-directory: ./wrt
         run: |
-          ci_section "Starting parallel build with $(nproc) jobs"
-          compile_failed=false
-          echo "::group::Parallel build output"
-          if ! make -j"$(nproc)"; then
-            compile_failed=true
+          ci_section "Starting parallel toolchain warm-up with $(nproc) jobs"
+          toolchain_failed=false
+          echo "::group::Parallel toolchain output"
+          if ! make -j"$(nproc)" tools/install toolchain/install; then
+            toolchain_failed=true
           fi
           echo "::endgroup::"
 
-          if [ "$compile_failed" = true ]; then
-            ci_warn_section "Parallel build failed, retrying with make -j1 V=s"
-            echo "::group::Verbose retry"
-            make -j1 V=s
+          if [ "$toolchain_failed" = true ]; then
+            ci_warn_section "Parallel toolchain warm-up failed, retrying with make -j1 V=s"
+            echo "::group::Verbose toolchain retry"
+            make -j1 V=s tools/install toolchain/install
             echo "::endgroup::"
 
-            ci_warn_section "Build succeeded after verbose retry"
+            ci_warn_section "Toolchain cache warmed after verbose retry"
           else
-            ci_success_section "Build succeeded on the first pass"
+            ci_success_section "Toolchain cache warmed on the first pass"
           fi
 
-          echo "BUILD_OK=true" >> "$GITHUB_ENV"
-
-      - name: Setup Rclone
-        if: env.BUILD_OK == 'true'
-        uses: AnimMouse/setup-rclone@v1
-        with:
-          rclone_config: ${{ secrets.RCLONE_CONFIG }}
-
-      - name: Package And Deliver
-        if: env.BUILD_OK == 'true'
-        working-directory: ./wrt
-        run: |
-          echo "::group::Collect build metadata"
-          build_end_time=$(date +%s)
-          build_time=$((build_end_time - BUILD_START_TIME))
-          build_hours=$((build_time / 3600))
-          build_minutes=$(((build_time % 3600) / 60))
-          if [ "$build_hours" -gt 0 ]; then
-            build_duration="${build_hours}h${build_minutes}min"
-          else
-            build_duration="${build_minutes}min"
-          fi
-          echo "BUILD_DURATION=$build_duration" >> "$GITHUB_ENV"
-
-          kernel_ver=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^kernel - \K[\d\.]+' {} \; | head -1)
-          if [ -z "$kernel_ver" ]; then
-            kernel_ver=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
-          fi
-          echo "KERNEL_PATCHVER=$kernel_ver" >> "$GITHUB_ENV"
-
-          luci_ver=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^luci-base - .* openwrt-\K[0-9]+\.[0-9]+' {} \; | head -1)
-          if [ -z "$luci_ver" ]; then
-            luci_ver=$(cd feeds/luci && git rev-parse --abbrev-ref HEAD 2>/dev/null | grep -oP 'openwrt-\K[0-9]+\.[0-9]+' || true)
-          fi
-          if [ -z "$luci_ver" ]; then
-            luci_ver='unknown'
-          fi
-          echo "LUCI_VERSION=$luci_ver" >> "$GITHUB_ENV"
-          echo "::endgroup::"
-
-          echo "::group::Package firmware"
-          firmware_path=$(find ./bin/targets/x86 -type f -name '*-squashfs-combined-efi.img.gz' | head -n1)
-          firmware_name="openwrt-router-${TAG_TIME}-x86-64-efi.img.gz"
-
-          mkdir -p ./upload
-          cp -f ./.config "./upload/router-config-${TAG_TIME}.txt"
-          cp -f "$firmware_path" "./upload/$firmware_name"
-          echo "FIRMWARE_NAME=$firmware_name" >> "$GITHUB_ENV"
-          echo "::endgroup::"
-
-          ci_success_section "Firmware ready: $firmware_name ($build_duration)"
-
-          echo "::group::Upload firmware"
-          rclone copy "${{ github.workspace }}/wrt/upload/" remote:/OpenWrt/ \
-            --include "*.img.gz" \
-            --transfers=1 \
-            --stats-one-line \
-            --stats=20s
-          echo "::endgroup::"
-          ci_success "Firmware uploaded to remote:/OpenWrt/"
-
-          echo "::group::Send notification"
-          curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
-            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
-            -d photo='https://mirror.1991991.xyz/Picture/openwrt.webp' \
-            --data-urlencode "caption=#OpenWRT #HomeLab #Router
-
-          *🎉 Ready to roll! Dive in! 🎉*
-
-          - 🛠 Hardware: ${{ env.HARDWARE_MODEL }}
-
-          - 🌐 Kernel: ${kernel_ver}
-
-          - 📦 LuCI: ${luci_ver}
-
-          - ⌛ Build Duration: ${build_duration}
-
-          - 🔗 Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
-            -d parse_mode=Markdown >/dev/null 2>&1
-          echo "::endgroup::"
-          ci_success "Notification sent"
-
-      - name: Save Ccache
-        id: cache-ccache-save
-        if: env.BUILD_OK == 'true'
+      - name: Save Download Cache
+        id: cache-dl-save
         continue-on-error: true
         uses: actions/cache/save@v5
         with:
-          key: ${{ env.CCACHE_CACHE_KEY }}
-          path: ./wrt/.ccache
+          key: ${{ env.DL_CACHE_KEY }}
+          path: ./wrt/dl
 
-      - name: Purge Stale Ccache
-        if: env.BUILD_OK == 'true'
+      - name: Save Toolchain Cache
+        id: cache-toolchain-save
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ env.TOOLCHAIN_CACHE_KEY }}
+          path: |
+            ./wrt/staging_dir/host*
+            ./wrt/staging_dir/tool*
+
+      - name: Purge Stale Caches
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ '${{ steps.cache-ccache-save.outcome }}' != 'success' ]; then
-            ci_warn "Ccache save skipped or failed, keeping previous cache"
-            exit 0
-          fi
+          purge_cache_family() {
+            local label="$1"
+            local prefix="$2"
+            local keep_key="$3"
+            local save_outcome="$4"
+            local stale_ids
 
-          ci_success "Ccache saved: ${CCACHE_CACHE_KEY}"
+            if [ "$save_outcome" != 'success' ]; then
+              ci_warn "${label} cache save skipped or failed, keeping previous cache"
+              return 0
+            fi
 
-          stale_ids=$(gh cache list --key "${CCACHE_CACHE_PREFIX}-" --json id,key | \
-            jq -r --arg keep_key "$CCACHE_CACHE_KEY" '.[] | select(.key != $keep_key) | .id')
+            ci_success "${label} cache saved: ${keep_key}"
 
-          if [ -z "$stale_ids" ]; then
-            ci_success "No stale ccache entries to purge"
-            exit 0
-          fi
+            stale_ids=$(gh cache list --key "${prefix}-" --json id,key | \
+              jq -r --arg keep_key "$keep_key" '.[] | select(.key != $keep_key) | .id')
 
-          while IFS= read -r cache_id; do
-            [ -n "$cache_id" ] || continue
-            gh cache delete "$cache_id" >/dev/null 2>&1 || true
-          done <<< "$stale_ids"
+            if [ -z "$stale_ids" ]; then
+              ci_success "No stale ${label} caches to purge"
+              return 0
+            fi
 
-          ci_success "Old ccache entries purged"
+            while IFS= read -r cache_id; do
+              [ -n "$cache_id" ] || continue
+              gh cache delete "$cache_id" >/dev/null 2>&1 || true
+            done <<< "$stale_ids"
 
-      - name: Delete Old Releases And Workflows
-        if: always()
-        uses: ophub/delete-releases-workflows@main
-        with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          out_log: false
-          delete_releases: true
-          releases_keep_latest: 0
-          delete_tags: true
-          delete_workflows: true
-          workflows_keep_day: 0
+            ci_success "Old ${label} caches purged"
+          }
+
+          purge_cache_family 'Download' "${DL_CACHE_PREFIX}" "${DL_CACHE_KEY}" '${{ steps.cache-dl-save.outcome }}'
+          purge_cache_family 'Toolchain' "${TOOLCHAIN_CACHE_PREFIX}" "${TOOLCHAIN_CACHE_KEY}" '${{ steps.cache-toolchain-save.outcome }}'
