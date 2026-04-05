@@ -195,7 +195,6 @@ jobs:
 
           echo "::group::Init build context"
           echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
-          echo "CACHE_BUCKET=$(date -u +%G%V)" >> "$GITHUB_ENV"
           echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
           echo "BUILD_DATE=$(TZ=Asia/Shanghai date +'%y.%m.%d')" >> "$GITHUB_ENV"
           echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
@@ -229,56 +228,9 @@ jobs:
           echo "::endgroup::"
           ci_highlight "Upstream commit: $wrt_hash"
 
-      - name: Restore Download Cache
-        id: cache-dl
-        uses: actions/cache@v5
-        with:
-          key: wrt-dl-${{ env.WRT_BRANCH }}-${{ env.CACHE_BUCKET }}
-          restore-keys: |
-            wrt-dl-${{ env.WRT_BRANCH }}-
-            wrt-dl-
-          path: ./wrt/dl
-
-      - name: Restore Build Cache
-        id: cache-build
-        uses: actions/cache@v5
-        with:
-          key: toolchain-x86-64-${{ env.WRT_HASH }}
-          restore-keys: |
-            toolchain-x86-64-
-          path: |
-            ./wrt/.ccache
-            ./wrt/staging_dir/host*
-            ./wrt/staging_dir/tool*
-
       - name: Prepare Build
         working-directory: ./wrt
         run: |
-          dl_state=$(cache_state '${{ steps.cache-dl.outputs.cache-hit }}')
-          build_state=$(cache_state '${{ steps.cache-build.outputs.cache-hit }}')
-
-          ci_success_banner
-          if [ "$dl_state" = 'miss' ]; then
-            ci_warn "Download cache: ${dl_state}"
-          else
-            ci_success "Download cache: ${dl_state}"
-          fi
-          if [ "$build_state" = 'miss' ]; then
-            ci_warn "Build cache: ${build_state}"
-          else
-            ci_success "Build cache: ${build_state}"
-          fi
-
-          echo "::group::Restore cache timestamps"
-          if [ -d "./staging_dir" ]; then
-            find ./staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
-              find "$dir" -type f -exec touch {} +
-            done
-            mkdir -p ./tmp
-            echo '1' > ./tmp/.build
-          fi
-          echo "::endgroup::"
-
           echo "::group::Update feeds"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
@@ -298,6 +250,166 @@ jobs:
           echo "::endgroup::"
           ci_success_section "Router config applied"
 
+      - name: Compute Cache Metadata
+        working-directory: ./wrt
+        run: |
+          hash_paths() {
+            local path file
+            local found=0
+            local hash_file
+            hash_file=$(mktemp)
+
+            for path in "$@"; do
+              [ -e "$path" ] || continue
+              if [ -d "$path" ]; then
+                while IFS= read -r -d '' file; do
+                  sha256sum "$file" >> "$hash_file"
+                  found=1
+                done < <(find "$path" -type f -print0 | sort -z)
+              else
+                sha256sum "$path" >> "$hash_file"
+                found=1
+              fi
+            done
+
+            if [ "$found" -eq 1 ]; then
+              sha256sum "$hash_file" | cut -c1-16
+            else
+              printf 'none'
+            fi
+
+            rm -f "$hash_file"
+          }
+
+          target_board=$(sed -n 's/^CONFIG_TARGET_BOARD="\([^"]*\)"/\1/p' .config | head -1)
+          target_subtarget=$(sed -n 's/^CONFIG_TARGET_SUBTARGET="\([^"]*\)"/\1/p' .config | head -1)
+
+          if [ -z "$target_board" ]; then
+            target_board='x86'
+          fi
+          if [ -z "$target_subtarget" ]; then
+            target_subtarget='64'
+          fi
+
+          toolchain_sig=$(hash_paths \
+            ./toolchain \
+            ./tools \
+            ./include/toolchain*.mk \
+            "./target/linux/$target_board" \
+            ./feeds/packages/lang/golang)
+          config_sig=$(sha256sum .config | cut -c1-16)
+          cache_run_suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          dl_cache_prefix="wrt-dl-${WRT_BRANCH}"
+          toolchain_cache_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-${toolchain_sig}"
+          ccache_cache_prefix="ccache-${WRT_BRANCH}-${target_board}-${target_subtarget}-${config_sig}"
+
+          echo "TARGET_BOARD=$target_board" >> "$GITHUB_ENV"
+          echo "TARGET_SUBTARGET=$target_subtarget" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_SIG=$toolchain_sig" >> "$GITHUB_ENV"
+          echo "CONFIG_SIG=$config_sig" >> "$GITHUB_ENV"
+          echo "DL_CACHE_PREFIX=$dl_cache_prefix" >> "$GITHUB_ENV"
+          echo "DL_CACHE_KEY=${dl_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_CACHE_PREFIX=$toolchain_cache_prefix" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_CACHE_KEY=${toolchain_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
+          echo "CCACHE_CACHE_PREFIX=$ccache_cache_prefix" >> "$GITHUB_ENV"
+          echo "CCACHE_CACHE_KEY=${ccache_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
+
+          ci_success_banner
+          ci_success "Target detected: ${target_board}/${target_subtarget}"
+          ci_success "Toolchain signature: ${toolchain_sig}"
+          ci_success "Config signature: ${config_sig}"
+
+      - name: Restore Download Cache
+        id: cache-dl-restore
+        uses: actions/cache/restore@v5
+        with:
+          key: ${{ env.DL_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.DL_CACHE_PREFIX }}-
+          path: ./wrt/dl
+
+      - name: Restore Toolchain Cache
+        id: cache-toolchain-restore
+        uses: actions/cache/restore@v5
+        with:
+          key: ${{ env.TOOLCHAIN_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.TOOLCHAIN_CACHE_PREFIX }}-
+          path: |
+            ./wrt/staging_dir/host*
+            ./wrt/staging_dir/tool*
+
+      - name: Restore Ccache
+        id: cache-ccache-restore
+        uses: actions/cache/restore@v5
+        with:
+          key: ${{ env.CCACHE_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.CCACHE_CACHE_PREFIX }}-
+          path: ./wrt/.ccache
+
+      - name: Report Cache Status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ./wrt
+        run: |
+          lookup_cache_key() {
+            local prefix="$1"
+            gh cache list --key "${prefix}-" --json key 2>/dev/null | jq -r '.[0].key // ""'
+          }
+
+          dl_state=$(cache_state '${{ steps.cache-dl-restore.outputs.cache-hit }}')
+          toolchain_state=$(cache_state '${{ steps.cache-toolchain-restore.outputs.cache-hit }}')
+          ccache_state=$(cache_state '${{ steps.cache-ccache-restore.outputs.cache-hit }}')
+
+          dl_restored_key=''
+          toolchain_restored_key=''
+          ccache_restored_key=''
+
+          if [ "$dl_state" != 'miss' ]; then
+            dl_restored_key=$(lookup_cache_key "${DL_CACHE_PREFIX}")
+          fi
+          if [ "$toolchain_state" != 'miss' ]; then
+            toolchain_restored_key=$(lookup_cache_key "${TOOLCHAIN_CACHE_PREFIX}")
+          fi
+          if [ "$ccache_state" != 'miss' ]; then
+            ccache_restored_key=$(lookup_cache_key "${CCACHE_CACHE_PREFIX}")
+          fi
+
+          ci_success_banner
+          if [ "$dl_state" = 'miss' ]; then
+            ci_warn "Download cache: ${dl_state}"
+          else
+            ci_success "Download cache: ${dl_state} (${dl_restored_key})"
+          fi
+          if [ "$toolchain_state" = 'miss' ]; then
+            ci_warn "Toolchain cache: ${toolchain_state}"
+          else
+            ci_success "Toolchain cache: ${toolchain_state} (${toolchain_restored_key})"
+          fi
+          if [ "$ccache_state" = 'miss' ]; then
+            ci_warn "Ccache: ${ccache_state}"
+          else
+            ci_success "Ccache: ${ccache_state} (${ccache_restored_key})"
+          fi
+          ci_success "Download cache save key: ${DL_CACHE_KEY}"
+          ci_success "Toolchain cache save key: ${TOOLCHAIN_CACHE_KEY}"
+          ci_success "Ccache save key: ${CCACHE_CACHE_KEY}"
+
+          echo "::group::Restore cache timestamps"
+          if [ -d "./staging_dir" ]; then
+            find ./staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
+              find "$dir" -type f -exec touch {} +
+            done
+            mkdir -p ./tmp
+            echo '1' > ./tmp/.build
+          fi
+          echo "::endgroup::"
+
+      - name: Download Source Archives
+        working-directory: ./wrt
+        run: |
           list_suspicious_files() {
             find dl -maxdepth 1 -type f -size -1024c | sort
           }
@@ -448,24 +560,73 @@ jobs:
           echo "::endgroup::"
           ci_success "Notification sent"
 
+      - name: Save Download Cache
+        id: cache-dl-save
+        if: env.BUILD_OK == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ env.DL_CACHE_KEY }}
+          path: ./wrt/dl
+
+      - name: Save Toolchain Cache
+        id: cache-toolchain-save
+        if: env.BUILD_OK == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ env.TOOLCHAIN_CACHE_KEY }}
+          path: |
+            ./wrt/staging_dir/host*
+            ./wrt/staging_dir/tool*
+
+      - name: Save Ccache
+        id: cache-ccache-save
+        if: env.BUILD_OK == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ env.CCACHE_CACHE_KEY }}
+          path: ./wrt/.ccache
+
       - name: Purge Stale Caches
         if: env.BUILD_OK == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ '${{ steps.cache-build.outputs.cache-hit }}' != 'true' ]; then
-            gh cache list --key 'toolchain-x86-64-' --json id,key | \
-              jq -r '.[] | select(.key != "toolchain-x86-64-${{ env.WRT_HASH }}") | .id' | \
-              xargs -I {} gh cache delete {} 2>/dev/null || true
-            ci_success "Old build caches purged"
-          fi
+          purge_cache_family() {
+            local label="$1"
+            local prefix="$2"
+            local keep_key="$3"
+            local save_outcome="$4"
+            local stale_ids
 
-          if [ '${{ steps.cache-dl.outputs.cache-hit }}' != 'true' ]; then
-            gh cache list --key 'wrt-dl-' --json id,key | \
-              jq -r '.[] | select(.key != "wrt-dl-${{ env.WRT_BRANCH }}-${{ env.CACHE_BUCKET }}") | .id' | \
-              xargs -I {} gh cache delete {} 2>/dev/null || true
-            ci_success "Old download caches purged"
-          fi
+            if [ "$save_outcome" != 'success' ]; then
+              ci_warn "${label} cache save skipped or failed, keeping previous cache"
+              return 0
+            fi
+
+            ci_success "${label} cache saved: ${keep_key}"
+
+            stale_ids=$(gh cache list --key "${prefix}-" --json id,key | \
+              jq -r --arg keep_key "$keep_key" '.[] | select(.key != $keep_key) | .id')
+
+            if [ -z "$stale_ids" ]; then
+              ci_success "No stale ${label} caches to purge"
+              return 0
+            fi
+
+            while IFS= read -r cache_id; do
+              [ -n "$cache_id" ] || continue
+              gh cache delete "$cache_id" >/dev/null 2>&1 || true
+            done <<< "$stale_ids"
+
+            ci_success "Old ${label} caches purged"
+          }
+
+          purge_cache_family 'Download' "${DL_CACHE_PREFIX}" "${DL_CACHE_KEY}" '${{ steps.cache-dl-save.outcome }}'
+          purge_cache_family 'Toolchain' "${TOOLCHAIN_CACHE_PREFIX}" "${TOOLCHAIN_CACHE_KEY}" '${{ steps.cache-toolchain-save.outcome }}'
+          purge_cache_family 'Ccache' "${CCACHE_CACHE_PREFIX}" "${CCACHE_CACHE_KEY}" '${{ steps.cache-ccache-save.outcome }}'
 
       - name: Delete Old Releases And Workflows
         if: always()
