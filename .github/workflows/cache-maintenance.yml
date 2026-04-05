@@ -53,10 +53,12 @@ jobs:
         shell: bash --noprofile --norc -eo pipefail {0}
 
     steps:
-      - name: Checkout Projects
+      - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Init CI Log Helpers
+      - name: Prepare Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
           cat > "$BASH_ENV" <<'EOF'
           CI_SEPARATOR='══════════════════════════════════════════════════'
@@ -101,10 +103,6 @@ jobs:
           }
           EOF
 
-      - name: Bootstrap Runner
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
           echo "::group::System snapshot"
           lscpu | grep -E 'name|Core|Thread'
           free -h
@@ -178,7 +176,7 @@ jobs:
 
           ci_success_section "Runner ready"
 
-      - name: Clone Source
+      - name: Clone Source and Feeds
         run: |
           echo "::group::Clone source"
           git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt
@@ -195,24 +193,24 @@ jobs:
           echo "::endgroup::"
           ci_highlight "Upstream commit: $wrt_hash"
 
-      - name: Prepare Build
-        working-directory: ./wrt
-        run: |
           echo "::group::Update feeds"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
           echo "::endgroup::"
+          ci_success_section "Feeds ready"
 
-          echo "::group::Custom packages and files"
+      - name: Apply Customizations
+        working-directory: ./wrt
+        run: |
           "$GITHUB_WORKSPACE/Router/Scripts/Packages.sh"
           "$GITHUB_WORKSPACE/Router/Scripts/Prepare.sh"
-          echo "::endgroup::"
           ci_success_section "Sources prepared"
 
-          echo "::group::Generate .config"
           cat "$GITHUB_WORKSPACE/Router/Config/General.txt" >> .config
           cat "$GITHUB_WORKSPACE/Router/Config/Custom.txt" >> .config
           "$GITHUB_WORKSPACE/Router/Scripts/Settings.sh"
+
+          echo "::group::make defconfig"
           make defconfig -j"$(nproc)"
           echo "::endgroup::"
           ci_success_section "Router config applied"
@@ -298,31 +296,23 @@ jobs:
             ./wrt/staging_dir/host*
             ./wrt/staging_dir/tool*
 
-      - name: Report Cache Status
+      - name: Warm Download Cache
         working-directory: ./wrt
         run: |
-          report_cache_status() {
-            local label="$1"
-            local state="$2"
-            local prefix="$3"
-            local save_key="$4"
-
+          report_cache() {
+            local label="$1" state="$2"
             if [ "$state" = 'miss' ]; then
               ci_warn "${label} cache: ${state}"
             else
               ci_success "${label} cache: ${state}"
             fi
-
-            ci_success "${label} cache namespace: ${prefix}-"
-            ci_success "${label} cache save key: ${save_key}"
           }
 
           dl_state=$(cache_state '${{ steps.cache-dl-restore.outputs.cache-hit }}')
           toolchain_state=$(cache_state '${{ steps.cache-toolchain-restore.outputs.cache-hit }}')
 
-          ci_success_banner
-          report_cache_status 'Download' "$dl_state" "${DL_CACHE_PREFIX}" "${DL_CACHE_KEY}"
-          report_cache_status 'Toolchain' "$toolchain_state" "${TOOLCHAIN_CACHE_PREFIX}" "${TOOLCHAIN_CACHE_KEY}"
+          report_cache 'Download' "$dl_state"
+          report_cache 'Toolchain' "$toolchain_state"
 
           echo "::group::Restore cache timestamps"
           if [ -d "./staging_dir" ]; then
@@ -334,9 +324,6 @@ jobs:
           fi
           echo "::endgroup::"
 
-      - name: Warm Download Cache
-        working-directory: ./wrt
-        run: |
           list_suspicious_files() {
             find dl -maxdepth 1 -type f -size -1024c | sort
           }
@@ -470,7 +457,7 @@ jobs:
         if: always()
         run: "rclone about remote:"
 
-      - name: Delete Old Releases And Non-Build Workflows
+      - name: Clean Up
         if: always()
         uses: ophub/delete-releases-workflows@main
         with:
