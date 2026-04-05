@@ -221,7 +221,7 @@ uci set system.@system[0].timezone='CST-8'
 uci set system.@system[0].zonename='Asia/Shanghai'
 uci commit system
 
-# ===== Append exit 0 =====
+SETTINGS
 
 echo "exit 0" >> files/etc/uci-defaults/99-custom-settings
 
