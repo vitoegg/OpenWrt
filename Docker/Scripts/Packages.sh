@@ -64,21 +64,6 @@ CLONE_PKG() {
     log "Cloned $repo ($((SECONDS - start))s)"
 }
 
-# ===== Go Toolchain Upgrade (non-master branches) =====
-
-if [ -n "$WRT_BRANCH" ] && [ "$WRT_BRANCH" != "master" ]; then
-    section "Go Toolchain"
-    log "Upgrading Go toolchain for branch: $WRT_BRANCH"
-    rm -rf feeds/packages/lang/golang
-    if ! git clone --depth=1 --single-branch -b 26.x \
-        https://github.com/sbwml/packages_lang_golang.git \
-        feeds/packages/lang/golang; then
-        log "ERROR: Failed to upgrade Go toolchain"
-        exit 1
-    fi
-    log "Go toolchain upgraded successfully"
-fi
-
 # ===== Package Installation =====
 
 section "Package Installation"
