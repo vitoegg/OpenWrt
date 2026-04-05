@@ -19,7 +19,6 @@ on:
 
 env:
   ENABLE_DUAL_WAN: ${{ inputs.wan_mode == 'Dual WAN' && 'true' || 'false' }}
-  DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}

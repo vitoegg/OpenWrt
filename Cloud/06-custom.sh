@@ -163,7 +163,7 @@ REMOVE_PKG "luci-theme-argon"
 CLONE_PKG "vitoegg/Argon" --name "luci-theme-argon"
 
 # Mio - add personalized ssserver
-CLONE_PKG "vitoegg/Mio" --name "Mio"
+CLONE_PKG "vitoegg/Mio" --name "luci-app-mio"
 
 # Apps not needed in the Cloud version
 REMOVE_PKG \
