@@ -250,34 +250,6 @@ jobs:
           echo "::endgroup::"
           ci_success_section "Router config applied"
 
-          hash_paths() {
-            local path file
-            local found=0
-            local hash_file
-            hash_file=$(mktemp)
-
-            for path in "$@"; do
-              [ -e "$path" ] || continue
-              if [ -d "$path" ]; then
-                while IFS= read -r -d '' file; do
-                  sha256sum "$file" >> "$hash_file"
-                  found=1
-                done < <(find "$path" -type f -print0 | sort -z)
-              else
-                sha256sum "$path" >> "$hash_file"
-                found=1
-              fi
-            done
-
-            if [ "$found" -eq 1 ]; then
-              sha256sum "$hash_file" | cut -c1-16
-            else
-              printf 'none'
-            fi
-
-            rm -f "$hash_file"
-          }
-
           target_board=$(sed -n 's/^CONFIG_TARGET_BOARD="\([^"]*\)"/\1/p' .config | head -1)
           target_subtarget=$(sed -n 's/^CONFIG_TARGET_SUBTARGET="\([^"]*\)"/\1/p' .config | head -1)
 
@@ -288,11 +260,13 @@ jobs:
             target_subtarget='64'
           fi
 
-          toolchain_sig=$(hash_paths \
-            ./toolchain \
-            ./tools \
-            ./include/toolchain*.mk \
-            ./feeds/packages/lang/golang)
+          # Extract toolchain-critical configs from .config for stable cache key
+          # Only GCC/binutils/libc versions truly determine toolchain compatibility
+          toolchain_sig=$(grep -E '^CONFIG_(GCC_VERSION|BINUTILS_VERSION|LIBC)=' .config | sort | sha256sum | cut -c1-12)
+          if [ -z "$toolchain_sig" ] || [ "$toolchain_sig" = "e3b0c44298fc" ]; then
+            # Fallback if no matching configs found (empty input hash)
+            toolchain_sig="default"
+          fi
           config_sig=$(sha256sum .config | cut -c1-16)
           cache_run_suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
