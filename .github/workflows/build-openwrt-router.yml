@@ -39,17 +39,16 @@ concurrency:
 
 env:
   BUILD_PROFILE: Router
+  ENABLE_DUAL_WAN: ${{ inputs.wan_mode == 'Dual WAN' && 'true' || 'false' }}
   WRT_BRANCH: ${{ inputs.wrt_branch || 'openwrt-25.12' }}
   WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
   WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
-  DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
   ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
   PPPOE_USERNAME: ${{ secrets.PPPOE_USERNAME }}
   PPPOE_PASSWORD: ${{ secrets.PPPOE_PASSWORD }}
   PPPOE_MAC: ${{ secrets.PPPOE_MAC }}
   PPPOE_WAN_MAC: ${{ secrets.PPPOE_WAN_MAC }}
   VLAN_ID: ${{ secrets.VLAN_ID }}
-  ENABLE_DUAL_WAN: ${{ inputs.wan_mode == 'Dual WAN' && 'true' || 'false' }}
   PPPOE_USERNAME_2: ${{ secrets.PPPOE_USERNAME_2 }}
   PPPOE_PASSWORD_2: ${{ secrets.PPPOE_PASSWORD_2 }}
   PPPOE_MAC_2: ${{ secrets.PPPOE_MAC_2 }}
