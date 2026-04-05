@@ -248,10 +248,11 @@ jobs:
           config_sig=$(sha256sum .config | cut -c1-16)
           cache_run_suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
+          profile_lower=$(echo "$BUILD_PROFILE" | tr '[:upper:]' '[:lower:]')
           dl_cache_prefix="wrt-dl-${WRT_BRANCH}"
           toolchain_cache_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-${toolchain_sig}"
-          ccache_cache_prefix="ccache-${WRT_BRANCH}-${target_board}-${target_subtarget}-${config_sig}"
-          ccache_cache_clean_prefix="ccache-${WRT_BRANCH}-${target_board}-${target_subtarget}-"
+          ccache_cache_prefix="ccache-openwrt-${profile_lower}-${WRT_BRANCH#openwrt-}-${target_board}-${target_subtarget}-${config_sig}"
+          ccache_cache_clean_prefix="ccache-openwrt-${profile_lower}-${WRT_BRANCH#openwrt-}-${target_board}-${target_subtarget}-"
 
           echo "TARGET_BOARD=$target_board" >> "$GITHUB_ENV"
           echo "TARGET_SUBTARGET=$target_subtarget" >> "$GITHUB_ENV"
