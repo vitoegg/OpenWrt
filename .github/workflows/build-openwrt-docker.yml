@@ -539,3 +539,4 @@ jobs:
           delete_tags: true
           delete_workflows: true
           workflows_keep_day: 0
+          workflows_keep_keyword: "Router/Cache"
