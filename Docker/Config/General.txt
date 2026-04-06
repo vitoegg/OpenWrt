@@ -37,54 +37,46 @@ CONFIG_PACKAGE_kmod-tls=y
 CONFIG_PACKAGE_kmod-tun=y
 
 # NIC Drivers
-CONFIG_PACKAGE_kmod-e1000=y
-CONFIG_PACKAGE_kmod-e1000e=y
-CONFIG_PACKAGE_kmod-i40e=y
 CONFIG_PACKAGE_kmod-igb=y
-CONFIG_PACKAGE_kmod-igbvf=y
 CONFIG_PACKAGE_kmod-igc=y
-CONFIG_PACKAGE_kmod-ixgbe=y
-CONFIG_PACKAGE_kmod-ixgbevf=y
 CONFIG_PACKAGE_kmod-r8125=y
-CONFIG_PACKAGE_kmod-r8126=y
 CONFIG_PACKAGE_kmod-r8168=y
+# CONFIG_PACKAGE_kmod-ixgbe is not set # 10G Network Driver
+# CONFIG_PACKAGE_kmod-r8126 is not set # 5G Network Driver
+# CONFIG_PACKAGE_kmod-igbvf is not set # Virtualization Configuration
+# CONFIG_PACKAGE_kmod-ixgbevf is not set # Virtualization Configuration
 
 # Hwmon
 CONFIG_PACKAGE_kmod-hwmon-core=y
 CONFIG_PACKAGE_kmod-hwmon-coretemp=y
 
-# Storage FS
-CONFIG_PACKAGE_kmod-fs-ext4=y
-CONFIG_PACKAGE_kmod-fs-exfat=y
-CONFIG_PACKAGE_kmod-fs-ntfs3=y
-CONFIG_PACKAGE_kmod-fs-vfat=y
+# USB Network Adapter Driver
+CONFIG_PACKAGE_kmod-usb-net=y
+CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
 
 # USB Core
 CONFIG_PACKAGE_kmod-usb3=y
 CONFIG_PACKAGE_kmod-usb-hid=y
-
-# USB NIC
-CONFIG_PACKAGE_kmod-usb-net=y
-CONFIG_PACKAGE_kmod-usb-net-asix=y
-CONFIG_PACKAGE_kmod-usb-net-asix-ax88179=y
-CONFIG_PACKAGE_kmod-usb-net-rtl8150=y
-CONFIG_PACKAGE_kmod-usb-net-rtl8152=y
-
-# USB Storage
 CONFIG_PACKAGE_kmod-usb-storage=y
 CONFIG_PACKAGE_kmod-usb-storage-extras=y
 CONFIG_PACKAGE_kmod-usb-storage-uas=y
 
-# Disk Tools
-CONFIG_PACKAGE_automount=y
+# Storage System
 CONFIG_PACKAGE_blkid=y
-CONFIG_PACKAGE_cfdisk=y
 CONFIG_PACKAGE_lsblk=y
-CONFIG_PACKAGE_parted=y
-
-# FS Tools
 CONFIG_PACKAGE_e2fsprogs=y
+CONFIG_PACKAGE_automount=y
+CONFIG_PACKAGE_kmod-fs-ext4=y
+CONFIG_PACKAGE_kmod-fs-vfat=y
+CONFIG_PACKAGE_kmod-fs-exfat=y
+
+# NTFS Support
+CONFIG_PACKAGE_kmod-fs-ntfs3=y
 CONFIG_PACKAGE_ntfs3-mount=y
+
+# Disk Tools
+CONFIG_PACKAGE_cfdisk=y
+CONFIG_PACKAGE_parted=y
 CONFIG_PACKAGE_resize2fs=y
 
 # Library Opts
@@ -105,6 +97,7 @@ CONFIG_PACKAGE_irqbalance=y
 CONFIG_PACKAGE_ethtool=y
 CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_bash=y
+CONFIG_PACKAGE_bash-completion=y
 CONFIG_PACKAGE_unzip=y
 CONFIG_PACKAGE_curl=y
 CONFIG_PACKAGE_wget-ssl=y
