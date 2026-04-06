@@ -134,12 +134,6 @@ rm -f files/etc/banner
 BRANCH_VER=$(echo "$WRT_BRANCH" | sed 's/openwrt-//')
 sed -i "s| %D %V, %C Dave's Guitar| ImmortalWrt $BRANCH_VER · Build $BUILD_DATE via GitHub|" package/base-files/files/etc/banner
 
-
-# ===== Modify Samba4 Menu =====
-#
-log "Modifying Samba4 Menu"
-sed -i 's/services/nas/g' feeds/luci/applications/luci-app-samba4/root/usr/share/luci/menu.d/luci-app-samba4.json
-
 # ===== Customize Firmware Version =====
 
 FIRMWARE_VERSION="ImmortalWrt @ Build $BUILD_DATE"
