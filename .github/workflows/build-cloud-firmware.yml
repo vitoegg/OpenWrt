@@ -1,0 +1,578 @@
+name: Build-Cloud-Firmware
+
+on:
+  workflow_dispatch:
+    inputs:
+      wrt_commit:
+        description: 'ImmortalWrt Commit Hash'
+        required: false
+        type: string
+        default: ''
+  schedule:
+    - cron: 0 8 6 6 *
+    - cron: 0 8 12 12 *
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: "build-cloud-firmware-${{ github.ref_name }}"
+  cancel-in-progress: true
+
+env:
+  BUILD_PROFILE: Cloud
+  WRT_BRANCH: openwrt-25.12
+  WRT_COMMIT: ${{ inputs.wrt_commit || '' }}
+  WRT_REPO: https://github.com/immortalwrt/immortalwrt.git
+  ROOT_PASSWORD_HASH: ${{ secrets.ROOT_PASSWORD_HASH }}
+  REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+  REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
+  REPO_URL: ${{ secrets.REPO_URL }}
+  HARDWARE_MODEL: MINISFORUM UN100D
+
+jobs:
+  build:
+    name: Build Cloud Firmware
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      BASH_ENV: /tmp/cloud-ci.log.env
+    defaults:
+      run:
+        shell: bash --noprofile --norc -eo pipefail {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Prepare Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          cat > "$BASH_ENV" <<'EOF'
+          CI_SEPARATOR='══════════════════════════════════════════════════'
+
+          ci_banner() {
+            local color="$1"
+            printf '\033[%sm%s\033[0m\n' "$color" "$CI_SEPARATOR"
+          }
+
+          ci_emit() {
+            local banner_color="$1"
+            local text_color="$2"
+            local icon="$3"
+            shift 3
+            if [ -n "$banner_color" ]; then
+              ci_banner "$banner_color"
+            fi
+            printf '\033[%sm%s %s\033[0m\n' "$text_color" "$icon" "$*"
+          }
+
+          ci_success_banner() { ci_banner '32'; }
+          ci_section() { ci_emit '32' '36' '●' "$*"; }
+          ci_highlight() { ci_emit '32' '36' '✓' "$*"; }
+          ci_success() { ci_emit '' '32' '✓' "$*"; }
+          ci_success_section() { ci_emit '32' '32' '✓' "$*"; }
+          ci_warn() { ci_emit '' '33' '⚠' "$*"; }
+          ci_warn_section() { ci_emit '33' '33' '⚠' "$*"; }
+          ci_error() { ci_emit '' '31' '✗' "$*"; }
+
+          cache_state() {
+            case "$1" in
+              true)
+                printf 'exact-hit'
+                ;;
+              false)
+                printf 'restore-hit'
+                ;;
+              *)
+                printf 'miss'
+                ;;
+            esac
+          }
+          EOF
+
+          source "$BASH_ENV"
+
+          echo "::group::System snapshot"
+          lscpu | grep -E 'name|Core|Thread'
+          free -h
+          df -Th
+          uname -a
+          echo "::endgroup::"
+
+          echo "::group::Free disk space"
+          sudo swapoff -a || true
+          sudo rm -f /swapfile /mnt/swapfile
+          sudo docker image prune -a -f || true
+          sudo systemctl stop docker || true
+          sudo snap set system refresh.retain=2 || true
+          sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php* || true
+          sudo apt-get -y autoremove --purge
+          sudo apt-get clean
+          sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* \
+            /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel \
+            /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} \
+            /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} \
+            /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 \
+            /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
+          sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile} || true
+          rm -rf ~/{.cargo,.dotnet,.rustup}
+          df -Th
+          echo "::endgroup::"
+
+          echo "::group::Create swap"
+          sudo fallocate -l 8G /mnt/swapfile || sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          free -h | grep -i swap
+          echo "::endgroup::"
+
+          echo "::group::Install build dependencies"
+          sudo -E apt -yqq update
+          sudo -E apt -yqq install dos2unix python3-netifaces libfuse-dev ccache jq unzip wget \
+            libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
+          sudo bash -c 'bash <(curl -fsSL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+          sudo -E apt -yqq autoremove --purge
+          sudo -E apt -yqq clean
+          sudo -E systemctl daemon-reload
+          sudo -E timedatectl set-timezone "Asia/Shanghai"
+          echo "::endgroup::"
+
+          echo "::group::Create workspace"
+          mnt_size=$(df -BG /mnt | awk 'END {gsub(/G/, "", $4); print $4}')
+          root_size=$(df -BG / | awk 'END {gsub(/G/, "", $4); print $4 - 2}')
+          sudo truncate -s "${mnt_size}G" /mnt/mnt.img
+          sudo truncate -s "${root_size}G" /root.img
+          loop_mnt=$(sudo losetup -f --show /mnt/mnt.img)
+          loop_root=$(sudo losetup -f --show /root.img)
+          sudo pvcreate "$loop_mnt"
+          sudo pvcreate "$loop_root"
+          sudo vgcreate github "$loop_mnt" "$loop_root"
+          sudo lvcreate -n runner -l 100%FREE github
+          sudo mkfs.xfs /dev/github/runner
+          sudo mkdir -p /builder
+          sudo mount /dev/github/runner /builder
+          sudo chown -R "$USER:$(id -gn)" /builder
+          rm -rf "$GITHUB_WORKSPACE/wrt"
+          ln -s /builder "$GITHUB_WORKSPACE/wrt"
+          df -Th
+          echo "::endgroup::"
+
+          echo "::group::Init build context"
+          echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+          echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(TZ=Asia/Shanghai date +'%y.%m.%d')" >> "$GITHUB_ENV"
+          echo "WRT_INFO=immortalwrt" >> "$GITHUB_ENV"
+          find ./$BUILD_PROFILE -maxdepth 3 -type f -iregex '.*\(txt\|sh\)$' -exec dos2unix {} \; -exec chmod +x {} \;
+          echo "::endgroup::"
+
+          ci_success_section "Runner ready"
+
+      - name: Clone Source and Feeds
+        run: |
+          echo "::group::Clone source"
+          if [ -n "$WRT_COMMIT" ]; then
+            git init ./wrt
+            cd ./wrt
+            git remote add origin "$WRT_REPO"
+            git fetch --depth=1 origin "$WRT_COMMIT"
+            git checkout FETCH_HEAD
+          else
+            git clone --depth=1 --single-branch --branch "$WRT_BRANCH" "$WRT_REPO" ./wrt
+            cd ./wrt
+          fi
+
+          wrt_hash=$(git log -1 --format='%H')
+          echo "WRT_HASH=$wrt_hash" >> "$GITHUB_ENV"
+
+          project_mirrors_file="./scripts/projectsmirrors.json"
+          if [ -f "$project_mirrors_file" ]; then
+            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$project_mirrors_file"
+          fi
+
+          echo "::endgroup::"
+          ci_highlight "Upstream commit: $wrt_hash"
+
+          echo "::group::Update feeds"
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          echo "::endgroup::"
+          ci_success_section "Feeds ready"
+
+      - name: Apply Customizations
+        working-directory: ./wrt
+        run: |
+          "$GITHUB_WORKSPACE/$BUILD_PROFILE/Scripts/Packages.sh"
+          "$GITHUB_WORKSPACE/$BUILD_PROFILE/Scripts/Prepare.sh"
+          ci_success_section "Sources prepared"
+
+          cat "$GITHUB_WORKSPACE/$BUILD_PROFILE/Config/General.txt" >> .config
+          cat "$GITHUB_WORKSPACE/$BUILD_PROFILE/Config/Custom.txt" >> .config
+          "$GITHUB_WORKSPACE/$BUILD_PROFILE/Scripts/Patch.sh"
+          "$GITHUB_WORKSPACE/$BUILD_PROFILE/Scripts/Settings.sh"
+
+          echo "::group::make defconfig"
+          make defconfig -j"$(nproc)"
+          echo "::endgroup::"
+          ci_success_section "$BUILD_PROFILE config applied"
+
+          target_board=$(sed -n 's/^CONFIG_TARGET_BOARD="\([^"]*\)"/\1/p' .config | head -1)
+          target_subtarget=$(sed -n 's/^CONFIG_TARGET_SUBTARGET="\([^"]*\)"/\1/p' .config | head -1)
+
+          if [ -z "$target_board" ]; then
+            target_board='x86'
+          fi
+          if [ -z "$target_subtarget" ]; then
+            target_subtarget='64'
+          fi
+
+          # Extract toolchain-critical configs from .config for stable cache key
+          # Only GCC/binutils/libc versions truly determine toolchain compatibility
+          toolchain_sig=$(grep -E '^CONFIG_(GCC_VERSION|BINUTILS_VERSION|LIBC)=' .config | sort | sha256sum | cut -c1-12)
+          if [ -z "$toolchain_sig" ] || [ "$toolchain_sig" = "e3b0c44298fc" ]; then
+            # Fallback if no matching configs found (empty input hash)
+            toolchain_sig="default"
+          fi
+          config_sig=$(sha256sum .config | cut -c1-16)
+          cache_run_suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          profile_lower=$(echo "$BUILD_PROFILE" | tr '[:upper:]' '[:lower:]')
+          dl_cache_prefix="wrt-dl-${WRT_BRANCH}"
+          toolchain_cache_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-${toolchain_sig}"
+          toolchain_cache_clean_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-"
+          ccache_cache_prefix="ccache-openwrt-${profile_lower}-${WRT_BRANCH#openwrt-}-${target_board}-${target_subtarget}-${config_sig}"
+          ccache_cache_clean_prefix="ccache-openwrt-${profile_lower}-${WRT_BRANCH#openwrt-}-${target_board}-${target_subtarget}-"
+
+          echo "TARGET_BOARD=$target_board" >> "$GITHUB_ENV"
+          echo "TARGET_SUBTARGET=$target_subtarget" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_SIG=$toolchain_sig" >> "$GITHUB_ENV"
+          echo "CONFIG_SIG=$config_sig" >> "$GITHUB_ENV"
+          echo "DL_CACHE_PREFIX=$dl_cache_prefix" >> "$GITHUB_ENV"
+          echo "DL_CACHE_KEY=${dl_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_CACHE_PREFIX=$toolchain_cache_prefix" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_CACHE_KEY=${toolchain_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_CACHE_CLEAN_PREFIX=$toolchain_cache_clean_prefix" >> "$GITHUB_ENV"
+          echo "CCACHE_CACHE_PREFIX=$ccache_cache_prefix" >> "$GITHUB_ENV"
+          echo "CCACHE_CACHE_KEY=${ccache_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
+          echo "CCACHE_CACHE_CLEAN_PREFIX=$ccache_cache_clean_prefix" >> "$GITHUB_ENV"
+
+          ci_success_banner
+          ci_success "Target detected: ${target_board}/${target_subtarget}"
+          ci_success "Toolchain signature: ${toolchain_sig}"
+          ci_success "Config signature: ${config_sig}"
+
+      - name: Restore Download Cache
+        id: cache-dl-restore
+        uses: actions/cache/restore@v5
+        with:
+          key: ${{ env.DL_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.DL_CACHE_PREFIX }}-
+          path: ./wrt/dl
+
+      - name: Restore Toolchain Cache
+        id: cache-toolchain-restore
+        uses: actions/cache/restore@v5
+        with:
+          key: ${{ env.TOOLCHAIN_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.TOOLCHAIN_CACHE_PREFIX }}-
+          path: |
+            ./wrt/staging_dir/host*
+            ./wrt/staging_dir/tool*
+
+      - name: Restore Ccache
+        id: cache-ccache-restore
+        uses: actions/cache/restore@v5
+        with:
+          key: ${{ env.CCACHE_CACHE_KEY }}
+          restore-keys: |
+            ${{ env.CCACHE_CACHE_PREFIX }}-
+          path: ./wrt/.ccache
+
+      - name: Download Sources
+        working-directory: ./wrt
+        run: |
+          report_cache() {
+            local label="$1" state="$2"
+            if [ "$state" = 'miss' ]; then
+              ci_warn "${label} cache: ${state}"
+            else
+              ci_success "${label} cache: ${state}"
+            fi
+          }
+
+          dl_state=$(cache_state '${{ steps.cache-dl-restore.outputs.cache-hit }}')
+          toolchain_state=$(cache_state '${{ steps.cache-toolchain-restore.outputs.cache-hit }}')
+          ccache_state=$(cache_state '${{ steps.cache-ccache-restore.outputs.cache-hit }}')
+
+          report_cache 'Download' "$dl_state"
+          report_cache 'Toolchain' "$toolchain_state"
+          report_cache 'Ccache' "$ccache_state"
+
+          echo "::group::Restore cache timestamps"
+          if [ -d "./staging_dir" ]; then
+            find ./staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
+              find "$dir" -type f -exec touch {} +
+            done
+            mkdir -p ./tmp
+            echo '1' > ./tmp/.build
+          fi
+          echo "::endgroup::"
+
+          list_suspicious_files() {
+            find dl -maxdepth 1 -type f -size -1024c | sort
+          }
+
+          count_suspicious_files() {
+            list_suspicious_files | wc -l | tr -d ' '
+          }
+
+          download_jobs=$(( $(nproc) * 2 ))
+          if [ "$download_jobs" -gt 16 ]; then
+            download_jobs=16
+          fi
+
+          ci_section "Downloading source archives"
+          echo "::group::Download source archives"
+          make download -j"$download_jobs"
+          echo "::endgroup::"
+
+          bad_files=$(count_suspicious_files)
+          if [ "$bad_files" -gt 0 ]; then
+            ci_warn "Found ${bad_files} suspicious root-level download files smaller than 1 KB"
+            while IFS= read -r file; do
+              [ -n "$file" ] || continue
+              ls -l "$file"
+              rm -f "$file"
+            done < <(list_suspicious_files)
+
+            echo "::group::Retry source archives download"
+            make download -j"$download_jobs"
+            echo "::endgroup::"
+
+            remaining_bad_files=$(count_suspicious_files)
+            if [ "$remaining_bad_files" -gt 0 ]; then
+              while IFS= read -r file; do
+                [ -n "$file" ] || continue
+                ls -l "$file"
+              done < <(list_suspicious_files)
+              ci_error "Download retry still found ${remaining_bad_files} suspicious root-level files smaller than 1 KB"
+              exit 1
+            fi
+
+            ci_warn "Suspicious files removed and successfully re-downloaded"
+          else
+            ci_success "All downloaded source archives look valid"
+          fi
+
+      - name: Save Download Cache
+        id: cache-dl-save
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ env.DL_CACHE_KEY }}
+          path: ./wrt/dl
+
+      - name: Compile Firmware
+        working-directory: ./wrt
+        run: |
+          ci_section "Starting parallel build with $(nproc) jobs"
+          compile_failed=false
+          echo "::group::Parallel build output"
+          if ! make -j"$(nproc)"; then
+            compile_failed=true
+          fi
+          echo "::endgroup::"
+
+          if [ "$compile_failed" = true ]; then
+            ci_warn_section "Parallel build failed, retrying with make -j1 V=s"
+            echo "::group::Verbose retry"
+            make -j1 V=s
+            echo "::endgroup::"
+
+            ci_warn_section "Build succeeded after verbose retry"
+          else
+            ci_success_section "Build succeeded on the first pass"
+          fi
+
+          echo "BUILD_OK=true" >> "$GITHUB_ENV"
+
+      - name: Save Toolchain Cache
+        id: cache-toolchain-save
+        if: env.BUILD_OK == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ env.TOOLCHAIN_CACHE_KEY }}
+          path: |
+            ./wrt/staging_dir/host*
+            ./wrt/staging_dir/tool*
+
+      - name: Save Ccache
+        id: cache-ccache-save
+        if: env.BUILD_OK == 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ env.CCACHE_CACHE_KEY }}
+          path: ./wrt/.ccache
+
+      - name: Purge Stale Caches
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          purge_latest_cache_by_prefix() {
+            local label="$1"
+            local list_prefix="$2"
+            local save_outcome="$3"
+            local cache_entries
+            local keep_key
+            local stale_ids
+            local cache_count
+            local stale_count
+
+            if [ "$save_outcome" != 'success' ]; then
+              ci_warn "${label} cache save skipped or failed, keeping previous cache"
+              return 0
+            fi
+
+            if [ -z "$list_prefix" ]; then
+              ci_warn "${label} cache prefix is empty, skipping purge"
+              return 0
+            fi
+
+            cache_entries=$(gh cache list --limit 1000 --repo "$GITHUB_REPOSITORY" --key "$list_prefix" --json id,key,createdAt | \
+              jq -c --arg list_prefix "$list_prefix" '
+                map(select(.key | startswith($list_prefix))) |
+                sort_by(.createdAt) |
+                reverse
+              ')
+
+            cache_count=$(printf '%s\n' "$cache_entries" | jq 'length')
+            if [ "$cache_count" -eq 0 ]; then
+              ci_warn "No ${label} caches found for prefix ${list_prefix}"
+              return 0
+            fi
+
+            keep_key=$(printf '%s\n' "$cache_entries" | jq -r '.[0].key')
+            stale_ids=$(printf '%s\n' "$cache_entries" | jq -r '.[1:][]?.id')
+            stale_count=$(printf '%s\n' "$cache_entries" | jq '.[1:] | length')
+
+            ci_success "${label} cache retained: ${keep_key}"
+
+            if [ "$stale_count" -eq 0 ]; then
+              ci_success "No stale ${label} caches to purge"
+              return 0
+            fi
+
+            while IFS= read -r cache_id; do
+              [ -n "$cache_id" ] || continue
+              gh cache delete "$cache_id" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true
+            done <<< "$stale_ids"
+
+            ci_success "Old ${label} caches purged: ${stale_count}"
+          }
+
+          purge_latest_cache_by_prefix 'Download' "${DL_CACHE_PREFIX}-" '${{ steps.cache-dl-save.outcome }}'
+          purge_latest_cache_by_prefix 'Toolchain' "${TOOLCHAIN_CACHE_CLEAN_PREFIX}" '${{ steps.cache-toolchain-save.outcome }}'
+          purge_latest_cache_by_prefix 'Ccache' "${CCACHE_CACHE_CLEAN_PREFIX}" '${{ steps.cache-ccache-save.outcome }}'
+
+      - name: Setup Rclone
+        if: env.BUILD_OK == 'true'
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: Deliver Firmware
+        if: env.BUILD_OK == 'true'
+        working-directory: ./wrt
+        run: |
+          echo "::group::Collect build metadata"
+          build_end_time=$(date +%s)
+          build_time=$((build_end_time - BUILD_START_TIME))
+          build_hours=$((build_time / 3600))
+          build_minutes=$(((build_time % 3600) / 60))
+          if [ "$build_hours" -gt 0 ]; then
+            build_duration="${build_hours}h${build_minutes}min"
+          else
+            build_duration="${build_minutes}min"
+          fi
+          echo "BUILD_DURATION=$build_duration" >> "$GITHUB_ENV"
+
+          kernel_ver=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^kernel - \K[\d\.]+' {} \; | head -1)
+          if [ -z "$kernel_ver" ]; then
+            kernel_ver=$(grep -m1 '^KERNEL_PATCHVER:=' include/kernel-version.mk | sed 's/^KERNEL_PATCHVER:=//' | tr -d ' ')
+          fi
+          echo "KERNEL_PATCHVER=$kernel_ver" >> "$GITHUB_ENV"
+
+          luci_ver=$(find ./bin/targets -type f -name '*.manifest' -exec grep -oP '^luci-base - .* openwrt-\K[0-9]+\.[0-9]+' {} \; | head -1)
+          if [ -z "$luci_ver" ]; then
+            luci_ver=$(cd feeds/luci && git rev-parse --abbrev-ref HEAD 2>/dev/null | grep -oP 'openwrt-\K[0-9]+\.[0-9]+' || true)
+          fi
+          if [ -z "$luci_ver" ]; then
+            luci_ver='unknown'
+          fi
+          echo "LUCI_VERSION=$luci_ver" >> "$GITHUB_ENV"
+          echo "::endgroup::"
+
+          echo "::group::Package firmware"
+          firmware_path=$(find ./bin/targets/x86 -type f -name '*-squashfs-combined-efi.img.gz' | head -n1)
+          profile_lower=$(echo "$BUILD_PROFILE" | tr '[:upper:]' '[:lower:]')
+          firmware_name="openwrt-${profile_lower}-${TAG_TIME}-x86-64-efi.img.gz"
+
+          mkdir -p ./upload
+          cp -f ./.config "./upload/${profile_lower}-config-${TAG_TIME}.txt"
+          cp -f "$firmware_path" "./upload/$firmware_name"
+          echo "FIRMWARE_NAME=$firmware_name" >> "$GITHUB_ENV"
+          echo "::endgroup::"
+
+          ci_success_section "Firmware ready: $firmware_name ($build_duration)"
+
+          echo "::group::Upload firmware"
+          rclone copy "${{ github.workspace }}/wrt/upload/" remote:/OpenWrt/ \
+            --include "*.img.gz" \
+            --transfers=1 \
+            --stats-one-line \
+            --stats=20s
+          echo "::endgroup::"
+          ci_success "Firmware uploaded to remote:/OpenWrt/"
+
+          echo "::group::Send notification"
+          curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendPhoto" \
+            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
+            -d photo='https://mirror.1991991.xyz/Picture/openwrt.webp' \
+            --data-urlencode "caption=#OpenWRT #HomeCloud #${BUILD_PROFILE}
+
+          *🎉 Ready to roll! Dive in! 🎉*
+
+          - 🛠 Hardware: ${HARDWARE_MODEL}
+
+          - 🌐 Kernel: ${kernel_ver}
+
+          - 📦 LuCI: ${luci_ver}
+
+          - ⌛ Build Duration: ${build_duration}
+
+          - 🔗 Firmware: [Click to View](${{ secrets.FIRMWARE_DOWNLOAD_URL }})" \
+            -d parse_mode=Markdown >/dev/null 2>&1
+          echo "::endgroup::"
+          ci_success "Notification sent"
+
+      - name: Clean Up
+        if: always()
+        uses: ophub/delete-releases-workflows@main
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          out_log: false
+          delete_releases: true
+          releases_keep_latest: 0
+          delete_tags: true
+          delete_workflows: true
+          workflows_keep_day: 0
+          workflows_keep_keyword: "Router/Rclone"

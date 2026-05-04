@@ -1,0 +1,92 @@
+# Target
+CONFIG_TARGET_x86=y
+CONFIG_TARGET_x86_64=y
+
+# Build
+CONFIG_CCACHE=y
+CONFIG_DEVEL=y
+
+# Images
+CONFIG_GRUB_EFI_IMAGES=y
+CONFIG_TARGET_ROOTFS_SQUASHFS=y
+CONFIG_TARGET_ROOTFS_INITRAMFS=n
+CONFIG_TARGET_ROOTFS_EXT4FS=n
+
+# Certificates
+CONFIG_PACKAGE_ca-bundle=y
+
+# System
+CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_luci-base=y
+CONFIG_PACKAGE_luci-compat=y
+CONFIG_PACKAGE_luci-lib-base=y
+CONFIG_PACKAGE_luci-lib-ipkg=y
+CONFIG_PACKAGE_ppp=y
+CONFIG_PACKAGE_ppp-mod-pppoe=y
+CONFIG_PACKAGE_default-settings-chn=y
+CONFIG_PACKAGE_grub2-bios-setup=y
+CONFIG_PACKAGE_urandom-seed=y
+CONFIG_PACKAGE_urngd=y
+CONFIG_PACKAGE_glib2=y
+CONFIG_PACKAGE_procd-ujail=y
+CONFIG_PACKAGE_netifd=y
+CONFIG_PACKAGE_libgcc=y
+CONFIG_PACKAGE_libustream-openssl=y
+CONFIG_PACKAGE_lm-sensors=y
+CONFIG_PACKAGE_usbutils=y
+CONFIG_PACKAGE_irqbalance=y
+CONFIG_PACKAGE_ethtool=y
+CONFIG_PACKAGE_ip-full=y
+CONFIG_PACKAGE_dnsmasq-full=y
+
+# Firewall
+CONFIG_PACKAGE_firewall4=y
+CONFIG_PACKAGE_nat6=y
+CONFIG_PACKAGE_kmod-nft-fullcone=y
+CONFIG_PACKAGE_kmod-nft-offload=y
+CONFIG_PACKAGE_kmod-tls=y
+CONFIG_PACKAGE_kmod-tun=y
+
+# NIC Drivers
+CONFIG_PACKAGE_kmod-igb=y
+CONFIG_PACKAGE_kmod-igc=y
+CONFIG_PACKAGE_kmod-r8125=y
+# CONFIG_PACKAGE_kmod-ixgbe is not set # Intel 10G Network Driver
+# CONFIG_PACKAGE_kmod-r8126 is not set # Realtek 5G Network Driver
+# CONFIG_PACKAGE_kmod-r8127 is not set # Realtek 10G Network Driver
+# CONFIG_PACKAGE_kmod-igbvf is not set # Virtualization Configuration
+# CONFIG_PACKAGE_kmod-ixgbevf is not set # Virtualization Configuration
+
+# Hwmon
+CONFIG_PACKAGE_kmod-hwmon-core=y
+CONFIG_PACKAGE_kmod-hwmon-coretemp=y
+
+# USB Network Adapter Driver
+CONFIG_PACKAGE_kmod-usb-net=y
+CONFIG_PACKAGE_kmod-usb-net-rtl8152-vendor=y
+
+# USB Core
+CONFIG_PACKAGE_kmod-usb3=y
+CONFIG_PACKAGE_kmod-usb-hid=y
+CONFIG_PACKAGE_kmod-usb-storage=y
+CONFIG_PACKAGE_kmod-usb-storage-extras=y
+CONFIG_PACKAGE_kmod-usb-storage-uas=y
+
+# Storage System
+CONFIG_PACKAGE_blkid=y
+CONFIG_PACKAGE_lsblk=y
+CONFIG_PACKAGE_e2fsprogs=y
+CONFIG_PACKAGE_automount=y
+CONFIG_PACKAGE_kmod-fs-ext4=y
+CONFIG_PACKAGE_kmod-fs-vfat=y
+CONFIG_PACKAGE_kmod-fs-exfat=y
+
+# Traffic Control
+CONFIG_PACKAGE_kmod-sched-cake=y
+CONFIG_PACKAGE_kmod-tcp-bbr=y
+
+# Optional Tools
+CONFIG_PACKAGE_autocore=y
+CONFIG_PACKAGE_htop=y
+CONFIG_PACKAGE_openssh-sftp-server=y
+CONFIG_PACKAGE_zoneinfo-asia=y

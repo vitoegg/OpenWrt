@@ -1,0 +1,58 @@
+name: Update-Rclone-Config
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 2 * * 0
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: "update-rclone-config-${{ github.ref_name }}"
+  cancel-in-progress: true
+
+jobs:
+  update-rclone-config:
+    name: Update Rclone Config
+    runs-on: ubuntu-24.04
+    if: always()
+    concurrency:
+      group: rclone-config-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Setup Rclone
+        id: setup-rclone
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+
+      - name: Check Drive Capacity
+        run: "rclone about remote:"
+
+      - name: Update Rclone Config
+        if: always() && steps.setup-rclone.outcome == 'success'
+        continue-on-error: true
+        uses: AnimMouse/setup-rclone/update-config@v1
+        with:
+          rclone_config_secret_name: RCLONE_CONFIG
+          token: ${{ secrets.REPO_TOKEN }}
+
+  cleanup:
+    name: Clean Up
+    runs-on: ubuntu-24.04
+    needs: update-rclone-config
+    if: always()
+    steps:
+      - name: Clean Up
+        uses: ophub/delete-releases-workflows@main
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          out_log: false
+          delete_releases: true
+          releases_keep_latest: 0
+          delete_tags: true
+          delete_workflows: true
+          workflows_keep_day: 0
+          workflows_keep_keyword: "Build"
