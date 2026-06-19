@@ -1,0 +1,217 @@
+name: Refresh-BBR-Patches
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_commit:
+        description: "ImmortalWrt Upstream Commit"
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: "refresh-bbr-patches-${{ github.ref_name }}"
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: Refresh BBR Patches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash --noprofile --norc -eo pipefail {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Prepare Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          echo "::group::Install build dependencies"
+          sudo -E apt-get -yqq update
+          sudo -E apt-get -yqq install dos2unix python3-netifaces libfuse-dev ccache jq unzip wget \
+            libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
+          sudo bash -c 'bash <(curl -fsSL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+          sudo -E apt-get -yqq autoremove --purge
+          sudo -E apt-get -yqq clean
+          find ./Build ./Config -maxdepth 5 -type f -iregex '.*\(txt\|conf\|sh\)$' -exec dos2unix {} \;
+          echo "::endgroup::"
+
+      - name: Refresh Patches
+        env:
+          UPSTREAM_COMMIT: ${{ inputs.upstream_commit }}
+        run: |
+          source "$GITHUB_WORKSPACE/Build/upstream.conf"
+
+          expected_patch_count=20
+          target_kernel_patchver=6.12
+          repo_patch_dir="$GITHUB_WORKSPACE/Build/Patches/BBRv3"
+          worktree="$GITHUB_WORKSPACE/wrt"
+
+          group_run() {
+            local title="$1"
+            shift
+            local status
+
+            echo "::group::$title"
+            set +e
+            "$@"
+            status=$?
+            set -e
+            echo "::endgroup::"
+            return "$status"
+          }
+
+          upstream_commit=$(printf '%s' "$UPSTREAM_COMMIT" | tr -d '[:space:]')
+          if ! [[ "$upstream_commit" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "ERROR: upstream_commit must be a full 40-char commit SHA"
+            exit 1
+          fi
+          echo "Input commit: $upstream_commit"
+
+          patch_count=$(find "$repo_patch_dir" -maxdepth 1 -type f -name '010-bbr3-*.patch' | wc -l | tr -d '[:space:]')
+          if [ "$patch_count" -ne "$expected_patch_count" ]; then
+            echo "ERROR: Expected $expected_patch_count BBRv3 patches, found $patch_count"
+            exit 1
+          fi
+          echo "Source patches: $patch_count"
+
+          echo "::group::Clone source"
+          rm -rf "$worktree"
+          git init "$worktree"
+          cd "$worktree"
+          git remote add origin "$WRT_REPO"
+          git fetch --depth=1 origin "$upstream_commit"
+          git checkout --detach FETCH_HEAD
+          resolved_commit=$(git rev-parse HEAD)
+          echo "::endgroup::"
+          echo "Resolved commit: $resolved_commit"
+
+          kernel_patchver=$(sed -n 's/^KERNEL_PATCHVER:=//p' target/linux/x86/Makefile | head -1 | tr -d '[:space:]')
+          if [ "$kernel_patchver" != "$target_kernel_patchver" ]; then
+            echo "ERROR: BBRv3 patches support kernel patch version $target_kernel_patchver, current target is ${kernel_patchver:-unknown}"
+            exit 1
+          fi
+
+          kernel_version_suffix=$(sed -n "s/^LINUX_VERSION-$kernel_patchver[[:space:]]*=[[:space:]]*//p" "target/linux/generic/kernel-$kernel_patchver" | head -1 | tr -d '[:space:]')
+          if [ -z "$kernel_version_suffix" ]; then
+            echo "ERROR: Kernel version not found for $kernel_patchver"
+            exit 1
+          fi
+          if [[ "$kernel_version_suffix" = .* ]]; then
+            kernel_version="${kernel_patchver}${kernel_version_suffix}"
+          else
+            kernel_version="$kernel_version_suffix"
+          fi
+          echo "Kernel: $kernel_patchver -> $kernel_version"
+
+          target_patch_dir="target/linux/generic/backport-$kernel_patchver"
+          mkdir -p "$target_patch_dir"
+          rm -f "$target_patch_dir"/010-bbr3-*.patch
+          cp "$repo_patch_dir"/010-bbr3-*.patch "$target_patch_dir"/
+
+          copied_count=$(find "$target_patch_dir" -maxdepth 1 -type f -name '010-bbr3-*.patch' | wc -l | tr -d '[:space:]')
+          if [ "$copied_count" -ne "$expected_patch_count" ]; then
+            echo "ERROR: BBRv3 patch installation failed, copied $copied_count files"
+            exit 1
+          fi
+          echo "Installed patches: $copied_count"
+
+          cat > .config <<'EOF'
+          CONFIG_TARGET_x86=y
+          CONFIG_TARGET_x86_64=y
+          EOF
+
+          group_run "make defconfig" make defconfig -j"$(nproc)"
+
+          group_run "make target/linux/prepare" make target/linux/prepare V=s
+          reject_files=$(find build_dir -name '*.rej')
+          if [ -n "$reject_files" ]; then
+            echo "ERROR: Kernel patch refresh produced reject files"
+            echo "$reject_files"
+            exit 1
+          fi
+          echo "Reject files: 0"
+
+          bbr_source=$(find build_dir -path "*/linux-$kernel_version/net/ipv4/tcp_bbr.c" -type f -print -quit)
+          if [ -z "$bbr_source" ]; then
+            echo "ERROR: Prepared kernel tcp_bbr.c not found"
+            exit 1
+          fi
+
+          bbr_markers=(
+            "/* BBR v3 state: */"
+            "static enum tcp_bbr_phase bbr_get_phase"
+            "bbr_update_model(sk, rs, &ctx)"
+          )
+          for marker in "${bbr_markers[@]}"; do
+            if ! grep -qF -- "$marker" "$bbr_source"; then
+              echo "ERROR: Prepared kernel does not contain BBRv3 marker: $marker"
+              exit 1
+            fi
+          done
+          echo "BBRv3 kernel source verified: $bbr_source"
+
+          group_run "make target/linux/clean" make target/linux/clean V=s
+          group_run "make target/linux/refresh" make target/linux/refresh V=s
+
+          refreshed_count=$(find "$target_patch_dir" -maxdepth 1 -type f -name '010-bbr3-*.patch' | wc -l | tr -d '[:space:]')
+          if [ "$refreshed_count" -ne "$expected_patch_count" ]; then
+            echo "ERROR: Refreshed BBRv3 patch count is $refreshed_count"
+            exit 1
+          fi
+          echo "Refreshed patches: $refreshed_count"
+
+          cp "$target_patch_dir"/010-bbr3-*.patch "$repo_patch_dir"/
+
+          cd "$GITHUB_WORKSPACE"
+          perl -0pi -e "s/^WRT_COMMIT=\"[0-9a-fA-F]*\"/WRT_COMMIT=\"$resolved_commit\"/m" Build/upstream.conf
+
+          {
+            echo "KERNEL_PATCHVER=$kernel_patchver"
+            echo "KERNEL_VERSION=$kernel_version"
+            echo "RESOLVED_COMMIT=$resolved_commit"
+            echo "COMMIT_MESSAGE=kernel: bump $kernel_patchver to $kernel_version"
+          } >> "$GITHUB_ENV"
+          echo "Commit message: kernel: bump $kernel_patchver to $kernel_version"
+
+      - name: Commit Changes
+        run: |
+          if git diff --quiet -- Build/upstream.conf Build/Patches/BBRv3; then
+            echo "Writeback: no changes"
+            exit 0
+          fi
+
+          changed_count=$(git diff --name-only -- Build/upstream.conf Build/Patches/BBRv3 | wc -l | tr -d '[:space:]')
+          echo "Changed files: $changed_count"
+          git diff --stat -- Build/upstream.conf Build/Patches/BBRv3
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Build/upstream.conf Build/Patches/BBRv3
+          git commit -m "$COMMIT_MESSAGE"
+          git fetch origin "$GITHUB_REF_NAME"
+          git rebase FETCH_HEAD
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+          echo "Push: $GITHUB_REF_NAME"
+
+      - name: Clean Up
+        if: always()
+        uses: ophub/delete-releases-workflows@main
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          out_log: false
+          delete_releases: false
+          delete_tags: false
+          delete_workflows: true
+          workflows_keep_day: 0
+          workflows_keep_keyword: "Build/Rclone"

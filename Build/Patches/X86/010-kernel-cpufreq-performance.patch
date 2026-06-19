@@ -1,0 +1,35 @@
+diff --git a/config/Config-kernel.in b/config/Config-kernel.in
+--- a/config/Config-kernel.in
++++ b/config/Config-kernel.in
+@@ -71,6 +71,31 @@ config KERNEL_X86_VSYSCALL_EMULATION
+ 	  Disabling this option saves about 7K of kernel size and
+ 	  possibly 4K of additional runtime pagetable memory.
+ 
++choice
++	prompt "Default CPUFreq governor"
++	depends on TARGET_x86
++	default KERNEL_CPU_FREQ_DEFAULT_GOV_PERFORMANCE
++
++config KERNEL_CPU_FREQ_DEFAULT_GOV_PERFORMANCE
++	bool "performance"
++
++config KERNEL_CPU_FREQ_DEFAULT_GOV_POWERSAVE
++	bool "powersave"
++
++config KERNEL_CPU_FREQ_DEFAULT_GOV_USERSPACE
++	bool "userspace"
++
++config KERNEL_CPU_FREQ_DEFAULT_GOV_ONDEMAND
++	bool "ondemand"
++
++config KERNEL_CPU_FREQ_DEFAULT_GOV_CONSERVATIVE
++	bool "conservative"
++
++config KERNEL_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
++	bool "schedutil"
++
++endchoice
++
+ config KERNEL_PERF_EVENTS
+ 	bool "Compile the kernel with performance events and counters"
+ 	select KERNEL_ARM_PMU if (arm || aarch64)

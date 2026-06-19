@@ -8,20 +8,26 @@
 ```
 OpenWrt/
 |
-├── Router & Cloud/
-│   ├── Config/
-│   │   ├── General.txt            # 通用系统配置
-│   │   └── Custom.txt             # 用户自定义应用
-│   └── Scripts/
-│       ├── Prepare.sh             # 编译环境准备脚本
-│       ├── Packages.sh            # 软件包管理脚本
-│       ├── Patch.sh               # 系统优化补丁脚本
-│       └── Settings.sh            # 系统预设脚本
+├── Build/
+│   ├── upstream.conf                   # 上游仓库配置
+│   ├── Action/                         # 编译任务脚本
+│   ├── Flow/                           # 编译流程脚本
+│   └── Patches/                        # 编译补丁
+|
+├── Custom/
+│   ├── Router.conf                     # Router 业务配置
+│   └── Cloud.conf                      # Cloud 业务配置
+|
+├── Config/
+│   ├── Common.txt                      # 公共 Config
+│   ├── Router.txt                      # Router 个性化配置
+│   └── Cloud.txt                       # Cloud 个性化配置
 |
 ├── .github/workflows/
-│   ├── build-router-firmware.yml  # Router 版本构建
-│   ├── build-cloud-firmware.yml   # Cloud 版本构建
-│   └── update-rclone-config.yml   # Rclone 配置更新
+│   ├── build-router-firmware.yml       # Router 版本构建
+│   ├── build-cloud-firmware.yml        # Cloud 版本构建
+│   ├── refresh-bbr-patches.yml         # BBR 补丁更新
+│   └── update-rclone-config.yml        # Rclone 配置更新
 |
 └── README.md
 ```

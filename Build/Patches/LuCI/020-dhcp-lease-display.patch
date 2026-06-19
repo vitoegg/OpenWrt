@@ -1,0 +1,34 @@
+--- a/feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js
++++ b/feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js
+@@ -85,7 +85,7 @@
+ 		const leases = Array.isArray(dhcp_leases.dhcp_leases) ? dhcp_leases.dhcp_leases : [];
+ 		const leases6 = Array.isArray(dhcp_leases.dhcp6_leases) ? dhcp_leases.dhcp6_leases : [];
+ 		if (leases.length == 0 && leases6.length == 0)
+-			return E('em', _('No active leases found'));
++			return null;
+ 		const machints = host_hints.getMACHints(false);
+ 		const isReadonlyView = !L.hasViewPermission();
+ 
+@@ -230,12 +230,16 @@
+ 			return columns;
+ 		}, this)), E('em', _('No active leases found')));
+ 
+-		return E([
+-			E('h3', _('Active DHCPv4 Leases')),
+-			table,
+-			E('h3', _('Active DHCPv6 Leases')),
+-			table6
+-		]);
++		const result = [];
++		if (leases.length > 0) {
++			result.push(E('h3', _('Active DHCPv4 Leases')));
++			result.push(table);
++		}
++		if (leases6.length > 0) {
++			result.push(E('h3', _('Active DHCPv6 Leases')));
++			result.push(table6);
++		}
++		return result.length ? E(result) : null;
+ 	},
+ 
+ });

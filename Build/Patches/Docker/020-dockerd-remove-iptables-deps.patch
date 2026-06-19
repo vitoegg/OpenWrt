@@ -1,0 +1,16 @@
+--- a/feeds/packages/utils/dockerd/Makefile
++++ b/feeds/packages/utils/dockerd/Makefile
+@@ -36,13 +36,7 @@
+   DEPENDS:=$(GO_ARCH_DEPENDS) \
+     +ca-certificates \
+     +containerd \
+-    +iptables \
+-    +iptables-mod-extra \
+-    +IPV6:ip6tables \
+-    +IPV6:kmod-ipt-nat6 \
+     +KERNEL_SECCOMP:libseccomp \
+-    +kmod-ipt-nat \
+-    +kmod-ipt-physdev \
+     +kmod-nf-ipvs \
+     +kmod-veth \
+     +tini \

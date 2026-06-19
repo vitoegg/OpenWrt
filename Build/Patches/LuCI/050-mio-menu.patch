@@ -1,0 +1,9 @@
+--- a/package/custom/luci-app-mio/luci-app-mio/root/usr/share/luci/menu.d/luci-app-mio.json
++++ b/package/custom/luci-app-mio/luci-app-mio/root/usr/share/luci/menu.d/luci-app-mio.json
+@@ -1,5 +1,5 @@
+ {
+-    "admin/services/mio": {
++    "admin/vpn/mio": {
+         "title": "Mio",
+         "action": {
+             "type": "view",
