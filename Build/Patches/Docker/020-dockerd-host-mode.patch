@@ -1,0 +1,37 @@
+--- a/feeds/packages/utils/dockerd/files/dockerd.init
++++ b/feeds/packages/utils/dockerd/files/dockerd.init
+@@ -40,7 +40,6 @@
+ }
+ 
+ boot() {
+-	uciadd
+ 	rc_procd start_service
+ }
+ 
+@@ -150,7 +149,7 @@
+ }
+ 
+ process_config() {
+-	local alt_config_file data_root log_level iptables ip6tables bip
++	local alt_config_file data_root log_level iptables ip6tables bip bridge
+ 
+ 	[ -f /etc/config/dockerd ] || {
+ 		# Use the daemon default configuration
+@@ -178,6 +177,7 @@
+ 	# omission == docker defaults
+ 	config_get log_driver globals log_driver ""
+ 	config_get bip globals bip ""
++	config_get bridge globals bridge ""
+ 	config_get registry_mirrors globals registry_mirrors ""
+ 	config_get hosts globals hosts ""
+ 	config_get dns globals dns ""
+@@ -198,7 +198,8 @@
+ 	json_add_boolean "iptables" "${iptables}"
+ 	json_add_boolean "ip6tables" "${ip6tables}"
+ 	[ -z "${log_driver}" ] || json_add_string "log-driver" "${log_driver}"
+-	[ -z "${bip}" ] || json_add_string "bip" "${bip}"
++	[ -z "${bip}" ] || json_add_string "bip" "${bip}"
++	[ -z "${bridge}" ] || json_add_string "bridge" "${bridge}"
+ 	[ -z "${registry_mirrors}" ] || json_add_array "registry-mirrors"
+ 	[ -z "${registry_mirrors}" ] || config_list_foreach globals registry_mirrors json_add_array_string
+ 	[ -z "${registry_mirrors}" ] || json_close_array

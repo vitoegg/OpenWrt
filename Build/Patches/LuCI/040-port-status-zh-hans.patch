@@ -1,0 +1,12 @@
+--- a/feeds/luci/modules/luci-base/po/zh_Hans/base.po
++++ b/feeds/luci/modules/luci-base/po/zh_Hans/base.po
+@@ -14150,3 +14150,9 @@
+ 
+ msgid "Temperature"
+ msgstr "温度"
++
++msgid "Speed"
++msgstr "速率"
++
++msgid "Duplex"
++msgstr "双工"

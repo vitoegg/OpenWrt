@@ -1,0 +1,11 @@
+# Cloud Customized Apps
+CONFIG_PACKAGE_luci-app-mio=y
+CONFIG_PACKAGE_luci-app-samba4=y
+
+# Cloud Docker Runtime
+CONFIG_PACKAGE_docker=y
+CONFIG_PACKAGE_dockerd=y
+
+# Cloud Customized Tools
+CONFIG_PACKAGE_iperf3=y
+CONFIG_PACKAGE_tcping=y

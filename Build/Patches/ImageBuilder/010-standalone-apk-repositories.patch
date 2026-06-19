@@ -1,0 +1,10 @@
+diff --git a/target/imagebuilder/Makefile b/target/imagebuilder/Makefile
+index 9ccc5b83e7..52aa2b9adc 100644
+--- a/target/imagebuilder/Makefile
++++ b/target/imagebuilder/Makefile
+@@ -47,4 +47,5 @@
+ ifneq ($(CONFIG_USE_APK),)
++	touch $(PKG_BUILD_DIR)/repositories
+   ifeq ($(CONFIG_IB_STANDALONE),)
+ 	$(call FeedSourcesAppendAPK,$(PKG_BUILD_DIR)/repositories)
+ 	$(VERSION_SED_SCRIPT) $(PKG_BUILD_DIR)/repositories
