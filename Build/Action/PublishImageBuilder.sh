@@ -2,7 +2,7 @@
 
 set -e
 
-source "$(dirname "${BASH_SOURCE[0]}")/../Flow/lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
 
 BUILD_PROFILE=${1:?Usage: PublishImageBuilder.sh <Router|Cloud> <source-dir>}
 SOURCE_DIR=${2:?Usage: PublishImageBuilder.sh <Router|Cloud> <source-dir>}

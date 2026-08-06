@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-source "$(dirname "${BASH_SOURCE[0]}")/../Flow/lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
 
 BUILD_PROFILE=${1:?Usage: RestoreImageBuilder.sh <Router|Cloud> <target-dir>}
 TARGET_DIR=${2:?Usage: RestoreImageBuilder.sh <Router|Cloud> <target-dir>}

@@ -115,7 +115,7 @@ EOF
     echo "::endgroup::"
 
     echo "::group::Init build context"
-    source "$GITHUB_WORKSPACE/Build/Flow/lib.sh"
+    source "$GITHUB_WORKSPACE/Build/lib.sh"
     load_profile "$BUILD_PROFILE"
     echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
     echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
