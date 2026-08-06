@@ -46,6 +46,7 @@ jobs:
 
       - name: Prepare Environment
         env:
+          REQUESTED_BUILD_MODE: ${{ inputs.build_mode }}
           DEBIAN_FRONTEND: noninteractive
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" prepare-environment
       - name: Setup Rclone
@@ -53,10 +54,6 @@ jobs:
         with:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
 
-      - name: Select Build Mode
-        env:
-          REQUESTED_BUILD_MODE: ${{ inputs.build_mode }}
-        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" select-build-mode
       - name: Clone Source and Feeds
         if: env.BUILD_MODE == 'FullBuilder'
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" clone-source-and-feeds

@@ -55,68 +55,6 @@ EOF
     uname -a
     echo "::endgroup::"
 
-    echo "::group::Free disk space"
-    sudo swapoff -a || true
-    sudo rm -f /swapfile /mnt/swapfile
-    sudo docker image prune -a -f || true
-    sudo systemctl stop docker || true
-    sudo snap set system refresh.retain=2 || true
-    sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php* || true
-    sudo apt-get -y autoremove --purge
-    sudo apt-get clean
-    sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* \
-      /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel \
-      /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} \
-      /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} \
-      /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 \
-      /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
-    sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile} || true
-    rm -rf ~/{.cargo,.dotnet,.rustup}
-    df -Th
-    echo "::endgroup::"
-
-    echo "::group::Create swap"
-    sudo fallocate -l 8G /mnt/swapfile || sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
-    sudo chmod 600 /mnt/swapfile
-    sudo mkswap /mnt/swapfile
-    sudo swapon /mnt/swapfile
-    free -h | grep -i swap
-    echo "::endgroup::"
-
-    echo "::group::Install build dependencies"
-    sudo -E apt-get -yqq update
-    sudo -E apt-get -yqq install dos2unix python3-netifaces libfuse-dev ccache jq unzip wget \
-      libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
-    sudo bash -c 'bash <(curl -fsSL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-    oras_version='1.3.3'
-    curl -fsSL "https://github.com/oras-project/oras/releases/download/v${oras_version}/oras_${oras_version}_linux_amd64.tar.gz" \
-      | sudo tar -xz -C /usr/bin oras
-    sudo -E apt-get -yqq autoremove --purge
-    sudo -E apt-get -yqq clean
-    sudo -E systemctl daemon-reload
-    sudo -E timedatectl set-timezone "Asia/Shanghai"
-    echo "::endgroup::"
-
-    echo "::group::Create workspace"
-    mnt_size=$(df -BG /mnt | awk 'END {gsub(/G/, "", $4); print $4}')
-    root_size=$(df -BG / | awk 'END {gsub(/G/, "", $4); print $4 - 2}')
-    sudo truncate -s "${mnt_size}G" /mnt/mnt.img
-    sudo truncate -s "${root_size}G" /root.img
-    loop_mnt=$(sudo losetup -f --show /mnt/mnt.img)
-    loop_root=$(sudo losetup -f --show /root.img)
-    sudo pvcreate "$loop_mnt"
-    sudo pvcreate "$loop_root"
-    sudo vgcreate github "$loop_mnt" "$loop_root"
-    sudo lvcreate -n runner -l 100%FREE github
-    sudo mkfs.xfs /dev/github/runner
-    sudo mkdir -p /builder
-    sudo mount /dev/github/runner /builder
-    sudo chown -R "$USER:$(id -gn)" /builder
-    rm -rf "$GITHUB_WORKSPACE/wrt"
-    ln -s /builder "$GITHUB_WORKSPACE/wrt"
-    df -Th
-    echo "::endgroup::"
-
     echo "::group::Init build context"
     source "$GITHUB_WORKSPACE/Build/lib.sh"
     load_profile "$BUILD_PROFILE"
@@ -128,42 +66,84 @@ EOF
     echo "WRT_BRANCH=$WRT_BRANCH" >> "$GITHUB_ENV"
     echo "WRT_COMMIT=$WRT_COMMIT" >> "$GITHUB_ENV"
     echo "DEVICE_NAME=$DEVICE_NAME" >> "$GITHUB_ENV"
-    find ./Build ./Custom ./Config -maxdepth 5 -type f -iregex '.*\(txt\|conf\|sh\)$' -exec dos2unix {} \;
-    find ./Build -maxdepth 5 -type f -name '*.sh' -exec chmod +x {} \;
+    rm -rf "$GITHUB_WORKSPACE/wrt"
+    mkdir -p "$GITHUB_WORKSPACE/wrt"
+
+    for command in curl jq make tar unzip wget zstd; do
+      if ! command -v "$command" >/dev/null 2>&1; then
+        ci_error "Required command not found: $command"
+        exit 1
+      fi
+    done
+
+    oras_version='1.3.3'
+    curl -fSsL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 120 \
+      "https://github.com/oras-project/oras/releases/download/v${oras_version}/oras_${oras_version}_linux_amd64.tar.gz" \
+      | sudo tar -xz -C /usr/bin oras
     echo "::endgroup::"
 
-    ci_success_section "Runner ready"
-}
-
-select_build_mode() {
     if [ "$REQUESTED_BUILD_MODE" = 'FullBuilder' ]; then
-      echo "BUILD_MODE=FullBuilder" >> "$GITHUB_ENV"
-      ci_success_section "Build mode: FullBuilder"
-      exit 0
+      build_mode='FullBuilder'
+    else
+      set +e
+      bash "$GITHUB_WORKSPACE/Build/Action/ImageBuilder.sh" restore \
+        "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
+      restore_status=$?
+      set -e
+
+      case "$restore_status" in
+        0)
+          build_mode='ImageBuilder'
+          ;;
+        2)
+          build_mode='FullBuilder'
+          ci_warn_section "ImageBuilder unavailable, falling back to FullBuilder"
+          ;;
+        *)
+          ci_error "ImageBuilder restore failed with status $restore_status"
+          exit "$restore_status"
+          ;;
+      esac
     fi
 
-    set +e
-    bash "$GITHUB_WORKSPACE/Build/Action/ImageBuilder.sh" restore \
-      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
-    restore_status=$?
-    set -e
+    echo "BUILD_MODE=$build_mode" >> "$GITHUB_ENV"
 
-    case "$restore_status" in
-      0)
-        wrt_hash=$(jq -r '.wrt_hash' ./wrt/.imagebuilder-metadata.json)
-        echo "BUILD_MODE=ImageBuilder" >> "$GITHUB_ENV"
-        echo "WRT_HASH=$wrt_hash" >> "$GITHUB_ENV"
-        ci_success_section "Build mode: ImageBuilder"
-        ;;
-      2)
-        echo "BUILD_MODE=FullBuilder" >> "$GITHUB_ENV"
-        ci_warn_section "ImageBuilder unavailable, falling back to FullBuilder"
-        ;;
-      *)
-        ci_error "ImageBuilder restore failed with status $restore_status"
-        exit "$restore_status"
-        ;;
-    esac
+    if [ "$build_mode" = 'ImageBuilder' ]; then
+      wrt_hash=$(jq -r '.wrt_hash' "$GITHUB_WORKSPACE/wrt/.imagebuilder-metadata.json")
+      echo "WRT_HASH=$wrt_hash" >> "$GITHUB_ENV"
+      ci_success_section "Runner ready: ImageBuilder"
+      return
+    fi
+
+    echo "::group::Free disk space"
+    sudo docker image prune -a -f || true
+    sudo systemctl stop docker || true
+    df -Th
+    echo "::endgroup::"
+
+    echo "::group::Create swap"
+    sudo swapoff -a || true
+    sudo rm -f /swapfile /mnt/swapfile
+    sudo fallocate -l 8G /mnt/swapfile || sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
+    sudo chmod 600 /mnt/swapfile
+    sudo mkswap /mnt/swapfile
+    sudo swapon /mnt/swapfile
+    free -h | grep -i swap
+    echo "::endgroup::"
+
+    echo "::group::Install build dependencies"
+    apt_options=(
+      -o Acquire::Retries=3
+      -o Acquire::http::Timeout=30
+      -o Acquire::https::Timeout=30
+    )
+    sudo -E apt-get "${apt_options[@]}" -yqq update
+    sudo -E apt-get "${apt_options[@]}" -yqq install --no-install-recommends \
+      build-essential ccache gawk gettext libncurses-dev libssl-dev python3 rsync swig unzip \
+      zlib1g-dev libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
+    echo "::endgroup::"
+
+    ci_success_section "Runner ready: FullBuilder"
 }
 
 clone_source_and_feeds() {
@@ -198,14 +178,14 @@ clone_source_and_feeds() {
 }
 
 apply_customizations() {
-    "$GITHUB_WORKSPACE/Build/Flow/ApplyPackages.sh" "$BUILD_PROFILE"
-    "$GITHUB_WORKSPACE/Build/Flow/ApplyPrepare.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPackages.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPrepare.sh" "$BUILD_PROFILE"
     ci_success_section "Sources prepared"
 
     cat "$GITHUB_WORKSPACE/Config/Common.txt" >> .config
     cat "$GITHUB_WORKSPACE/Config/$BUILD_PROFILE.txt" >> .config
-    "$GITHUB_WORKSPACE/Build/Flow/ApplyPatches.sh" "$BUILD_PROFILE"
-    "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPatches.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
 
     echo "::group::make defconfig"
     make defconfig -j"$(nproc)"
@@ -359,9 +339,9 @@ compile_fullbuilder() {
 assemble_imagebuilder() {
     rm -rf files bin
 
-    "$GITHUB_WORKSPACE/Build/Flow/ApplyPrepare.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPrepare.sh" "$BUILD_PROFILE"
     rm -f files/etc/banner
-    "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
 
     common_config="$GITHUB_WORKSPACE/Config/Common.txt"
     profile_config="$GITHUB_WORKSPACE/Config/$BUILD_PROFILE.txt"
@@ -536,16 +516,13 @@ deliver_firmware() {
 
 usage() {
     printf "Usage: %s <%s>\n" "$0" \
-        "prepare-environment|select-build-mode|clone-source-and-feeds|apply-customizations|download-sources|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|purge-stale-caches|deliver-firmware" >&2
+        "prepare-environment|clone-source-and-feeds|apply-customizations|download-sources|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|purge-stale-caches|deliver-firmware" >&2
 }
 
 main() {
     case "${1:-}" in
         prepare-environment)
             prepare_environment
-            ;;
-        select-build-mode)
-            select_build_mode
             ;;
         clone-source-and-feeds)
             clone_source_and_feeds
