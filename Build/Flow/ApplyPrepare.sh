@@ -39,14 +39,14 @@ copy_profile_files() {
     log "Warning: ${BUILD_PROFILE}/files/etc not found, skipping pre-configuration files"
 }
 
-copy_private_scripts() {
+copy_private_files() {
     local entry
     local source_path
     local dest_path
     local label
     local source_file
 
-    for entry in "${PRIVATE_SCRIPT_COPIES[@]}"; do
+    for entry in "${PRIVATE_FILE_COPIES[@]}"; do
         IFS='|' read -r source_path dest_path label <<< "$entry"
         [ -n "$source_path" ] || continue
 
@@ -57,33 +57,13 @@ copy_private_scripts() {
         if [ -f "$source_file" ]; then
             mkdir -p "$(dirname "$dest_path")"
             cp "$source_file" "$dest_path"
-            chmod +x "$dest_path"
+            if [ "${dest_path##*.}" = "sh" ]; then
+                chmod +x "$dest_path"
+            fi
         else
             log "Warning: $source_path not found, skipping $label"
         fi
     done
-}
-
-copy_argon_background() {
-    local source_file
-
-    if [ -z "$ARGON_BACKGROUND_SOURCE" ] || [ -z "$ARGON_BACKGROUND_DEST" ]; then
-        return 0
-    fi
-
-    section "Argon Theme"
-    log "Replacing Argon background image"
-    source_file=$(find "$REPO_TEMP_DIR" -path "*/$ARGON_BACKGROUND_SOURCE" -print -quit 2>/dev/null || true)
-
-    if [ -f "$source_file" ]; then
-        if [ -d "$(dirname "$ARGON_BACKGROUND_DEST")" ]; then
-            cp "$source_file" "$ARGON_BACKGROUND_DEST"
-        else
-            log "Warning: Argon theme directory not found, skipping background replacement"
-        fi
-    else
-        log "Warning: $ARGON_BACKGROUND_SOURCE not found, skipping background replacement"
-    fi
 }
 
 download_files() {
@@ -155,8 +135,7 @@ download_nikki_ui() {
 
 download_private_repo
 copy_profile_files
-copy_argon_background
-copy_private_scripts
+copy_private_files
 download_files
 download_nikki_ui
 
