@@ -88,6 +88,9 @@ EOF
     sudo -E apt-get -yqq install dos2unix python3-netifaces libfuse-dev ccache jq unzip wget \
       libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
     sudo bash -c 'bash <(curl -fsSL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+    oras_version='1.3.3'
+    curl -fsSL "https://github.com/oras-project/oras/releases/download/v${oras_version}/oras_${oras_version}_linux_amd64.tar.gz" \
+      | sudo tar -xz -C /usr/bin oras
     sudo -E apt-get -yqq autoremove --purge
     sudo -E apt-get -yqq clean
     sudo -E systemctl daemon-reload
@@ -140,7 +143,7 @@ select_build_mode() {
     fi
 
     set +e
-    bash "$GITHUB_WORKSPACE/Build/Action/RestoreImageBuilder.sh" \
+    bash "$GITHUB_WORKSPACE/Build/Action/ImageBuilder.sh" restore \
       "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
     restore_status=$?
     set -e
@@ -396,7 +399,7 @@ assemble_imagebuilder() {
 }
 
 publish_imagebuilder() {
-    bash "$GITHUB_WORKSPACE/Build/Action/PublishImageBuilder.sh" \
+    bash "$GITHUB_WORKSPACE/Build/Action/ImageBuilder.sh" publish \
       "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
 }
 

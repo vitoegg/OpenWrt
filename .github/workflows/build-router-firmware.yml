@@ -23,6 +23,7 @@ on:
 permissions:
   actions: write
   contents: write
+  packages: write
 
 concurrency:
   group: "build-router-firmware-${{ github.ref_name }}"
@@ -50,6 +51,7 @@ env:
   REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
   REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
   REPO_URL: ${{ secrets.REPO_URL }}
+  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   build:
@@ -165,6 +167,9 @@ jobs:
 
       - name: Publish ImageBuilder
         if: env.BUILD_MODE == 'FullBuilder' && env.BUILD_OK == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" publish-imagebuilder
       - name: Purge Stale Caches
         if: always() && env.BUILD_MODE == 'FullBuilder'
