@@ -166,15 +166,6 @@ patch_luci_common() {
     assert_file_contains "$dhcp_file" "return result.length ? E(result) : null;" "LuCI DHCP lease display"
 }
 
-patch_router_luci() {
-    local interfaces_file="feeds/luci/modules/luci-mod-network/htdocs/luci-static/resources/view/network/interfaces.js"
-
-    section "Router LuCI Patches"
-
-    apply_source_patch "$PATCH_ROOT/LuCI/060-hide-alias-carrier-status.patch" "LuCI alias carrier status"
-    assert_file_contains "$interfaces_file" "_('Carrier'), cond00 ? (carrier ? _('Present') : _('Absent')) : null," "LuCI alias carrier status"
-}
-
 patch_cloud_docker_runtime() {
     local dockerd_makefile="feeds/packages/utils/dockerd/Makefile"
     local dockerd_init="feeds/packages/utils/dockerd/files/dockerd.init"
@@ -270,10 +261,6 @@ if [ "$BUILD_PROFILE" = "Cloud" ]; then
 fi
 
 patch_luci_common
-
-if [ "$BUILD_PROFILE" = "Router" ]; then
-    patch_router_luci
-fi
 
 if [ "$BUILD_PROFILE" = "Cloud" ]; then
     patch_cloud_luci
