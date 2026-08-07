@@ -1,7 +1,5 @@
 name: Build-X86-Firmware
 
-run-name: ${{ inputs.profile }} · ${{ inputs.build_mode }}${{ inputs.profile != 'Cloud' && format(' · {0}', inputs.wan_mode) || '' }}
-
 on:
   workflow_dispatch:
     inputs:
@@ -60,7 +58,7 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.profile }} · ${{ inputs.build_mode }}
+    name: ${{ matrix.profile }} - ${{ inputs.build_mode }}${{ matrix.profile == 'Router' && format(' - {0}', inputs.wan_mode) || '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     strategy:
