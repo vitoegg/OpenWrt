@@ -159,24 +159,31 @@ build() {
     make_workspace
     restore_sdk "$profile" "$sdk_dir"
 
+    section "Clone apps"
     while IFS=$'\t' read -r name repo branch; do
         printf ' %s ' "$stale" | grep -qF " $name " || continue
 
-        section "Build $name"
         dest="$sdk_dir/package/custom/$name"
         rm -rf "$dest"
         git clone --depth=1 --single-branch ${branch:+--branch "$branch"} \
             "https://github.com/${repo}.git" "$dest"
+        find "$dest" -mindepth 2 -maxdepth 2 -name Makefile -printf '%h\n'
+    done < <(discover_apps "$profile") | sed 's|.*/||' | sort -u > "$WORKSPACE/packages"
 
-        while IFS= read -r pkg; do
-            log "Compiling ${pkg#"$sdk_dir/"}"
-            make -C "$sdk_dir" "${pkg#"$sdk_dir/"}/compile" \
-                NO_DEPS=1 -j"$(nproc)" BUILD_LOG=1 || {
-                dump_log "$sdk_dir" "${pkg##*/}"
-                die "$name failed to build"
-            }
-        done < <(find "$dest" -mindepth 2 -maxdepth 2 -name Makefile -printf '%h\n' | sort)
-    done < <(discover_apps "$profile")
+    [ -s "$WORKSPACE/packages" ] || die "no package directories found in cloned apps"
+
+    section "Scan packages"
+    make -C "$sdk_dir" prepare-tmpinfo
+
+    section "Compile apps"
+    while IFS= read -r pkg; do
+        log "Compiling $pkg"
+        make -C "$sdk_dir" "package/$pkg/compile" \
+            NO_DEPS=1 -j"$(nproc)" BUILD_LOG=1 || {
+            dump_log "$sdk_dir" "$pkg"
+            die "$pkg failed to build"
+        }
+    done < "$WORKSPACE/packages"
 
     replace_apks "$sdk_dir" "$ib_dir"
 }
