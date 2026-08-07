@@ -95,7 +95,7 @@ prune_stale_versions() {
     local ref="$1"
     local cutoff="$2"
     local tag="${ref##*:}"
-    local prefix="${3:-$tag}"
+    local prefix="${3:-}"
     local package="${ref%:*}"
     local versions_api
     local stale_ids
@@ -116,7 +116,8 @@ prune_stale_versions() {
             | .metadata.container.tags as $tags
             | select(
                 ($tags | length) == 0
-                or (($tags | index($ENV.PRUNE_TAG) | not)
+                or ($ENV.PRUNE_PREFIX != ""
+                    and ($tags | index($ENV.PRUNE_TAG) | not)
                     and ($tags | all(startswith($ENV.PRUNE_PREFIX))))
               )
             | .id' 2>/dev/null); then
