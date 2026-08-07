@@ -229,16 +229,3 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           FIRMWARE_DOWNLOAD_URL: ${{ secrets.FIRMWARE_DOWNLOAD_URL }}
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" deliver-firmware
-
-      - name: Cleanup Workflow Artifacts
-        if: always() && (inputs.profile != 'Both' || matrix.profile == 'Router')
-        uses: ophub/delete-releases-workflows@main
-        with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
-          out_log: false
-          delete_releases: true
-          releases_keep_latest: 0
-          delete_tags: true
-          delete_workflows: true
-          workflows_keep_day: 0
-          workflows_keep_keyword: "Rclone/Patches"
