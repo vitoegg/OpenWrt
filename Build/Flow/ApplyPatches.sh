@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
 
 load_profile "${1:?Usage: ApplyPatches.sh <Router|Cloud>}"
 

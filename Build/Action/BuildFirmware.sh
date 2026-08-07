@@ -381,6 +381,9 @@ assemble_imagebuilder() {
     rootfs_partsize=$(sed -n 's/^CONFIG_TARGET_ROOTFS_PARTSIZE=//p' .config | head -1)
     rootfs_partsize=${rootfs_partsize:-2048}
 
+    # APK ImageBuilder expects this file; missing it floods logs with warnings
+    touch repositories
+
     ci_section "Building firmware with ImageBuilder"
     make image \
       PROFILE=generic \
