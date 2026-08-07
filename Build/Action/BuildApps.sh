@@ -39,12 +39,13 @@ sdk_paths() (
     cd "$1" || exit 1
 
     for path in Makefile rules.mk Config.in .config feeds.conf feeds.conf.default \
-        config include scripts tools target toolchain feeds dl build_dir/host \
+        config include scripts tools target toolchain feeds dl \
         package/Makefile package/kernel package/toolchain; do
         if [ -e "$path" ]; then printf '%s\n' "$path"; fi
     done
 
-    find staging_dir -maxdepth 1 \( -name host -o -name 'toolchain-*' \)
+    find staging_dir -maxdepth 1 \( -name 'host*' -o -name 'toolchain-*' \)
+    find build_dir -maxdepth 1 -name 'host*'
     find staging_dir -maxdepth 2 -type d -name pkginfo
     exit 0
 )
@@ -64,7 +65,8 @@ publish() {
     sdk_paths "$source_dir" > "$WORKSPACE/paths"
 
     for path in Makefile rules.mk Config.in config include scripts target \
-        toolchain tools package/Makefile feeds staging_dir/host; do
+        toolchain tools package/Makefile feeds staging_dir/host \
+        staging_dir/hostpkg build_dir/host; do
         grep -qx "$path" "$WORKSPACE/paths" || die "$path missing from $source_dir"
     done
 
