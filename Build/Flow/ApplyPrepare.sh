@@ -119,17 +119,14 @@ download_nikki_ui() {
     fi
 
     section "Nikki Web UI"
-    if [ -d "files/etc/nikki/run/ui" ]; then
-        log "Removing existing nikki ui directory"
-        rm -rf files/etc/nikki/run/ui
-    fi
+    rm -rf files/etc/nikki/run/ui
+    mkdir -p "$NIKKI_UI_DEST"
 
     log "Downloading Nikki zashboard UI"
-    mkdir -p "$NIKKI_UI_DEST"
     temp_dir=$(mktemp -d)
-    wget -q --no-show-progress -O "$temp_dir/dist.zip" "$NIKKI_UI_URL" 2>/dev/null
-    unzip -qq "$temp_dir/dist.zip" -d "$temp_dir" 2>/dev/null
-    find "$temp_dir" -mindepth 2 -exec cp -r {} "$NIKKI_UI_DEST"/ \; 2>/dev/null || cp -r "$temp_dir"/* "$NIKKI_UI_DEST"/
+    wget -q --no-show-progress -O "$temp_dir/dist.zip" "$NIKKI_UI_URL"
+    unzip -qq "$temp_dir/dist.zip" -d "$temp_dir"
+    cp -a "$temp_dir/dist"/. "$NIKKI_UI_DEST"/
     rm -rf "$temp_dir"
 }
 
