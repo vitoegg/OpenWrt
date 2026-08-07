@@ -96,6 +96,13 @@ check() {
     require_command jq
     section "Custom apps"
 
+    if [ "${FORCE_APPS:-false}" = 'true' ]; then
+        stale=$(discover_apps "$profile" | cut -f1 | xargs)
+        log "Forced rebuild: ${stale:-none}"
+        printf 'STALE_APPS=%s\n' "$stale" | tee -a "${GITHUB_ENV:-/dev/null}"
+        return 0
+    fi
+
     while IFS=$'\t' read -r name repo branch; do
         recorded=$(jq -r --arg n "$name" '.[$n].commit // empty' "$baseline" 2>/dev/null)
         current=$(upstream_commit "$repo" "$branch")

@@ -20,6 +20,11 @@ on:
         options:
           - 'ImageBuilder'
           - 'FullBuilder'
+      force_apps:
+        description: 'Force rebuild custom apps'
+        required: false
+        type: boolean
+        default: false
       wan_mode:
         description: 'Select WAN mode'
         required: false
@@ -201,6 +206,8 @@ jobs:
 
       - name: ◇ Check Apps
         if: env.BUILD_MODE == 'ImageBuilder'
+        env:
+          FORCE_APPS: ${{ inputs.force_apps }}
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" check-apps
 
       - name: ◇ Build Apps
