@@ -46,7 +46,13 @@ require_profile() {
 # Each profile owns one immutable tag, so publishing overwrites in place.
 package_ref() {
     local profile="$1"
-    local package="${IMAGEBUILDER_PACKAGE:-ghcr.io/${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required}/openwrt-imagebuilder}"
+    local kind="${2:-imagebuilder}"
+    local package="ghcr.io/${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required}/openwrt-$kind"
+
+    case "$kind" in
+        imagebuilder) package="${IMAGEBUILDER_PACKAGE:-$package}" ;;
+        sdk) package="${SDK_PACKAGE:-$package}" ;;
+    esac
 
     printf '%s:%s' "$package" "$profile" | tr '[:upper:]' '[:lower:]'
 }
@@ -147,6 +153,13 @@ publish() {
     cp "$archive" "$bundle_dir/imagebuilder.tar.zst"
     cp "$manifest" "$bundle_dir/firmware.manifest"
 
+    if [ -f "$source_dir/.apps-baseline.json" ]; then
+        cp "$source_dir/.apps-baseline.json" "$bundle_dir/apps.json"
+    else
+        printf '{}' > "$bundle_dir/apps.json"
+        log "WARNING: no app baseline recorded, apps will never be refreshed"
+    fi
+
     ref=$(package_ref "$profile")
     registry_login "$ref"
 
@@ -167,7 +180,8 @@ publish() {
             --annotation "openwrt.build-date=${BUILD_DATE:-}" \
             --annotation "openwrt.run-id=$GITHUB_RUN_ID" \
             imagebuilder.tar.zst:application/zstd \
-            firmware.manifest:text/plain
+            firmware.manifest:text/plain \
+            apps.json:application/json
     )
 
     prune_untagged_versions "$ref"
@@ -264,6 +278,12 @@ restore() {
     cp "$bundle_dir/firmware.manifest" "$target_dir/.imagebuilder-manifest"
     cp "$WORKSPACE/metadata.json" "$target_dir/.imagebuilder-metadata.json"
 
+    if [ -f "$bundle_dir/apps.json" ]; then
+        cp "$bundle_dir/apps.json" "$target_dir/.imagebuilder-apps.json"
+    else
+        printf '{}' > "$target_dir/.imagebuilder-apps.json"
+    fi
+
     log "ImageBuilder restored: $ref ($wrt_hash)"
 }
 
@@ -289,4 +309,6 @@ main() {
     esac
 }
 
-main "$@"
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main "$@"
+fi

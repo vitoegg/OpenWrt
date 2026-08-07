@@ -182,6 +182,13 @@ jobs:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" publish-imagebuilder
 
+      - name: ◆ Publish SDK
+        if: env.BUILD_MODE == 'FullBuilder' && env.BUILD_OK == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" publish-sdk
+
       - name: ◆ Purge Stale Caches
         if: always() && env.BUILD_MODE == 'FullBuilder'
         continue-on-error: true
@@ -192,14 +199,24 @@ jobs:
           CCACHE_CACHE_SAVE_OUTCOME: ${{ steps.cache-ccache-save.outcome }}
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" purge-stale-caches
 
+      - name: ◇ Check Apps
+        if: env.BUILD_MODE == 'ImageBuilder'
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" check-apps
+
+      - name: ◇ Build Apps
+        if: env.BUILD_MODE == 'ImageBuilder' && env.STALE_APPS != ''
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" build-apps
+
       - name: ◇ Assemble Firmware
         if: env.BUILD_MODE == 'ImageBuilder'
-        working-directory: ./wrt
+        working-directory: ./ib
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" assemble-imagebuilder
 
       - name: Deliver Firmware
         if: env.BUILD_OK == 'true'
-        working-directory: ./wrt
+        working-directory: ./${{ env.BUILD_DIR }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

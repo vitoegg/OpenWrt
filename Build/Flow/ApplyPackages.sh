@@ -6,6 +6,7 @@ load_profile "${1:?Usage: ApplyPackages.sh <Router|Cloud>}"
 
 PKG_SEARCH_PATHS=${PKG_SEARCH_PATHS:-"feeds/luci/ feeds/packages/"}
 PKG_CLONE_BASE=${PKG_CLONE_BASE:-"package/custom"}
+APPS_BASELINE=${APPS_BASELINE:-".apps-baseline.json"}
 
 remove_package() {
     local name
@@ -53,7 +54,24 @@ clone_package() {
         log "ERROR: Failed to clone $repo"
         return 1
     fi
+    record_app_baseline "$dest_name" "$repo" "$branch" "$dest"
     log "Cloned $repo ($((SECONDS - start))s)"
+}
+
+record_app_baseline() {
+    local name="$1"
+    local repo="$2"
+    local branch="$3"
+    local dest="$4"
+    local commit
+
+    commit=$(git -C "$dest" rev-parse HEAD 2>/dev/null) || return 0
+
+    [ -f "$APPS_BASELINE" ] || printf '{}' > "$APPS_BASELINE"
+    jq --arg n "$name" --arg r "$repo" --arg b "$branch" --arg c "$commit" \
+        '.[$n] = {repo: $r, branch: $b, commit: $c}' \
+        "$APPS_BASELINE" > "$APPS_BASELINE.tmp"
+    mv "$APPS_BASELINE.tmp" "$APPS_BASELINE"
 }
 
 apply_configured_packages() {

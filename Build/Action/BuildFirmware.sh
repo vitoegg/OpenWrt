@@ -71,8 +71,8 @@ EOF
     echo "WRT_COMMIT=$WRT_COMMIT" >> "$GITHUB_ENV"
     echo "DEVICE_NAME=$DEVICE_NAME" >> "$GITHUB_ENV"
     echo "BUILD_PROFILE=$BUILD_PROFILE" >> "$GITHUB_ENV"
-    rm -rf "$GITHUB_WORKSPACE/wrt"
-    mkdir -p "$GITHUB_WORKSPACE/wrt"
+    rm -rf "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
+    mkdir -p "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
 
     printf 'Profile: %s\n' "$BUILD_PROFILE"
     printf 'Device: %s\n' "$DEVICE_NAME"
@@ -100,7 +100,7 @@ EOF
       echo "::group::Restore ImageBuilder"
       set +e
       bash "$GITHUB_WORKSPACE/Build/Action/ImageBuilder.sh" restore \
-        "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
+        "$BUILD_PROFILE" "$GITHUB_WORKSPACE/ib"
       restore_status=$?
       set -e
       echo "::endgroup::"
@@ -123,7 +123,13 @@ EOF
     echo "BUILD_MODE=$build_mode" >> "$GITHUB_ENV"
 
     if [ "$build_mode" = 'ImageBuilder' ]; then
-      wrt_hash=$(jq -r '.wrt_hash' "$GITHUB_WORKSPACE/wrt/.imagebuilder-metadata.json")
+      echo "BUILD_DIR=ib" >> "$GITHUB_ENV"
+    else
+      echo "BUILD_DIR=wrt" >> "$GITHUB_ENV"
+    fi
+
+    if [ "$build_mode" = 'ImageBuilder' ]; then
+      wrt_hash=$(jq -r '.wrt_hash' "$GITHUB_WORKSPACE/ib/.imagebuilder-metadata.json")
       echo "WRT_HASH=$wrt_hash" >> "$GITHUB_ENV"
       ci_success_section "Runner ready: ImageBuilder"
       return
@@ -412,6 +418,21 @@ publish_imagebuilder() {
       "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
 }
 
+publish_sdk() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildApps.sh" publish \
+      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
+}
+
+check_apps() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildApps.sh" check \
+      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/ib"
+}
+
+build_apps() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildApps.sh" build \
+      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
+}
+
 purge_stale_caches() {
     purge_latest_cache_by_prefix() {
       local label="$1"
@@ -515,7 +536,7 @@ deliver_firmware() {
     ci_success_section "Firmware ready: $firmware_name ($build_duration)"
 
     echo "::group::Upload firmware"
-    rclone copy "${GITHUB_WORKSPACE}/wrt/upload/" remote:/OpenWrt/ \
+    rclone copy "${GITHUB_WORKSPACE}/${BUILD_DIR:-wrt}/upload/" remote:/OpenWrt/ \
       --include "*.img.gz" \
       --transfers=1 \
       --stats-one-line \
@@ -545,7 +566,7 @@ deliver_firmware() {
 
 usage() {
     printf "Usage: %s <%s>\n" "$0" \
-        "prepare-environment|clone-source-and-feeds|apply-customizations|download-sources|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|purge-stale-caches|deliver-firmware" >&2
+        "prepare-environment|clone-source-and-feeds|apply-customizations|download-sources|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|publish-sdk|check-apps|build-apps|purge-stale-caches|deliver-firmware" >&2
 }
 
 main() {
@@ -570,6 +591,15 @@ main() {
             ;;
         publish-imagebuilder)
             publish_imagebuilder
+            ;;
+        publish-sdk)
+            publish_sdk
+            ;;
+        check-apps)
+            check_apps
+            ;;
+        build-apps)
+            build_apps
             ;;
         purge-stale-caches)
             purge_stale_caches
