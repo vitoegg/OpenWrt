@@ -19,6 +19,14 @@ die() {
     exit 1
 }
 
+group() {
+    printf '::group::%s\n' "$*"
+}
+
+endgroup() {
+    printf '::endgroup::\n'
+}
+
 discover_apps() {
     local profile="$1" selected entry repo branch name
 
@@ -77,11 +85,14 @@ publish() {
             die "host tool $path missing, LuCI packages cannot be rebuilt"
     done
 
+    group "Pack $(wc -l < "$WORKSPACE/paths" | tr -d ' ') paths"
     tar --zstd -cpf "$WORKSPACE/bundle/sdk.tar.zst" \
         -C "$source_dir" -T "$WORKSPACE/paths"
+    endgroup
 
     ref=$(package_ref "$profile" sdk)
     registry_login "$ref"
+    group "Push $ref"
     (
         cd "$WORKSPACE/bundle"
         oras push "$ref" \
@@ -94,6 +105,7 @@ publish() {
             sdk.tar.zst:application/zstd
     )
     prune_untagged_versions "$ref"
+    endgroup
 
     log "SDK published: $ref ($(du -h "$WORKSPACE/bundle/sdk.tar.zst" | cut -f1))"
 }
@@ -104,16 +116,22 @@ emit_stale() {
     if [ -n "$stale" ]; then
         log "Rebuilding: $stale"
     else
-        log "All apps current"
+        log "All apps up to date"
     fi
-    printf 'STALE_APPS=%s\n' "$stale" | tee -a "${GITHUB_ENV:-/dev/null}"
+    printf 'STALE_APPS=%s\n' "$stale" >> "${GITHUB_ENV:-/dev/null}"
+}
+
+report_app() {
+    local line
+    printf -v line '%-17s %-26s %s' "$1" "$2" "$3"
+    log "$line"
 }
 
 check() {
     local profile=${1:?Usage: BuildApps.sh check <Router|Cloud> <imagebuilder-dir>}
     local ib_dir=${2:?Usage: BuildApps.sh check <Router|Cloud> <imagebuilder-dir>}
     local baseline="$ib_dir/.imagebuilder-apps.json"
-    local stale='' name repo branch current recorded
+    local stale='' name repo branch current recorded source
 
     require_profile "$profile"
     require_command jq
@@ -127,15 +145,16 @@ check() {
     while IFS=$'\t' read -r name repo branch; do
         recorded=$(jq -r --arg n "$name" '.[$n].commit // empty' "$baseline" 2>/dev/null || true)
         current=$(upstream_commit "$repo" "$branch")
+        source="$repo${branch:+@$branch}"
 
         if [ -z "$recorded" ]; then
-            log "  $name: not in baseline, keeping shipped build"
+            report_app "$name" "$source" "not in baseline, keeping shipped build"
         elif [ -z "$current" ]; then
-            log "  $name: upstream unreachable, keeping ${recorded:0:12}"
+            report_app "$name" "$source" "${recorded:0:12}  upstream unreachable, keeping shipped build"
         elif [ "$current" = "$recorded" ]; then
-            log "  $name: ${recorded:0:12} current"
+            report_app "$name" "$source" "${recorded:0:12}  up to date"
         else
-            log "  $name: ${recorded:0:12} -> ${current:0:12}"
+            report_app "$name" "$source" "${recorded:0:12} -> ${current:0:12}  rebuild"
             stale="${stale:+$stale }$name"
         fi
     done < <(discover_apps "$profile")
@@ -154,13 +173,16 @@ restore_sdk() {
     [ "${topdir:-$sdk_dir}" = "$sdk_dir" ] ||
         die "SDK was built at $topdir, cannot use it at $sdk_dir"
 
+    group "Pull $ref"
     oras pull "$ref" --output "$WORKSPACE/sdk"
     require_file "$WORKSPACE/sdk/sdk.tar.zst" "SDK archive"
 
     mkdir -p "$sdk_dir"
     find "$sdk_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
     tar --zstd -xpf "$WORKSPACE/sdk/sdk.tar.zst" -C "$sdk_dir"
-    log "SDK restored to $sdk_dir"
+    endgroup
+
+    log "SDK restored to $sdk_dir ($(du -sh "$sdk_dir" | cut -f1))"
 }
 
 dump_log() {
@@ -200,7 +222,10 @@ replace_apks() {
         log "$(basename "$apk") -> ${dest#"$ib_dir/"}"
     done
 
+    group "make package_index"
     make -C "$ib_dir" package_index
+    endgroup
+
     log "Replaced ${#built[@]} apks"
 }
 
@@ -232,8 +257,10 @@ build() {
 
         dest="$sdk_dir/package/custom/$name"
         rm -rf "$dest"
-        git clone --quiet --depth=1 --single-branch ${branch:+--branch "$branch"} \
+        group "Clone $repo"
+        git clone --depth=1 --single-branch ${branch:+--branch "$branch"} \
             "https://github.com/${repo}.git" "$dest"
+        endgroup
         log "$name: $(git -C "$dest" rev-parse --short HEAD)"
     done < <(discover_apps "$profile")
 
@@ -246,16 +273,22 @@ build() {
     [ "${#packages[@]}" -gt 0 ] || die "no package directories found in cloned apps"
 
     section "Scan packages"
+    group "make prepare-tmpinfo"
     make -C "$sdk_dir" prepare-tmpinfo
+    endgroup
+    log "Found ${#packages[@]} packages: ${packages[*]}"
 
     section "Compile apps"
     for pkg in "${packages[@]}"; do
-        log "Compiling $pkg"
+        group "Compile $pkg"
         make -C "$sdk_dir" "package/$pkg/compile" \
             NO_DEPS=1 -j"$(nproc)" BUILD_LOG=1 || {
+            endgroup
             dump_log "$sdk_dir" "$pkg"
             die "$pkg failed to build"
         }
+        endgroup
+        log "$pkg built"
     done
 
     replace_apks "$sdk_dir" "$ib_dir"
