@@ -135,17 +135,6 @@ EOF
       return
     fi
 
-    disk_before_kb=$(df --output=avail -k / | tail -1 | tr -d '[:space:]')
-    echo "::group::Free disk space"
-    printf 'Removing: Docker images, Android SDK, .NET SDK, Swift toolchain\n'
-    sudo docker image prune -a -f || true
-    sudo rm -rf /usr/local/lib/android /usr/share/dotnet /usr/share/swift
-    echo "::endgroup::"
-    disk_after_kb=$(df --output=avail -k / | tail -1 | tr -d '[:space:]')
-    disk_freed=$(awk -v before="$disk_before_kb" -v after="$disk_after_kb" \
-      'BEGIN { printf "%.1f", (after - before) / 1048576 }')
-    ci_success "Disk space released: ${disk_freed} GiB"
-
     echo "::group::Create SWAP"
     sudo swapoff -a || true
     sudo rm -f /swapfile /mnt/swapfile
@@ -234,11 +223,8 @@ apply_customizations() {
       target_subtarget='64'
     fi
 
-    # Extract toolchain-critical configs from .config for stable cache key
-    # Only GCC/binutils/libc versions truly determine toolchain compatibility
     toolchain_sig=$(grep -E '^CONFIG_(GCC_VERSION|BINUTILS_VERSION|LIBC)=' .config | sort | sha256sum | cut -c1-12)
     if [ -z "$toolchain_sig" ] || [ "$toolchain_sig" = "e3b0c44298fc" ]; then
-      # Fallback if no matching configs found (empty input hash)
       toolchain_sig="default"
     fi
     config_sig=$(sha256sum .config | cut -c1-16)
