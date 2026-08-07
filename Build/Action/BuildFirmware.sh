@@ -30,20 +30,6 @@ ci_success_section() { ci_emit '32' '32' '✓' "$*"; }
 ci_warn() { ci_emit '' '33' '⚠' "$*"; }
 ci_warn_section() { ci_emit '33' '33' '⚠' "$*"; }
 ci_error() { ci_emit '' '31' '✗' "$*"; }
-
-cache_state() {
-  case "$1" in
-    true)
-      printf 'exact-hit'
-      ;;
-    false)
-      printf 'restore-hit'
-      ;;
-    *)
-      printf 'miss'
-      ;;
-  esac
-}
 EOF
 
     source "$BASH_ENV"
@@ -212,68 +198,9 @@ apply_customizations() {
     make defconfig -j"$(nproc)"
     echo "::endgroup::"
     ci_success_section "$BUILD_PROFILE config applied"
-
-    target_board=$(sed -n 's/^CONFIG_TARGET_BOARD="\([^"]*\)"/\1/p' .config | head -1)
-    target_subtarget=$(sed -n 's/^CONFIG_TARGET_SUBTARGET="\([^"]*\)"/\1/p' .config | head -1)
-
-    if [ -z "$target_board" ]; then
-      target_board='x86'
-    fi
-    if [ -z "$target_subtarget" ]; then
-      target_subtarget='64'
-    fi
-
-    toolchain_sig=$(grep -E '^CONFIG_(GCC_VERSION|BINUTILS_VERSION|LIBC)=' .config | sort | sha256sum | cut -c1-12)
-    if [ -z "$toolchain_sig" ] || [ "$toolchain_sig" = "e3b0c44298fc" ]; then
-      toolchain_sig="default"
-    fi
-    config_sig=$(sha256sum .config | cut -c1-16)
-    cache_run_suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-
-    profile_lower=$(echo "$BUILD_PROFILE" | tr '[:upper:]' '[:lower:]')
-    dl_cache_prefix="wrt-dl-${WRT_BRANCH}"
-    toolchain_cache_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-${toolchain_sig}"
-    toolchain_cache_clean_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-"
-    ccache_cache_prefix="ccache-openwrt-${profile_lower}-${WRT_BRANCH#openwrt-}-${target_board}-${target_subtarget}-${config_sig}"
-    ccache_cache_clean_prefix="ccache-openwrt-${profile_lower}-${WRT_BRANCH#openwrt-}-${target_board}-${target_subtarget}-"
-
-    echo "TARGET_BOARD=$target_board" >> "$GITHUB_ENV"
-    echo "TARGET_SUBTARGET=$target_subtarget" >> "$GITHUB_ENV"
-    echo "TOOLCHAIN_SIG=$toolchain_sig" >> "$GITHUB_ENV"
-    echo "CONFIG_SIG=$config_sig" >> "$GITHUB_ENV"
-    echo "DL_CACHE_PREFIX=$dl_cache_prefix" >> "$GITHUB_ENV"
-    echo "DL_CACHE_KEY=${dl_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
-    echo "TOOLCHAIN_CACHE_PREFIX=$toolchain_cache_prefix" >> "$GITHUB_ENV"
-    echo "TOOLCHAIN_CACHE_KEY=${toolchain_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
-    echo "TOOLCHAIN_CACHE_CLEAN_PREFIX=$toolchain_cache_clean_prefix" >> "$GITHUB_ENV"
-    echo "CCACHE_CACHE_PREFIX=$ccache_cache_prefix" >> "$GITHUB_ENV"
-    echo "CCACHE_CACHE_KEY=${ccache_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
-    echo "CCACHE_CACHE_CLEAN_PREFIX=$ccache_cache_clean_prefix" >> "$GITHUB_ENV"
-
-    ci_success_banner
-    ci_success "Target detected: ${target_board}/${target_subtarget}"
-    ci_success "Toolchain signature: ${toolchain_sig}"
-    ci_success "Config signature: ${config_sig}"
 }
 
 download_sources() {
-    report_cache() {
-      local label="$1" state="$2"
-      if [ "$state" = 'miss' ]; then
-        ci_warn "${label} cache: ${state}"
-      else
-        ci_success "${label} cache: ${state}"
-      fi
-    }
-
-    dl_state=$(cache_state "$DOWNLOAD_CACHE_HIT")
-    toolchain_state=$(cache_state "$TOOLCHAIN_CACHE_HIT")
-    ccache_state=$(cache_state "$CCACHE_CACHE_HIT")
-
-    report_cache 'Download' "$dl_state"
-    report_cache 'Toolchain' "$toolchain_state"
-    report_cache 'Ccache' "$ccache_state"
-
     echo "::group::Restore cache timestamps"
     if [ -d "./staging_dir" ]; then
       find ./staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
@@ -419,62 +346,14 @@ build_apps() {
       "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
 }
 
-purge_stale_caches() {
-    purge_latest_cache_by_prefix() {
-      local label="$1"
-      local list_prefix="$2"
-      local save_outcome="$3"
-      local cache_entries
-      local keep_key
-      local stale_ids
-      local cache_count
-      local stale_count
+restore_caches() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildCache.sh" restore \
+      "$GITHUB_WORKSPACE/wrt"
+}
 
-      if [ "$save_outcome" != 'success' ]; then
-        ci_warn "${label} cache save skipped or failed, keeping previous cache"
-        return 0
-      fi
-
-      if [ -z "$list_prefix" ]; then
-        ci_warn "${label} cache prefix is empty, skipping purge"
-        return 0
-      fi
-
-      cache_entries=$(gh cache list --limit 1000 --repo "$GITHUB_REPOSITORY" --key "$list_prefix" --json id,key,createdAt | \
-        jq -c --arg list_prefix "$list_prefix" '
-          map(select(.key | startswith($list_prefix))) |
-          sort_by(.createdAt) |
-          reverse
-        ')
-
-      cache_count=$(printf '%s\n' "$cache_entries" | jq 'length')
-      if [ "$cache_count" -eq 0 ]; then
-        ci_warn "No ${label} caches found for prefix ${list_prefix}"
-        return 0
-      fi
-
-      keep_key=$(printf '%s\n' "$cache_entries" | jq -r '.[0].key')
-      stale_ids=$(printf '%s\n' "$cache_entries" | jq -r '.[1:][]?.id')
-      stale_count=$(printf '%s\n' "$cache_entries" | jq '.[1:] | length')
-
-      ci_success "${label} cache retained: ${keep_key}"
-
-      if [ "$stale_count" -eq 0 ]; then
-        ci_success "No stale ${label} caches to purge"
-        return 0
-      fi
-
-      while IFS= read -r cache_id; do
-        [ -n "$cache_id" ] || continue
-        gh cache delete "$cache_id" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true
-      done <<< "$stale_ids"
-
-      ci_success "Old ${label} caches purged: ${stale_count}"
-    }
-
-    purge_latest_cache_by_prefix 'Download' "${DL_CACHE_PREFIX}-" "$DOWNLOAD_CACHE_SAVE_OUTCOME"
-    purge_latest_cache_by_prefix 'Toolchain' "${TOOLCHAIN_CACHE_CLEAN_PREFIX}" "$TOOLCHAIN_CACHE_SAVE_OUTCOME"
-    purge_latest_cache_by_prefix 'Ccache' "${CCACHE_CACHE_CLEAN_PREFIX}" "$CCACHE_CACHE_SAVE_OUTCOME"
+save_cache() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildCache.sh" save \
+      "$1" "$GITHUB_WORKSPACE/wrt"
 }
 
 deliver_firmware() {
@@ -552,7 +431,7 @@ deliver_firmware() {
 
 usage() {
     printf "Usage: %s <%s>\n" "$0" \
-        "prepare-environment|clone-source-and-feeds|apply-customizations|download-sources|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|publish-sdk|check-apps|build-apps|purge-stale-caches|deliver-firmware" >&2
+        "prepare-environment|clone-source-and-feeds|apply-customizations|restore-caches|download-sources|save-cache|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|publish-sdk|check-apps|build-apps|deliver-firmware" >&2
 }
 
 main() {
@@ -587,8 +466,11 @@ main() {
         build-apps)
             build_apps
             ;;
-        purge-stale-caches)
-            purge_stale_caches
+        restore-caches)
+            restore_caches
+            ;;
+        save-cache)
+            save_cache "$2"
             ;;
         deliver-firmware)
             deliver_firmware

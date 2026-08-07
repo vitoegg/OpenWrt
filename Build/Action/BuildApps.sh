@@ -14,19 +14,6 @@ SDK_EXTRA=(.config feeds.conf feeds.conf.default dl tmp/go-build
 SDK_STAGING=(staging_dir/host staging_dir/hostpkg build_dir/hostpkg)
 SDK_HOST_TOOLS=(jsmin po2lmo)
 
-die() {
-    log "ERROR: $*"
-    exit 1
-}
-
-group() {
-    printf '::group::%s\n' "$*"
-}
-
-endgroup() {
-    printf '::endgroup::\n'
-}
-
 discover_apps() {
     local profile="$1" selected entry repo branch name
 
@@ -65,7 +52,7 @@ sdk_paths() (
 publish() {
     local profile=${1:?Usage: BuildApps.sh publish <Router|Cloud> <source-dir>}
     local source_dir=${2:?Usage: BuildApps.sh publish <Router|Cloud> <source-dir>}
-    local path ref
+    local path ref cutoff
 
     require_profile "$profile"
     require_dir "$source_dir" "OpenWrt source directory"
@@ -91,6 +78,7 @@ publish() {
     endgroup
 
     ref=$(package_ref "$profile" sdk)
+    cutoff=$(registry_cutoff)
     registry_login "$ref"
     group "Push $ref"
     (
@@ -104,7 +92,7 @@ publish() {
             --annotation "openwrt.topdir=$source_dir" \
             sdk.tar.zst:application/zstd
     )
-    prune_untagged_versions "$ref"
+    prune_stale_versions "$ref" "$cutoff"
     endgroup
 
     log "SDK published: $ref ($(du -h "$WORKSPACE/bundle/sdk.tar.zst" | cut -f1))"

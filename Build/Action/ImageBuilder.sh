@@ -23,6 +23,19 @@ unavailable() {
     exit 2
 }
 
+die() {
+    log "ERROR: $*"
+    exit 1
+}
+
+group() {
+    printf '::group::%s\n' "$*"
+}
+
+endgroup() {
+    printf '::endgroup::\n'
+}
+
 require_command() {
     local name="$1"
 
@@ -43,18 +56,22 @@ require_profile() {
     esac
 }
 
-# Each profile owns one immutable tag, so publishing overwrites in place.
 package_ref() {
-    local profile="$1"
+    local tag="$1"
     local kind="${2:-imagebuilder}"
     local package="ghcr.io/${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required}/openwrt-$kind"
 
     case "$kind" in
         imagebuilder) package="${IMAGEBUILDER_PACKAGE:-$package}" ;;
         sdk) package="${SDK_PACKAGE:-$package}" ;;
+        cache) package="${CACHE_PACKAGE:-$package}" ;;
     esac
 
-    printf '%s:%s' "$package" "$profile" | tr '[:upper:]' '[:lower:]'
+    printf '%s:%s' "$package" "$tag" | tr '[:upper:]' '[:lower:]'
+}
+
+registry_cutoff() {
+    date -u +'%Y-%m-%dT%H:%M:%SZ'
 }
 
 registry_login() {
@@ -74,10 +91,11 @@ extract_packages() {
     awk 'NF >= 3 && $2 == "-" {print $1}' "$1" | sort -u
 }
 
-# Overwriting a tag leaves the previous manifest untagged; drop it so each
-# profile keeps exactly one artifact in the package.
-prune_untagged_versions() {
+prune_stale_versions() {
     local ref="$1"
+    local cutoff="$2"
+    local tag="${ref##*:}"
+    local prefix="${3:-$tag}"
     local package="${ref%:*}"
     local versions_api
     local stale_ids
@@ -87,12 +105,21 @@ prune_untagged_versions() {
     versions_api="/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package}/versions"
 
     if [ -z "${GH_TOKEN:-}" ] || ! command -v gh >/dev/null 2>&1; then
-        log "WARNING: gh token unavailable, skipping untagged cleanup"
+        log "WARNING: gh token unavailable, skipping stale version cleanup"
         return 0
     fi
 
-    if ! stale_ids=$(gh api --paginate "$versions_api" \
-        --jq '.[] | select((.metadata.container.tags | length) == 0) | .id' 2>/dev/null); then
+    if ! stale_ids=$(PRUNE_CUTOFF="$cutoff" PRUNE_TAG="$tag" PRUNE_PREFIX="$prefix" \
+        gh api --paginate "$versions_api" --jq '
+            .[]
+            | select(.created_at < $ENV.PRUNE_CUTOFF)
+            | .metadata.container.tags as $tags
+            | select(
+                ($tags | length) == 0
+                or (($tags | index($ENV.PRUNE_TAG) | not)
+                    and ($tags | all(startswith($ENV.PRUNE_PREFIX))))
+              )
+            | .id' 2>/dev/null); then
         log "WARNING: Failed to list versions of $package"
         return 0
     fi
@@ -101,9 +128,9 @@ prune_untagged_versions() {
         [ -n "$version_id" ] || continue
 
         if gh api --method DELETE "$versions_api/$version_id" >/dev/null 2>&1; then
-            log "Untagged ImageBuilder version removed: $version_id"
+            log "Stale version removed: $package/$version_id"
         else
-            log "WARNING: Failed to remove untagged version: $version_id"
+            log "WARNING: Failed to remove stale version: $package/$version_id"
         fi
     done <<< "$stale_ids"
 }
@@ -115,6 +142,7 @@ publish() {
     local manifest
     local bundle_dir
     local ref
+    local cutoff
 
     require_profile "$profile"
     require_dir "$source_dir" "OpenWrt source directory"
@@ -161,6 +189,7 @@ publish() {
     fi
 
     ref=$(package_ref "$profile")
+    cutoff=$(registry_cutoff)
     registry_login "$ref"
 
     # Build metadata rides on the manifest so restore can read it without
@@ -184,7 +213,7 @@ publish() {
             apps.json:application/json
     )
 
-    prune_untagged_versions "$ref"
+    prune_stale_versions "$ref" "$cutoff"
 
     log "ImageBuilder published: $ref ($WRT_HASH)"
 }

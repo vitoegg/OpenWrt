@@ -35,7 +35,6 @@ on:
           - 'Dual WAN'
 
 permissions:
-  actions: write
   contents: write
   packages: write
 
@@ -105,80 +104,40 @@ jobs:
         working-directory: ./wrt
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" apply-customizations
 
-      - name: ◆ Restore Download Cache
+      - name: ◆ Restore Caches
         if: env.BUILD_MODE == 'FullBuilder'
-        id: cache-dl-restore
-        uses: actions/cache/restore@v5
-        with:
-          key: ${{ env.DL_CACHE_KEY }}
-          restore-keys: |
-            ${{ env.DL_CACHE_PREFIX }}-
-          path: ./wrt/dl
-
-      - name: ◆ Restore Toolchain Cache
-        if: env.BUILD_MODE == 'FullBuilder'
-        id: cache-toolchain-restore
-        uses: actions/cache/restore@v5
-        with:
-          key: ${{ env.TOOLCHAIN_CACHE_KEY }}
-          restore-keys: |
-            ${{ env.TOOLCHAIN_CACHE_PREFIX }}-
-          path: |
-            ./wrt/staging_dir/host*
-            ./wrt/staging_dir/tool*
-
-      - name: ◆ Restore Compile Cache
-        if: env.BUILD_MODE == 'FullBuilder'
-        id: cache-ccache-restore
-        uses: actions/cache/restore@v5
-        with:
-          key: ${{ env.CCACHE_CACHE_KEY }}
-          restore-keys: |
-            ${{ env.CCACHE_CACHE_PREFIX }}-
-          path: ./wrt/.ccache
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" restore-caches
 
       - name: ◆ Download Sources
         if: env.BUILD_MODE == 'FullBuilder'
         working-directory: ./wrt
-        env:
-          DOWNLOAD_CACHE_HIT: ${{ steps.cache-dl-restore.outputs.cache-hit }}
-          TOOLCHAIN_CACHE_HIT: ${{ steps.cache-toolchain-restore.outputs.cache-hit }}
-          CCACHE_CACHE_HIT: ${{ steps.cache-ccache-restore.outputs.cache-hit }}
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" download-sources
-
-      - name: ◆ Save Download Cache
-        if: env.BUILD_MODE == 'FullBuilder'
-        id: cache-dl-save
-        continue-on-error: true
-        uses: actions/cache/save@v5
-        with:
-          key: ${{ env.DL_CACHE_KEY }}
-          path: ./wrt/dl
 
       - name: ◆ Compile Firmware
         if: env.BUILD_MODE == 'FullBuilder'
         working-directory: ./wrt
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" compile-fullbuilder
 
+      - name: ◆ Save Download Cache
+        if: ${{ !cancelled() && env.BUILD_MODE == 'FullBuilder' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" save-cache dl
+
       - name: ◆ Save Toolchain Cache
-        id: cache-toolchain-save
         if: env.BUILD_MODE == 'FullBuilder' && env.BUILD_OK == 'true'
         continue-on-error: true
-        uses: actions/cache/save@v5
-        with:
-          key: ${{ env.TOOLCHAIN_CACHE_KEY }}
-          path: |
-            ./wrt/staging_dir/host*
-            ./wrt/staging_dir/tool*
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" save-cache toolchain
 
       - name: ◆ Save Compile Cache
-        id: cache-ccache-save
         if: env.BUILD_MODE == 'FullBuilder' && env.BUILD_OK == 'true'
         continue-on-error: true
-        uses: actions/cache/save@v5
-        with:
-          key: ${{ env.CCACHE_CACHE_KEY }}
-          path: ./wrt/.ccache
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" save-cache ccache
 
       - name: ◆ Publish ImageBuilder
         if: env.BUILD_MODE == 'FullBuilder' && env.BUILD_OK == 'true'
@@ -193,16 +152,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" publish-sdk
-
-      - name: ◆ Purge Stale Caches
-        if: always() && env.BUILD_MODE == 'FullBuilder'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOWNLOAD_CACHE_SAVE_OUTCOME: ${{ steps.cache-dl-save.outcome }}
-          TOOLCHAIN_CACHE_SAVE_OUTCOME: ${{ steps.cache-toolchain-save.outcome }}
-          CCACHE_CACHE_SAVE_OUTCOME: ${{ steps.cache-ccache-save.outcome }}
-        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" purge-stale-caches
 
       - name: ◇ Check Apps
         if: env.BUILD_MODE == 'ImageBuilder'
