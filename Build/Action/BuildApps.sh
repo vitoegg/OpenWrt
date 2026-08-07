@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-set -o pipefail
+set -eo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=Build/Action/ImageBuilder.sh
@@ -38,8 +38,8 @@ upstream_commit() {
 sdk_paths() (
     cd "$1" || exit 1
 
-    for path in rules.mk Config.in .config feeds.conf feeds.conf.default \
-        include scripts tools target feeds dl build_dir/host \
+    for path in Makefile rules.mk Config.in .config feeds.conf feeds.conf.default \
+        config include scripts tools target toolchain feeds dl build_dir/host \
         package/Makefile package/kernel package/toolchain; do
         if [ -e "$path" ]; then printf '%s\n' "$path"; fi
     done
@@ -63,8 +63,10 @@ publish() {
     mkdir -p "$WORKSPACE/bundle"
     sdk_paths "$source_dir" > "$WORKSPACE/paths"
 
-    grep -qx 'staging_dir/host' "$WORKSPACE/paths" ||
-        die "staging_dir/host absent, nothing worth publishing"
+    for path in Makefile rules.mk Config.in config include scripts target \
+        toolchain tools package/Makefile feeds staging_dir/host; do
+        grep -qx "$path" "$WORKSPACE/paths" || die "$path missing from $source_dir"
+    done
 
     tar --zstd -cpf "$WORKSPACE/bundle/sdk.tar.zst" \
         -C "$source_dir" -T "$WORKSPACE/paths"
