@@ -9,7 +9,8 @@ source "$HERE/ImageBuilder.sh"
 SDK_ARTIFACT_TYPE='application/vnd.openwrt.sdk.v1+tar+zstd'
 SDK_REQUIRED=(Makefile rules.mk Config.in config include scripts target
               toolchain tools package/Makefile feeds)
-SDK_EXTRA=(.config feeds.conf feeds.conf.default dl package/kernel package/toolchain)
+SDK_EXTRA=(.config feeds.conf feeds.conf.default dl tmp/go-build
+          package/kernel package/toolchain)
 SDK_STAGING=(staging_dir/host staging_dir/hostpkg build_dir/hostpkg)
 SDK_HOST_TOOLS=(jsmin po2lmo)
 
