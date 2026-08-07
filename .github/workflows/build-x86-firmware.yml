@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: 'Select build profile (Both runs Router and Cloud in parallel)'
+        description: 'Select build profile'
         required: false
         type: choice
         default: 'Router'
@@ -15,7 +15,7 @@ on:
           - 'Cloud'
           - 'Both'
       build_mode:
-        description: 'Select build mode (FullBuilder compiles from source; ImageBuilder assembles from published bundle; Both+FullBuilder uses ~2x runners)'
+        description: 'Select build mode'
         required: false
         type: choice
         default: 'ImageBuilder'
@@ -23,7 +23,7 @@ on:
           - 'ImageBuilder'
           - 'FullBuilder'
       wan_mode:
-        description: 'Select WAN mode (Router only; ignored for Cloud)'
+        description: 'Select WAN mode'
         required: false
         type: choice
         default: 'Dual WAN'
