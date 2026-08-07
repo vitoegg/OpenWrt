@@ -49,9 +49,13 @@ EOF
     source "$BASH_ENV"
 
     echo "::group::System snapshot"
+    printf '\033[1;32mCPU:\033[0m\n'
     lscpu | grep -E 'name|Core|Thread'
+    printf '\n\033[1;32mMemory:\033[0m\n'
     free -h
-    df -Th
+    printf '\n\033[1;32mStorage:\033[0m\n'
+    df -Th / /mnt
+    printf '\n\033[1;32mSystem:\033[0m\n'
     uname -a
     echo "::endgroup::"
 
@@ -69,14 +73,21 @@ EOF
     rm -rf "$GITHUB_WORKSPACE/wrt"
     mkdir -p "$GITHUB_WORKSPACE/wrt"
 
+    printf 'Profile: %s\n' "$BUILD_PROFILE"
+    printf 'Device: %s\n' "$DEVICE_NAME"
+    printf 'Upstream: %s @ %.12s\n' "$WRT_BRANCH" "$WRT_COMMIT"
+    printf 'Workspace: %s\n' "$GITHUB_WORKSPACE/wrt"
+
     for command in curl jq make tar unzip wget zstd; do
       if ! command -v "$command" >/dev/null 2>&1; then
         ci_error "Required command not found: $command"
         exit 1
       fi
     done
+    printf 'Required commands: ready\n'
 
     oras_version='1.3.3'
+    printf 'Installing ORAS: %s\n' "$oras_version"
     curl -fSsL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 120 \
       "https://github.com/oras-project/oras/releases/download/v${oras_version}/oras_${oras_version}_linux_amd64.tar.gz" \
       | sudo tar -xz -C /usr/bin oras
@@ -85,11 +96,13 @@ EOF
     if [ "$REQUESTED_BUILD_MODE" = 'FullBuilder' ]; then
       build_mode='FullBuilder'
     else
+      echo "::group::Restore ImageBuilder"
       set +e
       bash "$GITHUB_WORKSPACE/Build/Action/ImageBuilder.sh" restore \
         "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
       restore_status=$?
       set -e
+      echo "::endgroup::"
 
       case "$restore_status" in
         0)
@@ -115,13 +128,18 @@ EOF
       return
     fi
 
+    disk_before_kb=$(df --output=avail -k / | tail -1 | tr -d '[:space:]')
     echo "::group::Free disk space"
+    printf 'Removing: Docker images, Android SDK, .NET SDK, Swift toolchain\n'
     sudo docker image prune -a -f || true
-    sudo systemctl stop docker || true
-    df -Th
+    sudo rm -rf /usr/local/lib/android /usr/share/dotnet /usr/share/swift
     echo "::endgroup::"
+    disk_after_kb=$(df --output=avail -k / | tail -1 | tr -d '[:space:]')
+    disk_freed=$(awk -v before="$disk_before_kb" -v after="$disk_after_kb" \
+      'BEGIN { printf "%.1f", (after - before) / 1048576 }')
+    ci_success "Disk space released: ${disk_freed} GiB"
 
-    echo "::group::Create swap"
+    echo "::group::Create SWAP"
     sudo swapoff -a || true
     sudo rm -f /swapfile /mnt/swapfile
     sudo fallocate -l 8G /mnt/swapfile || sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
@@ -141,6 +159,13 @@ EOF
     sudo -E apt-get "${apt_options[@]}" -yqq install --no-install-recommends \
       build-essential ccache gawk gettext libncurses-dev libssl-dev python3 rsync swig unzip \
       zlib1g-dev libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
+    echo "::endgroup::"
+
+    echo "::group::Available resources"
+    printf '\033[1;32mMemory:\033[0m\n'
+    free -h
+    printf '\n\033[1;32mAvailable Storage:\033[0m\n'
+    df -Th / /mnt
     echo "::endgroup::"
 
     ci_success_section "Runner ready: FullBuilder"
