@@ -70,6 +70,7 @@ EOF
     echo "WRT_BRANCH=$WRT_BRANCH" >> "$GITHUB_ENV"
     echo "WRT_COMMIT=$WRT_COMMIT" >> "$GITHUB_ENV"
     echo "DEVICE_NAME=$DEVICE_NAME" >> "$GITHUB_ENV"
+    echo "BUILD_PROFILE=$BUILD_PROFILE" >> "$GITHUB_ENV"
     rm -rf "$GITHUB_WORKSPACE/wrt"
     mkdir -p "$GITHUB_WORKSPACE/wrt"
 
