@@ -195,7 +195,7 @@ publish() {
 
     # Build metadata rides on the manifest so restore can read it without
     # pulling the archive.
-    (
+    if ! (
         cd "$bundle_dir"
         oras push "$ref" \
             --artifact-type "$ARTIFACT_TYPE" \
@@ -212,7 +212,10 @@ publish() {
             imagebuilder.tar.zst:application/zstd \
             firmware.manifest:text/plain \
             apps.json:application/json
-    )
+    ); then
+        log "ERROR: Failed to push $ref"
+        exit 1
+    fi
 
     prune_stale_versions "$ref" "$cutoff"
 
