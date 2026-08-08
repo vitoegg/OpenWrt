@@ -244,10 +244,6 @@ apply_customizations() {
 
 download_sources() {
     echo "::group::Restore cache timestamps"
-    for dir in ./build_dir/host*; do
-      [ -d "$dir" ] || continue
-      find "$dir" -mindepth 2 -maxdepth 2 -type f -name '.*' -exec touch {} +
-    done
     if [ -d "./staging_dir" ]; then
       find ./staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
         find "$dir" -type f -exec touch {} +

@@ -6,7 +6,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=Build/Action/ImageBuilder.sh
 source "$HERE/ImageBuilder.sh"
 
-CACHE_ARTIFACT_TYPE='application/vnd.openwrt.cache.v1+tar+zstd'
+CACHE_ARTIFACT_TYPE='application/vnd.openwrt.cache.v2+tar+zstd'
+CACHE_LAYOUT_VERSION=2
 CACHE_PACKAGES_KEY='openwrt.packages-key'
 CACHE_EXTRA=(tmp/go-build dl/go-mod-cache .ccache)
 
@@ -18,7 +19,7 @@ cache_prefix() {
 }
 
 cache_tag() {
-    printf '%s%s' "$(cache_prefix)" "${TOOLCHAIN_KEY:?TOOLCHAIN_KEY is required}"
+    printf '%s%s-v%s' "$(cache_prefix)" "${TOOLCHAIN_KEY:?TOOLCHAIN_KEY is required}" "$CACHE_LAYOUT_VERSION"
 }
 
 cache_paths() (
@@ -29,7 +30,6 @@ cache_paths() (
     done
 
     find staging_dir -maxdepth 1 \( -name 'host*' -o -name 'toolchain-*' \) 2>/dev/null || true
-    find build_dir -maxdepth 1 -name 'host*' 2>/dev/null || true
     exit 0
 )
 
