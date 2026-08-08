@@ -64,7 +64,6 @@ package_ref() {
     case "$kind" in
         imagebuilder) package="${IMAGEBUILDER_PACKAGE:-$package}" ;;
         sdk) package="${SDK_PACKAGE:-$package}" ;;
-        cache) package="${CACHE_PACKAGE:-$package}" ;;
     esac
 
     printf '%s:%s' "$package" "$tag" | tr '[:upper:]' '[:lower:]'
