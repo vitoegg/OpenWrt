@@ -166,7 +166,6 @@ publish() {
         exit 1
     fi
 
-    # The package is publicly readable: never let generated private settings leak.
     if grep -qF '99-custom-settings' "$WORKSPACE/archive-files"; then
         log "ERROR: ImageBuilder archive contains generated private settings"
         exit 1
@@ -193,8 +192,6 @@ publish() {
     cutoff=$(registry_cutoff)
     registry_login "$ref"
 
-    # Build metadata rides on the manifest so restore can read it without
-    # pulling the archive.
     if ! (
         cd "$bundle_dir"
         oras push "$ref" \
@@ -251,12 +248,8 @@ restore() {
     ref=$(package_ref "$profile")
     registry_login "$ref"
 
-    # One manifest fetch answers three questions: does a baseline exist, does it
-    # belong to this profile, and what was it built from.
     if ! manifest=$(oras manifest fetch "$ref" 2>"$WORKSPACE/registry-error.log"); then
         cat "$WORKSPACE/registry-error.log" >&2
-        # Absent package on the first run, expired credentials, registry outage:
-        # all get the same answer, because FullBuilder is always correct.
         unavailable "cannot fetch $ref"
     fi
 
@@ -284,7 +277,6 @@ restore() {
     bundle_dir="$WORKSPACE/bundle"
     mkdir -p "$bundle_dir"
 
-    # oras verifies every blob digest against the manifest while pulling.
     if ! oras pull "$ref" --output "$bundle_dir"; then
         log "ERROR: Failed to pull $ref"
         exit 1
