@@ -71,9 +71,6 @@ jobs:
       fail-fast: false
       matrix:
         profile: ${{ fromJSON(inputs.profile == 'All' && '["Router","Cloud"]' || format('["{0}"]', inputs.profile)) }}
-    concurrency:
-      group: build-openwrt-firmware-${{ matrix.profile }}-${{ github.ref_name }}
-      cancel-in-progress: true
     env:
       BASH_ENV: /tmp/build-openwrt-${{ matrix.profile }}-ci.log.env
       BUILD_PROFILE: ${{ matrix.profile }}
