@@ -1,4 +1,5 @@
-name: Build-X86-Firmware
+name: Build-OpenWrt-Firmware
+run-name: Build-${{ inputs.profile }}-Firmware
 
 on:
   workflow_dispatch:
@@ -11,7 +12,7 @@ on:
         options:
           - 'Router'
           - 'Cloud'
-          - 'Both'
+          - 'All'
       build_mode:
         description: 'Select build mode'
         required: false
@@ -29,12 +30,13 @@ on:
         description: 'Select WAN mode'
         required: false
         type: choice
-        default: 'Dual WAN'
+        default: 'DualWAN'
         options:
-          - 'Single WAN'
-          - 'Dual WAN'
+          - 'SingleWAN'
+          - 'DualWAN'
 
 permissions:
+  actions: write
   contents: write
   packages: write
 
@@ -62,20 +64,20 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.profile }} - ${{ inputs.build_mode }}${{ matrix.profile == 'Router' && format(' - {0}', inputs.wan_mode) || '' }}
+    name: ${{ inputs.build_mode }} ${{ matrix.profile }}${{ matrix.profile == 'Router' && format(' {0}', inputs.wan_mode) || '' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
-        profile: ${{ fromJSON(inputs.profile == 'Both' && '["Router","Cloud"]' || format('["{0}"]', inputs.profile)) }}
+        profile: ${{ fromJSON(inputs.profile == 'All' && '["Router","Cloud"]' || format('["{0}"]', inputs.profile)) }}
     concurrency:
-      group: build-x86-firmware-${{ matrix.profile }}-${{ github.ref_name }}
+      group: build-openwrt-firmware-${{ matrix.profile }}-${{ github.ref_name }}
       cancel-in-progress: true
     env:
-      BASH_ENV: /tmp/build-x86-${{ matrix.profile }}-ci.log.env
+      BASH_ENV: /tmp/build-openwrt-${{ matrix.profile }}-ci.log.env
       BUILD_PROFILE: ${{ matrix.profile }}
-      ENABLE_DUAL_WAN: ${{ matrix.profile == 'Router' && inputs.wan_mode == 'Dual WAN' }}
+      ENABLE_DUAL_WAN: ${{ matrix.profile == 'Router' && inputs.wan_mode == 'DualWAN' }}
     defaults:
       run:
         shell: bash --noprofile --norc -eo pipefail {0}
@@ -164,3 +166,18 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           FIRMWARE_DOWNLOAD_URL: ${{ secrets.FIRMWARE_DOWNLOAD_URL }}
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" deliver-firmware
+
+  cleanup:
+    name: Cleanup Workflow Runs
+    needs: build
+    if: success()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Cleanup Workflow Runs
+        uses: ophub/delete-releases-workflows@main
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
+          out_log: false
+          delete_workflows: true
+          workflows_keep_day: 0
+          workflows_keep_keyword: "Rclone/Patches"

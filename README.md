@@ -24,8 +24,7 @@ OpenWrt/
 │   └── Cloud.txt                       # Cloud 个性化配置
 |
 ├── .github/workflows/
-│   ├── build-router-firmware.yml       # Router 版本构建
-│   ├── build-cloud-firmware.yml        # Cloud 版本构建
+│   ├── build-openwrt-firmware.yml      # 固件构建
 │   ├── refresh-bbr-patches.yml         # BBR 补丁更新
 │   └── update-rclone-config.yml        # Rclone 配置更新
 |

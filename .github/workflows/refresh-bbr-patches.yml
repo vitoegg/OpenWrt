@@ -210,8 +210,6 @@ jobs:
         with:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           out_log: false
-          delete_releases: false
-          delete_tags: false
           delete_workflows: true
           workflows_keep_day: 0
           workflows_keep_keyword: "Build/Rclone"
