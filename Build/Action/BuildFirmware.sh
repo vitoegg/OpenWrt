@@ -2,6 +2,41 @@
 
 set -o pipefail
 
+package_key() {
+    {
+      grep -hE '^(# )?CONFIG_PACKAGE_' \
+        "$GITHUB_WORKSPACE/Config/Common.txt" \
+        "$GITHUB_WORKSPACE/Config/$BUILD_PROFILE.txt" || true
+      printf '%s\n' "${PACKAGE_REMOVES[@]}" "${PACKAGE_CLONES[@]}"
+    } | sort | sha256sum | cut -c1-16
+}
+
+toolchain_key() {
+    local board
+    local symbols
+
+    board=$(sed -n 's/^CONFIG_TARGET_BOARD="\([^"]*\)"/\1/p' .config | head -1)
+    if [ ! -f "target/linux/$board/Makefile" ]; then
+      ci_error "Cannot resolve target board from .config: ${board:-empty}"
+      exit 1
+    fi
+
+    symbols=$(awk '/^[[:space:]]*(config|menuconfig)[[:space:]]/ { print $2 }' \
+        toolchain/Config.in toolchain/*/Config.* 2>/dev/null |
+        sort -u | sed 's/^/^CONFIG_/;s/$/=/')
+    symbols="$symbols
+^CONFIG_ARCH=
+^CONFIG_CPU_TYPE=
+^CONFIG_AUTOREMOVE=
+^CONFIG_AUTOREBUILD="
+
+    {
+      git rev-parse HEAD:toolchain HEAD:tools HEAD:include
+      grep -h '^KERNEL_PATCHVER:=' "target/linux/$board/Makefile" 2>/dev/null || true
+      printf '%s\n' "$symbols" | grep -Ef - .config | sort || true
+    } | sha256sum | cut -c1-16
+}
+
 prepare_environment() {
     cat > "$BASH_ENV" <<'EOF'
 CI_SEPARATOR='══════════════════════════════════════════════════'
@@ -57,6 +92,7 @@ EOF
     echo "WRT_COMMIT=$WRT_COMMIT" >> "$GITHUB_ENV"
     echo "DEVICE_NAME=$DEVICE_NAME" >> "$GITHUB_ENV"
     echo "BUILD_PROFILE=$BUILD_PROFILE" >> "$GITHUB_ENV"
+    echo "PKG_KEY=$(package_key)" >> "$GITHUB_ENV"
     rm -rf "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
     mkdir -p "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
 
@@ -197,7 +233,13 @@ apply_customizations() {
     echo "::group::make defconfig"
     make defconfig -j"$(nproc)"
     echo "::endgroup::"
+
+    cache_toolchain_key=$(toolchain_key)
+    echo "TOOLCHAIN_KEY=$cache_toolchain_key" >> "$GITHUB_ENV"
+
     ci_success_section "$BUILD_PROFILE config applied"
+    ci_success "Toolchain key: $cache_toolchain_key"
+    ci_success "Package key: $PKG_KEY"
 }
 
 download_sources() {
@@ -209,6 +251,10 @@ download_sources() {
       mkdir -p ./tmp
       echo '1' > ./tmp/.build
     fi
+    for dir in ./build_dir/host*; do
+      [ -d "$dir" ] || continue
+      find "$dir" -mindepth 2 -maxdepth 2 -type f -name '.*' -exec touch {} +
+    done
     echo "::endgroup::"
 
     list_suspicious_files() {
@@ -346,14 +392,14 @@ build_apps() {
       "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
 }
 
-restore_caches() {
+restore_cache() {
     bash "$GITHUB_WORKSPACE/Build/Action/BuildCache.sh" restore \
       "$GITHUB_WORKSPACE/wrt"
 }
 
 save_cache() {
     bash "$GITHUB_WORKSPACE/Build/Action/BuildCache.sh" save \
-      "$1" "$GITHUB_WORKSPACE/wrt"
+      "$GITHUB_WORKSPACE/wrt"
 }
 
 deliver_firmware() {
@@ -431,7 +477,7 @@ deliver_firmware() {
 
 usage() {
     printf "Usage: %s <%s>\n" "$0" \
-        "prepare-environment|clone-source-and-feeds|apply-customizations|restore-caches|download-sources|save-cache|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|publish-sdk|check-apps|build-apps|deliver-firmware" >&2
+        "prepare-environment|clone-source-and-feeds|apply-customizations|restore-cache|download-sources|save-cache|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|publish-sdk|check-apps|build-apps|deliver-firmware" >&2
 }
 
 main() {
@@ -466,11 +512,11 @@ main() {
         build-apps)
             build_apps
             ;;
-        restore-caches)
-            restore_caches
+        restore-cache)
+            restore_cache
             ;;
         save-cache)
-            save_cache "$2"
+            save_cache
             ;;
         deliver-firmware)
             deliver_firmware

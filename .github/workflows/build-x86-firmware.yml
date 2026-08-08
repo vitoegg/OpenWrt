@@ -95,7 +95,7 @@ jobs:
         with:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
 
-      - name: ◆ Clone Source and Feeds
+      - name: ◆ Clone Upstream Code
         if: env.BUILD_MODE == 'FullBuilder'
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" clone-source-and-feeds
 
@@ -104,9 +104,9 @@ jobs:
         working-directory: ./wrt
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" apply-customizations
 
-      - name: ◆ Restore Caches
+      - name: ◆ Restore Cache
         if: env.BUILD_MODE == 'FullBuilder'
-        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" restore-caches
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" restore-cache
 
       - name: ◆ Download Sources
         if: env.BUILD_MODE == 'FullBuilder'
@@ -118,26 +118,12 @@ jobs:
         working-directory: ./wrt
         run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" compile-fullbuilder
 
-      - name: ◆ Save Download Cache
-        if: ${{ !cancelled() && env.BUILD_MODE == 'FullBuilder' }}
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
-        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" save-cache dl
-
-      - name: ◆ Save Toolchain Cache
+      - name: ◆ Publish Cache
         if: env.BUILD_MODE == 'FullBuilder' && env.BUILD_OK == 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.REPO_TOKEN }}
-        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" save-cache toolchain
-
-      - name: ◆ Save Compile Cache
-        if: env.BUILD_MODE == 'FullBuilder' && env.BUILD_OK == 'true'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
-        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" save-cache ccache
+        run: bash "$GITHUB_WORKSPACE/Build/Action/BuildFirmware.sh" save-cache
 
       - name: ◆ Publish ImageBuilder
         if: env.BUILD_MODE == 'FullBuilder' && env.BUILD_OK == 'true'
