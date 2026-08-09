@@ -1,0 +1,16 @@
+diff --git a/feeds/luci/modules/luci-base/ucode/controller/admin/index.uc b/feeds/luci/modules/luci-base/ucode/controller/admin/index.uc
+index d433e11..9eedf8e 100644
+--- a/feeds/luci/modules/luci-base/ucode/controller/admin/index.uc
++++ b/feeds/luci/modules/luci-base/ucode/controller/admin/index.uc
+@@ -127,6 +127,11 @@ return {
+ 			change_catalog(reqlang);
+ 		}
+ 
++		// The catalog only changes with installed packages: cache it for good when the
++		// URL carries the current package database stamp
++		if (pkgs_update_time && match(http.formvalue('v') ?? '', /-([0-9]+)$/)?.[1] == `${pkgs_update_time}`)
++			http.header('Cache-Control', 'public, max-age=31536000, immutable');
++
+ 		http.prepare_content('application/javascript; charset=UTF-8');
+ 		http.write('window.TR={');
+ 
