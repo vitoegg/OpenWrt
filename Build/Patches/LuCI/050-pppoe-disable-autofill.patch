@@ -1,0 +1,37 @@
+--- a/feeds/luci/protocols/luci-proto-ppp/htdocs/luci-static/resources/protocol/pppoe.js
++++ b/feeds/luci/protocols/luci-proto-ppp/htdocs/luci-static/resources/protocol/pppoe.js
+@@ -23,6 +23,20 @@ function write_keepalive(section_id, value) {
+ 		uci.unset('network', section_id, 'keepalive');
+ }
+ 
++function setAutocomplete(option, autocomplete) {
++	const renderWidget = option.renderWidget;
++
++	option.renderWidget = function() {
++		const node = renderWidget.apply(this, arguments);
++		const input = node.querySelector('input');
++
++		if (input)
++			input.setAttribute('autocomplete', autocomplete);
++
++		return node;
++	};
++}
++
+ return network.registerProtocol('pppoe', {
+ 	getI18n: function() {
+ 		return _('PPPoE');
+@@ -39,10 +53,12 @@ return network.registerProtocol('pppoe', {
+ 	renderFormOptions: function(s) {
+ 		var dev = this.getL3Device() || this.getDevice(), o;
+ 
+-		s.taboption('general', form.Value, 'username', _('PAP/CHAP username'));
++		o = s.taboption('general', form.Value, 'username', _('PAP/CHAP username'));
++		setAutocomplete(o, 'off');
+ 
+ 		o = s.taboption('general', form.Value, 'password', _('PAP/CHAP password'));
+ 		o.password = true;
++		setAutocomplete(o, 'new-password');
+ 
+ 		o = s.taboption('general', form.Value, 'ac', _('Access Concentrator'), _('Leave empty to autodetect'));
+ 		o.placeholder = _('auto');

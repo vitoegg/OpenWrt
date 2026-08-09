@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-set -o pipefail
+set -eo pipefail
 
 prepare_environment() {
     cat > "$BASH_ENV" <<'EOF'
@@ -30,92 +30,28 @@ ci_success_section() { ci_emit '32' '32' '✓' "$*"; }
 ci_warn() { ci_emit '' '33' '⚠' "$*"; }
 ci_warn_section() { ci_emit '33' '33' '⚠' "$*"; }
 ci_error() { ci_emit '' '31' '✗' "$*"; }
-
-cache_state() {
-  case "$1" in
-    true)
-      printf 'exact-hit'
-      ;;
-    false)
-      printf 'restore-hit'
-      ;;
-    *)
-      printf 'miss'
-      ;;
-  esac
-}
 EOF
 
     source "$BASH_ENV"
 
-    echo "::group::System snapshot"
-    lscpu | grep -E 'name|Core|Thread'
-    free -h
-    df -Th
-    uname -a
-    echo "::endgroup::"
+    cpu_model=$(lscpu | sed -n 's/^Model name:[[:space:]]*//p')
+    memory_total=$(free -h | awk '/^Mem:/ {print $2; exit}')
+    ci_banner '36'
+    printf '\033[36m● Runner\033[0m\n'
+    printf '\033[36m  CPU  %s\033[0m\n' "$cpu_model"
+    printf '\033[36m  RES  %s vCPU | %s RAM\033[0m\n' "$(nproc)" "$memory_total"
+    ci_banner '36'
 
-    echo "::group::Free disk space"
-    sudo swapoff -a || true
-    sudo rm -f /swapfile /mnt/swapfile
-    sudo docker image prune -a -f || true
-    sudo systemctl stop docker || true
-    sudo snap set system refresh.retain=2 || true
-    sudo apt-get -y purge firefox clang* gcc-12 gcc-14 ghc* google* llvm* mono* mongo* mysql* php* || true
-    sudo apt-get -y autoremove --purge
-    sudo apt-get clean
-    sudo rm -rf /etc/mysql /etc/php /usr/lib/{jvm,llvm} /usr/libexec/docker /usr/local /usr/src/* \
-      /var/lib/docker /var/lib/gems /var/lib/mysql /var/lib/snapd /etc/skel \
-      /opt/{microsoft,az,hostedtoolcache,cni,mssql-tools,pipx} \
-      /usr/share/{az*,dotnet,swift,miniconda,gradle*,java,kotlinc,ri,sbt} \
-      /root/{.sbt,.local,.npm} /usr/libexec/gcc/x86_64-linux-gnu/14 \
-      /usr/lib/x86_64-linux-gnu/{*clang*,*LLVM*} /home/linuxbrew
-    sudo sed -i '/NVM_DIR/d;/skel/d' /root/{.bashrc,.profile} || true
-    rm -rf ~/{.cargo,.dotnet,.rustup}
-    df -Th
-    echo "::endgroup::"
+    case "${REQUESTED_BUILD_MODE:-}" in
+      ImageBuilder|CacheBuilder|RefreshBuilder|PureBuilder)
+        ;;
+      *)
+        ci_error "Unsupported build mode: ${REQUESTED_BUILD_MODE:-empty}"
+        exit 1
+        ;;
+    esac
 
-    echo "::group::Create swap"
-    sudo fallocate -l 8G /mnt/swapfile || sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
-    sudo chmod 600 /mnt/swapfile
-    sudo mkswap /mnt/swapfile
-    sudo swapon /mnt/swapfile
-    free -h | grep -i swap
-    echo "::endgroup::"
-
-    echo "::group::Install build dependencies"
-    sudo -E apt-get -yqq update
-    sudo -E apt-get -yqq install dos2unix python3-netifaces libfuse-dev ccache jq unzip wget \
-      libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev
-    sudo bash -c 'bash <(curl -fsSL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-    sudo -E apt-get -yqq autoremove --purge
-    sudo -E apt-get -yqq clean
-    sudo -E systemctl daemon-reload
-    sudo -E timedatectl set-timezone "Asia/Shanghai"
-    echo "::endgroup::"
-
-    echo "::group::Create workspace"
-    mnt_size=$(df -BG /mnt | awk 'END {gsub(/G/, "", $4); print $4}')
-    root_size=$(df -BG / | awk 'END {gsub(/G/, "", $4); print $4 - 2}')
-    sudo truncate -s "${mnt_size}G" /mnt/mnt.img
-    sudo truncate -s "${root_size}G" /root.img
-    loop_mnt=$(sudo losetup -f --show /mnt/mnt.img)
-    loop_root=$(sudo losetup -f --show /root.img)
-    sudo pvcreate "$loop_mnt"
-    sudo pvcreate "$loop_root"
-    sudo vgcreate github "$loop_mnt" "$loop_root"
-    sudo lvcreate -n runner -l 100%FREE github
-    sudo mkfs.xfs /dev/github/runner
-    sudo mkdir -p /builder
-    sudo mount /dev/github/runner /builder
-    sudo chown -R "$USER:$(id -gn)" /builder
-    rm -rf "$GITHUB_WORKSPACE/wrt"
-    ln -s /builder "$GITHUB_WORKSPACE/wrt"
-    df -Th
-    echo "::endgroup::"
-
-    echo "::group::Init build context"
-    source "$GITHUB_WORKSPACE/Build/Flow/lib.sh"
+    source "$GITHUB_WORKSPACE/Build/lib.sh"
     load_profile "$BUILD_PROFILE"
     echo "BUILD_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
     echo "TAG_TIME=$(TZ=Asia/Shanghai date +'%Y%m%d-%H%M')" >> "$GITHUB_ENV"
@@ -125,42 +61,93 @@ EOF
     echo "WRT_BRANCH=$WRT_BRANCH" >> "$GITHUB_ENV"
     echo "WRT_COMMIT=$WRT_COMMIT" >> "$GITHUB_ENV"
     echo "DEVICE_NAME=$DEVICE_NAME" >> "$GITHUB_ENV"
-    find ./Build ./Custom ./Config -maxdepth 5 -type f -iregex '.*\(txt\|conf\|sh\)$' -exec dos2unix {} \;
-    find ./Build -maxdepth 5 -type f -name '*.sh' -exec chmod +x {} \;
-    echo "::endgroup::"
+    echo "BUILD_PROFILE=$BUILD_PROFILE" >> "$GITHUB_ENV"
+    rm -rf "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
+    mkdir -p "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
 
-    ci_success_section "Runner ready"
-}
+    for command in curl jq make tar unzip wget zstd; do
+      if ! command -v "$command" >/dev/null 2>&1; then
+        ci_error "Required command not found: $command"
+        exit 1
+      fi
+    done
 
-select_build_mode() {
-    if [ "$REQUESTED_BUILD_MODE" = 'FullBuilder' ]; then
-      echo "BUILD_MODE=FullBuilder" >> "$GITHUB_ENV"
-      ci_success_section "Build mode: FullBuilder"
-      exit 0
-    fi
+    oras_version='1.3.3'
+    curl -fSsL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 120 \
+      "https://github.com/oras-project/oras/releases/download/v${oras_version}/oras_${oras_version}_linux_amd64.tar.gz" \
+      | sudo tar -xz -C /usr/bin oras
 
-    set +e
-    bash "$GITHUB_WORKSPACE/Build/Action/RestoreImageBuilder.sh" \
-      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
-    restore_status=$?
-    set -e
-
-    case "$restore_status" in
-      0)
-        wrt_hash=$(jq -r '.wrt_hash' ./wrt/.imagebuilder-metadata.json)
-        echo "BUILD_MODE=ImageBuilder" >> "$GITHUB_ENV"
-        echo "WRT_HASH=$wrt_hash" >> "$GITHUB_ENV"
-        ci_success_section "Build mode: ImageBuilder"
+    force_apps=false
+    clean_build=false
+    case "$REQUESTED_BUILD_MODE" in
+      CacheBuilder)
+        build_mode='CacheBuilder'
         ;;
-      2)
-        echo "BUILD_MODE=FullBuilder" >> "$GITHUB_ENV"
-        ci_warn_section "ImageBuilder unavailable, falling back to FullBuilder"
+      PureBuilder)
+        build_mode='CacheBuilder'
+        clean_build=true
         ;;
-      *)
-        ci_error "ImageBuilder restore failed with status $restore_status"
-        exit "$restore_status"
+      ImageBuilder|RefreshBuilder)
+        if [ "$REQUESTED_BUILD_MODE" = 'RefreshBuilder' ]; then
+          force_apps=true
+        fi
+
+        set +e
+        bash "$GITHUB_WORKSPACE/Build/Action/ImageBuilder.sh" restore \
+          "$BUILD_PROFILE" "$GITHUB_WORKSPACE/ib"
+        restore_status=$?
+        set -e
+
+        case "$restore_status" in
+          0)
+            build_mode='ImageBuilder'
+            ;;
+          2)
+            build_mode='CacheBuilder'
+            ci_warn "ImageBuilder unavailable, falling back to CacheBuilder"
+            ;;
+          *)
+            ci_error "ImageBuilder restore failed with status $restore_status"
+            exit "$restore_status"
+            ;;
+        esac
         ;;
     esac
+
+    echo "BUILD_MODE=$build_mode" >> "$GITHUB_ENV"
+    echo "FORCE_APPS=$force_apps" >> "$GITHUB_ENV"
+    echo "CLEAN_BUILD=$clean_build" >> "$GITHUB_ENV"
+
+    if [ "$build_mode" = 'ImageBuilder' ]; then
+      echo "BUILD_DIR=ib" >> "$GITHUB_ENV"
+      wrt_hash=$(jq -r '.wrt_hash' "$GITHUB_WORKSPACE/ib/.imagebuilder-metadata.json")
+      echo "WRT_HASH=$wrt_hash" >> "$GITHUB_ENV"
+    else
+      echo "BUILD_DIR=wrt" >> "$GITHUB_ENV"
+
+      sudo swapoff -a || true
+      sudo rm -f /swapfile /mnt/swapfile
+      sudo fallocate -l 8G /mnt/swapfile || \
+        sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192 status=none
+      sudo chmod 600 /mnt/swapfile
+      sudo mkswap /mnt/swapfile >/dev/null
+      sudo swapon /mnt/swapfile
+
+      apt_options=(
+        -o Acquire::Retries=3
+        -o Acquire::http::Timeout=30
+        -o Acquire::https::Timeout=30
+      )
+      sudo -E apt-get "${apt_options[@]}" -yqq update >/dev/null
+      sudo -E env NEEDRESTART_SUSPEND=1 \
+        apt-get "${apt_options[@]}" -yqq install --no-install-recommends --no-upgrade \
+          build-essential ccache gawk gettext libncurses-dev libssl-dev python3 rsync swig unzip \
+          zlib1g-dev libelf-dev libdw-dev libbz2-dev liblzma-dev libzstd-dev >/dev/null
+    fi
+
+    swap_total=$(free -h | awk '/^Swap:/ {print $2; exit}')
+    disk_available=$(df -h --output=avail / | awk 'NR == 2 {print $1}')
+    ci_success "Runner ready: $build_mode | $swap_total Swap | $disk_available free"
 }
 
 clone_source_and_feeds() {
@@ -195,94 +182,23 @@ clone_source_and_feeds() {
 }
 
 apply_customizations() {
-    "$GITHUB_WORKSPACE/Build/Flow/ApplyPackages.sh" "$BUILD_PROFILE"
-    "$GITHUB_WORKSPACE/Build/Flow/ApplyPrepare.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPackages.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPrepare.sh" "$BUILD_PROFILE"
     ci_success_section "Sources prepared"
 
     cat "$GITHUB_WORKSPACE/Config/Common.txt" >> .config
     cat "$GITHUB_WORKSPACE/Config/$BUILD_PROFILE.txt" >> .config
-    "$GITHUB_WORKSPACE/Build/Flow/ApplyPatches.sh" "$BUILD_PROFILE"
-    "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPatches.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
 
     echo "::group::make defconfig"
     make defconfig -j"$(nproc)"
     echo "::endgroup::"
+
     ci_success_section "$BUILD_PROFILE config applied"
-
-    target_board=$(sed -n 's/^CONFIG_TARGET_BOARD="\([^"]*\)"/\1/p' .config | head -1)
-    target_subtarget=$(sed -n 's/^CONFIG_TARGET_SUBTARGET="\([^"]*\)"/\1/p' .config | head -1)
-
-    if [ -z "$target_board" ]; then
-      target_board='x86'
-    fi
-    if [ -z "$target_subtarget" ]; then
-      target_subtarget='64'
-    fi
-
-    # Extract toolchain-critical configs from .config for stable cache key
-    # Only GCC/binutils/libc versions truly determine toolchain compatibility
-    toolchain_sig=$(grep -E '^CONFIG_(GCC_VERSION|BINUTILS_VERSION|LIBC)=' .config | sort | sha256sum | cut -c1-12)
-    if [ -z "$toolchain_sig" ] || [ "$toolchain_sig" = "e3b0c44298fc" ]; then
-      # Fallback if no matching configs found (empty input hash)
-      toolchain_sig="default"
-    fi
-    config_sig=$(sha256sum .config | cut -c1-16)
-    cache_run_suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-
-    profile_lower=$(echo "$BUILD_PROFILE" | tr '[:upper:]' '[:lower:]')
-    dl_cache_prefix="wrt-dl-${WRT_BRANCH}"
-    toolchain_cache_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-${toolchain_sig}"
-    toolchain_cache_clean_prefix="toolchain-${WRT_BRANCH}-${target_board}-${target_subtarget}-"
-    ccache_cache_prefix="ccache-openwrt-${profile_lower}-${WRT_BRANCH#openwrt-}-${target_board}-${target_subtarget}-${config_sig}"
-    ccache_cache_clean_prefix="ccache-openwrt-${profile_lower}-${WRT_BRANCH#openwrt-}-${target_board}-${target_subtarget}-"
-
-    echo "TARGET_BOARD=$target_board" >> "$GITHUB_ENV"
-    echo "TARGET_SUBTARGET=$target_subtarget" >> "$GITHUB_ENV"
-    echo "TOOLCHAIN_SIG=$toolchain_sig" >> "$GITHUB_ENV"
-    echo "CONFIG_SIG=$config_sig" >> "$GITHUB_ENV"
-    echo "DL_CACHE_PREFIX=$dl_cache_prefix" >> "$GITHUB_ENV"
-    echo "DL_CACHE_KEY=${dl_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
-    echo "TOOLCHAIN_CACHE_PREFIX=$toolchain_cache_prefix" >> "$GITHUB_ENV"
-    echo "TOOLCHAIN_CACHE_KEY=${toolchain_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
-    echo "TOOLCHAIN_CACHE_CLEAN_PREFIX=$toolchain_cache_clean_prefix" >> "$GITHUB_ENV"
-    echo "CCACHE_CACHE_PREFIX=$ccache_cache_prefix" >> "$GITHUB_ENV"
-    echo "CCACHE_CACHE_KEY=${ccache_cache_prefix}-${cache_run_suffix}" >> "$GITHUB_ENV"
-    echo "CCACHE_CACHE_CLEAN_PREFIX=$ccache_cache_clean_prefix" >> "$GITHUB_ENV"
-
-    ci_success_banner
-    ci_success "Target detected: ${target_board}/${target_subtarget}"
-    ci_success "Toolchain signature: ${toolchain_sig}"
-    ci_success "Config signature: ${config_sig}"
 }
 
 download_sources() {
-    report_cache() {
-      local label="$1" state="$2"
-      if [ "$state" = 'miss' ]; then
-        ci_warn "${label} cache: ${state}"
-      else
-        ci_success "${label} cache: ${state}"
-      fi
-    }
-
-    dl_state=$(cache_state "$DOWNLOAD_CACHE_HIT")
-    toolchain_state=$(cache_state "$TOOLCHAIN_CACHE_HIT")
-    ccache_state=$(cache_state "$CCACHE_CACHE_HIT")
-
-    report_cache 'Download' "$dl_state"
-    report_cache 'Toolchain' "$toolchain_state"
-    report_cache 'Ccache' "$ccache_state"
-
-    echo "::group::Restore cache timestamps"
-    if [ -d "./staging_dir" ]; then
-      find ./staging_dir -type d -name stamp -not -path '*target*' | while read -r dir; do
-        find "$dir" -type f -exec touch {} +
-      done
-      mkdir -p ./tmp
-      echo '1' > ./tmp/.build
-    fi
-    echo "::endgroup::"
-
     list_suspicious_files() {
       find dl -maxdepth 1 -type f -size -1024c | sort
     }
@@ -330,7 +246,7 @@ download_sources() {
     fi
 }
 
-compile_fullbuilder() {
+compile_cachebuilder() {
     ci_section "Starting parallel build with $(nproc) jobs"
     compile_failed=false
     echo "::group::Parallel build output"
@@ -356,9 +272,9 @@ compile_fullbuilder() {
 assemble_imagebuilder() {
     rm -rf files bin
 
-    "$GITHUB_WORKSPACE/Build/Flow/ApplyPrepare.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPrepare.sh" "$BUILD_PROFILE"
     rm -f files/etc/banner
-    "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
 
     common_config="$GITHUB_WORKSPACE/Config/Common.txt"
     profile_config="$GITHUB_WORKSPACE/Config/$BUILD_PROFILE.txt"
@@ -371,6 +287,9 @@ assemble_imagebuilder() {
     packages="${package_removes}$(tr '\n' ' ' < .imagebuilder-packages)"
     rootfs_partsize=$(sed -n 's/^CONFIG_TARGET_ROOTFS_PARTSIZE=//p' .config | head -1)
     rootfs_partsize=${rootfs_partsize:-2048}
+
+    # APK ImageBuilder expects this file; missing it floods logs with warnings
+    touch repositories
 
     ci_section "Building firmware with ImageBuilder"
     make image \
@@ -395,67 +314,34 @@ assemble_imagebuilder() {
     ci_success_section "ImageBuilder firmware ready"
 }
 
-publish_imagebuilder() {
-    bash "$GITHUB_WORKSPACE/Build/Action/PublishImageBuilder.sh" \
+restore_cache() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildCache.sh" restore \
       "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
 }
 
-purge_stale_caches() {
-    purge_latest_cache_by_prefix() {
-      local label="$1"
-      local list_prefix="$2"
-      local save_outcome="$3"
-      local cache_entries
-      local keep_key
-      local stale_ids
-      local cache_count
-      local stale_count
+publish_cache() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildCache.sh" publish \
+      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
+}
 
-      if [ "$save_outcome" != 'success' ]; then
-        ci_warn "${label} cache save skipped or failed, keeping previous cache"
-        return 0
-      fi
+publish_imagebuilder() {
+    bash "$GITHUB_WORKSPACE/Build/Action/ImageBuilder.sh" publish \
+      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
+}
 
-      if [ -z "$list_prefix" ]; then
-        ci_warn "${label} cache prefix is empty, skipping purge"
-        return 0
-      fi
+publish_sdk() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildApps.sh" publish \
+      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt"
+}
 
-      cache_entries=$(gh cache list --limit 1000 --repo "$GITHUB_REPOSITORY" --key "$list_prefix" --json id,key,createdAt | \
-        jq -c --arg list_prefix "$list_prefix" '
-          map(select(.key | startswith($list_prefix))) |
-          sort_by(.createdAt) |
-          reverse
-        ')
+check_apps() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildApps.sh" check \
+      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/ib"
+}
 
-      cache_count=$(printf '%s\n' "$cache_entries" | jq 'length')
-      if [ "$cache_count" -eq 0 ]; then
-        ci_warn "No ${label} caches found for prefix ${list_prefix}"
-        return 0
-      fi
-
-      keep_key=$(printf '%s\n' "$cache_entries" | jq -r '.[0].key')
-      stale_ids=$(printf '%s\n' "$cache_entries" | jq -r '.[1:][]?.id')
-      stale_count=$(printf '%s\n' "$cache_entries" | jq '.[1:] | length')
-
-      ci_success "${label} cache retained: ${keep_key}"
-
-      if [ "$stale_count" -eq 0 ]; then
-        ci_success "No stale ${label} caches to purge"
-        return 0
-      fi
-
-      while IFS= read -r cache_id; do
-        [ -n "$cache_id" ] || continue
-        gh cache delete "$cache_id" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || true
-      done <<< "$stale_ids"
-
-      ci_success "Old ${label} caches purged: ${stale_count}"
-    }
-
-    purge_latest_cache_by_prefix 'Download' "${DL_CACHE_PREFIX}-" "$DOWNLOAD_CACHE_SAVE_OUTCOME"
-    purge_latest_cache_by_prefix 'Toolchain' "${TOOLCHAIN_CACHE_CLEAN_PREFIX}" "$TOOLCHAIN_CACHE_SAVE_OUTCOME"
-    purge_latest_cache_by_prefix 'Ccache' "${CCACHE_CACHE_CLEAN_PREFIX}" "$CCACHE_CACHE_SAVE_OUTCOME"
+build_apps() {
+    bash "$GITHUB_WORKSPACE/Build/Action/BuildApps.sh" build \
+      "$BUILD_PROFILE" "$GITHUB_WORKSPACE/wrt" "$GITHUB_WORKSPACE/ib"
 }
 
 deliver_firmware() {
@@ -503,7 +389,7 @@ deliver_firmware() {
     ci_success_section "Firmware ready: $firmware_name ($build_duration)"
 
     echo "::group::Upload firmware"
-    rclone copy "${GITHUB_WORKSPACE}/wrt/upload/" remote:/OpenWrt/ \
+    rclone copy "${GITHUB_WORKSPACE}/${BUILD_DIR:-wrt}/upload/" remote:/OpenWrt/ \
       --include "*.img.gz" \
       --transfers=1 \
       --stats-one-line \
@@ -533,7 +419,7 @@ deliver_firmware() {
 
 usage() {
     printf "Usage: %s <%s>\n" "$0" \
-        "prepare-environment|select-build-mode|clone-source-and-feeds|apply-customizations|download-sources|compile-fullbuilder|assemble-imagebuilder|publish-imagebuilder|purge-stale-caches|deliver-firmware" >&2
+        "prepare-environment|clone-source-and-feeds|apply-customizations|restore-cache|download-sources|compile-cachebuilder|publish-cache|assemble-imagebuilder|publish-imagebuilder|publish-sdk|check-apps|build-apps|deliver-firmware" >&2
 }
 
 main() {
@@ -541,20 +427,23 @@ main() {
         prepare-environment)
             prepare_environment
             ;;
-        select-build-mode)
-            select_build_mode
-            ;;
         clone-source-and-feeds)
             clone_source_and_feeds
             ;;
         apply-customizations)
             apply_customizations
             ;;
+        restore-cache)
+            restore_cache
+            ;;
+        publish-cache)
+            publish_cache
+            ;;
         download-sources)
             download_sources
             ;;
-        compile-fullbuilder)
-            compile_fullbuilder
+        compile-cachebuilder)
+            compile_cachebuilder
             ;;
         assemble-imagebuilder)
             assemble_imagebuilder
@@ -562,8 +451,14 @@ main() {
         publish-imagebuilder)
             publish_imagebuilder
             ;;
-        purge-stale-caches)
-            purge_stale_caches
+        publish-sdk)
+            publish_sdk
+            ;;
+        check-apps)
+            check_apps
+            ;;
+        build-apps)
+            build_apps
             ;;
         deliver-firmware)
             deliver_firmware
