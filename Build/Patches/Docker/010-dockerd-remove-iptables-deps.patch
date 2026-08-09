@@ -1,7 +1,7 @@
 --- a/feeds/packages/utils/dockerd/Makefile
 +++ b/feeds/packages/utils/dockerd/Makefile
-@@ -36,13 +36,7 @@
-   DEPENDS:=$(GO_ARCH_DEPENDS) \
+@@ -40,13 +40,7 @@ define Package/dockerd
+   DEPENDS:=$(ARCH_DEPENDS) \
      +ca-certificates \
      +containerd \
 -    +iptables \
@@ -14,11 +14,14 @@
      +kmod-nf-ipvs \
      +kmod-veth \
      +tini \
-@@ -157,6 +151,2 @@ define Package/dockerd/install
--
+@@ -136,10 +130,6 @@ define Package/dockerd/install
+ 	$(INSTALL_DIR) $(1)/etc/config
+ 	$(INSTALL_CONF) ./files/etc/config/dockerd $(1)/etc/config/dockerd
+ 
 -	# Must be after systcl 11-br-netfilter.conf from kmod-br-netfilter
 -	$(INSTALL_DIR) $(1)/etc/sysctl.d
 -	$(INSTALL_DATA) ./files/etc/sysctl.d/sysctl-br-netfilter-ip.conf \
 -		$(1)/etc/sysctl.d/12-br-netfilter-ip.conf
-+
  endef
+ 
+ define Package/dockerd/postinst
