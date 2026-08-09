@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-BUILD_FLOW_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-REPO_ROOT=$(cd "$BUILD_FLOW_DIR/../.." && pwd)
+BUILD_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "$BUILD_DIR/.." && pwd)
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
@@ -56,7 +56,7 @@ append_copy_rule() {
     label=${source_path##*/}
 
     [ -n "$source_path" ] && [ -n "$dest_path" ] || return 0
-    PRIVATE_SCRIPT_COPIES+=("$source_path|$dest_path|$label")
+    PRIVATE_FILE_COPIES+=("$source_path|$dest_path|$label")
 }
 
 append_download_rule() {
@@ -124,12 +124,6 @@ set_config_value() {
         nikki.ui.dest)
             NIKKI_UI_DEST="$value"
             ;;
-        argon.background.source)
-            ARGON_BACKGROUND_SOURCE="$value"
-            ;;
-        argon.background.dest)
-            ARGON_BACKGROUND_DEST="$value"
-            ;;
         *)
             if [ "$section" = "profile" ]; then
                 log "ERROR: Unknown profile key: $key"
@@ -151,7 +145,7 @@ parse_profile_config() {
 
     PACKAGE_REMOVES=()
     PACKAGE_CLONES=()
-    PRIVATE_SCRIPT_COPIES=()
+    PRIVATE_FILE_COPIES=()
     FILE_DOWNLOADS=()
     CRON_ENTRIES=()
     OPTIONAL_CRON_ENTRIES=()
@@ -163,8 +157,6 @@ parse_profile_config() {
     ENABLE_DUAL_WAN="${ENABLE_DUAL_WAN:-false}"
     NIKKI_UI_URL=""
     NIKKI_UI_DEST=""
-    ARGON_BACKGROUND_SOURCE=""
-    ARGON_BACKGROUND_DEST=""
 
     while IFS= read -r raw_line || [ -n "$raw_line" ]; do
         raw_line=${raw_line%$'\r'}
@@ -189,7 +181,7 @@ parse_profile_config() {
                 [[ "$line" = \#* ]] && continue
 
                 case "$section" in
-                    profile|nikki.ui|argon.background)
+                    profile|nikki.ui)
                         key=$(trim "${line%%=*}")
                         value=$(trim "${line#*=}")
                         set_config_value "$section" "$key" "$value"
@@ -247,7 +239,7 @@ expand_config_vars() {
 
 load_profile() {
     local profile="$1"
-    local upstream_config="$REPO_ROOT/Build/upstream.conf"
+    local upstream_config="$BUILD_DIR/upstream.conf"
     local profile_config="$REPO_ROOT/Custom/${profile}.conf"
 
     require_file "$upstream_config" "upstream config"

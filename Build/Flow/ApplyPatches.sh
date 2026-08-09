@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
 
 load_profile "${1:?Usage: ApplyPatches.sh <Router|Cloud>}"
 
@@ -157,22 +157,18 @@ patch_imagebuilder() {
 patch_luci_common() {
     local led_menu_file="feeds/luci/modules/luci-mod-system/root/usr/share/luci/menu.d/luci-mod-system.json"
     local dhcp_file="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js"
+    local pppoe_file="feeds/luci/protocols/luci-proto-ppp/htdocs/luci-static/resources/protocol/pppoe.js"
 
     section "LuCI Common Patches"
 
     apply_source_patch "$PATCH_ROOT/LuCI/010-remove-led-menu.patch" "LuCI LED menu"
     apply_source_patch "$PATCH_ROOT/LuCI/020-dhcp-lease-display.patch" "LuCI DHCP lease display"
+    apply_source_patch "$PATCH_ROOT/LuCI/060-pppoe-disable-autofill.patch" "LuCI PPPoE autofill"
     assert_file_not_contains "$led_menu_file" '"admin/system/leds"' "LuCI LED menu"
     assert_file_contains "$dhcp_file" "return result.length ? E(result) : null;" "LuCI DHCP lease display"
-}
-
-patch_router_luci() {
-    local interfaces_file="feeds/luci/modules/luci-mod-network/htdocs/luci-static/resources/view/network/interfaces.js"
-
-    section "Router LuCI Patches"
-
-    apply_source_patch "$PATCH_ROOT/LuCI/060-hide-alias-carrier-status.patch" "LuCI alias carrier status"
-    assert_file_contains "$interfaces_file" "_('Carrier'), cond00 ? (carrier ? _('Present') : _('Absent')) : null," "LuCI alias carrier status"
+    assert_file_contains "$pppoe_file" "input.setAttribute('autocomplete', autocomplete);" "LuCI PPPoE autocomplete"
+    assert_file_contains "$pppoe_file" "setAutocomplete(o, 'off');" "LuCI PPPoE username autocomplete"
+    assert_file_contains "$pppoe_file" "setAutocomplete(o, 'new-password');" "LuCI PPPoE password autocomplete"
 }
 
 patch_cloud_docker_runtime() {
@@ -183,6 +179,7 @@ patch_cloud_docker_runtime() {
 
     apply_source_patch "$PATCH_ROOT/Docker/010-dockerd-remove-iptables-deps.patch" "dockerd dependency cleanup"
     apply_source_patch "$PATCH_ROOT/Docker/020-dockerd-host-mode.patch" "dockerd host mode"
+    apply_source_patch "$PATCH_ROOT/Docker/030-dockerd-skip-nested-binaries.patch" "dockerd nested binaries skip"
 
     if grep -Eq '^[[:space:]]*\+(iptables|iptables-mod-extra|IPV6:ip6tables|IPV6:kmod-ipt-nat6|kmod-ipt-nat|kmod-ipt-physdev)([[:space:]]|\\|$)' "$dockerd_makefile"; then
         log "ERROR: dockerd dependency cleanup verification failed"
@@ -196,6 +193,9 @@ patch_cloud_docker_runtime() {
 
     assert_file_contains "$dockerd_init" 'config_get bridge globals bridge ""' "dockerd bridge option"
     assert_file_contains "$dockerd_init" 'json_add_string "bridge" "${bridge}"' "dockerd bridge option"
+
+    assert_file_contains "$dockerd_makefile" \
+        '$(PKG_BUILD_DIR)/hack/make/binary-daemon' "dockerd nested binaries skip"
 }
 
 patch_cloud_luci() {
@@ -270,10 +270,6 @@ if [ "$BUILD_PROFILE" = "Cloud" ]; then
 fi
 
 patch_luci_common
-
-if [ "$BUILD_PROFILE" = "Router" ]; then
-    patch_router_luci
-fi
 
 if [ "$BUILD_PROFILE" = "Cloud" ]; then
     patch_cloud_luci
