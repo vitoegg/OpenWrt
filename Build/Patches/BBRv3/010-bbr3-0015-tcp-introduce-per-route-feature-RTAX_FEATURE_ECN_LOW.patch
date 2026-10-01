@@ -41,8 +41,8 @@ Signed-off-by: Alexandre Frade <kernel@xanmod.org>
  
  enum tcp_tw_status {
  	TCP_TW_SUCCESS = 0,
-@@ -795,6 +796,15 @@ static inline void tcp_fast_path_check(s
- 		tcp_fast_path_on(tp);
+@@ -768,6 +769,15 @@ static inline u32 __tcp_set_rto(const st
+ 	return usecs_to_jiffies((tp->srtt_us >> 3) + tp->rttvar_us);
  }
  
 +static inline void tcp_set_ecn_low_from_dst(struct sock *sk,
