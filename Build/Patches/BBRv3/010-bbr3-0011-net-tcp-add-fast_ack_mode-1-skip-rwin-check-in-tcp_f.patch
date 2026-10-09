@@ -33,7 +33,7 @@ Signed-off-by: Alexandre Frade <kernel@xanmod.org>
  		fastopen_no_cookie:1, /* Allow send/recv SYN+data without a cookie */
 --- a/net/ipv4/tcp.c
 +++ b/net/ipv4/tcp.c
-@@ -3406,6 +3406,7 @@ int tcp_disconnect(struct sock *sk, int
+@@ -3405,6 +3405,7 @@ int tcp_disconnect(struct sock *sk, int
  	tp->rx_opt.dsack = 0;
  	tp->rx_opt.num_sacks = 0;
  	tp->rcv_ooopack = 0;
