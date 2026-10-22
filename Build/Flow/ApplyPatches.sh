@@ -79,18 +79,14 @@ patch_hostname_ip() {
 patch_build_version() {
     local apk_cheatsheet="package/base-files/files/etc/profile.d/apk-cheatsheet.sh"
     local banner_file="package/base-files/files/etc/banner"
-    local branch_ver
-    local banner_text
-    local firmware_version
+    local firmware_version="ImmortalWrt ${WRT_BRANCH#openwrt-}-$WRT_DATE"
+    local upstream_version="OpenWrt $WRT_VERSION"
+    local banner_text=" $firmware_version · $upstream_version"
     local os_release_file="package/base-files/files/usr/lib/os-release"
     local openwrt_release_file="package/base-files/files/etc/openwrt_release"
+    local luci_status_file="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js"
 
     section "Build Version and Banner"
-
-    if [ -z "$BUILD_DATE" ]; then
-        BUILD_DATE=$(TZ=Asia/Shanghai date +'%y.%m.%d')
-        log "BUILD_DATE not set by workflow, using local: $BUILD_DATE"
-    fi
 
     if [ -f "$apk_cheatsheet" ]; then
         log "Removing APK cheatsheet"
@@ -102,8 +98,6 @@ patch_build_version() {
 
     require_file "$banner_file" "banner file"
 
-    branch_ver=$(echo "$WRT_BRANCH" | sed 's/openwrt-//')
-    banner_text=" ImmortalWrt $branch_ver · Build $BUILD_DATE via GitHub"
     sed -i "s|^ %D %V, %C.*$|$banner_text|" "$banner_file"
 
     if grep -qF "$banner_text" "$banner_file"; then
@@ -113,7 +107,6 @@ patch_build_version() {
         exit 1
     fi
 
-    firmware_version="ImmortalWrt @ Build $BUILD_DATE"
     log "Setting firmware version: ${firmware_version}"
 
     require_file "$os_release_file" "os-release file"
@@ -137,6 +130,11 @@ patch_build_version() {
         log "ERROR: Firmware version openwrt_release patch failed: expected line not found"
         exit 1
     fi
+
+    log "Setting upstream version: $upstream_version"
+    sed -i "s|luciversion = luciversion.branch + ' ' + luciversion.revision;|luciversion = '$upstream_version';|" \
+        "$luci_status_file"
+    assert_file_contains "$luci_status_file" "luciversion = '$upstream_version';" "Upstream version"
 }
 
 patch_x86_cpu_performance() {

@@ -171,13 +171,22 @@ clone_source_and_feeds() {
       sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$project_mirrors_file"
     fi
 
+    if [ -n "$WRT_COMMIT" ]; then
+      cp "$GITHUB_WORKSPACE/Build/feeds.conf" ./feeds.conf
+      cat ./feeds.conf
+    fi
+
     echo "::endgroup::"
     ci_highlight "Upstream commit: $wrt_hash"
 
     echo "::group::Update feeds"
     ./scripts/feeds update -a
-    ./scripts/feeds install -a
     echo "::endgroup::"
+    mkdir -p tmp
+    if ! ./scripts/feeds install -a > tmp/.feeds-install.log 2>&1; then
+      cat tmp/.feeds-install.log
+      exit 1
+    fi
     ci_success_section "Feeds ready"
 }
 
@@ -190,10 +199,7 @@ apply_customizations() {
     cat "$GITHUB_WORKSPACE/Config/$BUILD_PROFILE.txt" >> .config
     bash "$GITHUB_WORKSPACE/Build/Flow/ApplyPatches.sh" "$BUILD_PROFILE"
     bash "$GITHUB_WORKSPACE/Build/Flow/ApplySettings.sh" "$BUILD_PROFILE"
-
-    echo "::group::make defconfig"
-    make defconfig -j"$(nproc)"
-    echo "::endgroup::"
+    bash "$GITHUB_WORKSPACE/Build/Flow/ApplyDefconfig.sh"
 
     ci_success_section "$BUILD_PROFILE config applied"
 }
