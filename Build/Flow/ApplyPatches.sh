@@ -79,31 +79,42 @@ patch_hostname_ip() {
 patch_build_version() {
     local apk_cheatsheet="package/base-files/files/etc/profile.d/apk-cheatsheet.sh"
     local banner_file="package/base-files/files/etc/banner"
-    local branch_ver
+    local firmware_version="ImmortalWrt ${WRT_BRANCH#openwrt-}-$WRT_DATE"
+    local upstream_version="OpenWrt $WRT_VERSION"
+    local target_makefile="target/linux/x86/Makefile"
+    local kernel_patchver
+    local kernel_version
     local banner_text
-    local firmware_version
     local os_release_file="package/base-files/files/usr/lib/os-release"
     local openwrt_release_file="package/base-files/files/etc/openwrt_release"
+    local luci_status_file="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js"
 
     section "Build Version and Banner"
-
-    if [ -z "$BUILD_DATE" ]; then
-        BUILD_DATE=$(TZ=Asia/Shanghai date +'%y.%m.%d')
-        log "BUILD_DATE not set by workflow, using local: $BUILD_DATE"
-    fi
 
     if [ -f "$apk_cheatsheet" ]; then
         log "Removing APK cheatsheet"
         echo "# Intentionally left empty" > "$apk_cheatsheet"
     fi
 
+    require_file "$target_makefile" "x86 target Makefile"
+    kernel_patchver=$(sed -n 's/^KERNEL_PATCHVER:=//p' "$target_makefile" | head -1 | tr -d '[:space:]')
+    require_file "target/linux/generic/kernel-$kernel_patchver" "kernel version file"
+    kernel_version=$(sed -n "s/^LINUX_VERSION-$kernel_patchver[[:space:]]*=[[:space:]]*//p" \
+        "target/linux/generic/kernel-$kernel_patchver" | head -1 | tr -d '[:space:]')
+    if [ -z "$kernel_version" ]; then
+        log "ERROR: Kernel version not found for ${kernel_patchver:-unknown}"
+        exit 1
+    fi
+    if [[ "$kernel_version" = .* ]]; then
+        kernel_version="${kernel_patchver}${kernel_version}"
+    fi
+    banner_text=" $upstream_version · Kernel $kernel_version"
+
     log "Customizing banner"
     rm -f files/etc/banner
 
     require_file "$banner_file" "banner file"
 
-    branch_ver=$(echo "$WRT_BRANCH" | sed 's/openwrt-//')
-    banner_text=" ImmortalWrt $branch_ver · Build $BUILD_DATE via GitHub"
     sed -i "s|^ %D %V, %C.*$|$banner_text|" "$banner_file"
 
     if grep -qF "$banner_text" "$banner_file"; then
@@ -113,7 +124,6 @@ patch_build_version() {
         exit 1
     fi
 
-    firmware_version="ImmortalWrt @ Build $BUILD_DATE"
     log "Setting firmware version: ${firmware_version}"
 
     require_file "$os_release_file" "os-release file"
@@ -137,6 +147,11 @@ patch_build_version() {
         log "ERROR: Firmware version openwrt_release patch failed: expected line not found"
         exit 1
     fi
+
+    log "Setting upstream version: $upstream_version"
+    sed -i "s|luciversion = luciversion.branch + ' ' + luciversion.revision;|luciversion = '$upstream_version';|" \
+        "$luci_status_file"
+    assert_file_contains "$luci_status_file" "luciversion = '$upstream_version';" "Upstream version"
 }
 
 patch_x86_cpu_performance() {

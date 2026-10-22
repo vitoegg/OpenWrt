@@ -51,6 +51,7 @@ jobs:
       - name: Refresh Patches
         env:
           UPSTREAM_COMMIT: ${{ inputs.upstream_commit }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           source "$GITHUB_WORKSPACE/Build/upstream.conf"
 
@@ -97,6 +98,51 @@ jobs:
           resolved_commit=$(git rev-parse HEAD)
           echo "::endgroup::"
           echo "Resolved commit: $resolved_commit"
+
+          # Newest OpenWrt release of this branch already merged into the resolved commit
+          wrt_repo_path=${WRT_REPO#https://github.com/}
+          wrt_version=$(
+            git ls-remote --tags https://github.com/openwrt/openwrt.git "refs/tags/v${WRT_BRANCH#openwrt-}.*" |
+              sed -n 's|^\([0-9a-f]*\)[[:space:]]refs/tags/v\([0-9.]*\)^{}$|\2 \1|p' | sort -rV |
+              while read -r version tag_commit; do
+                status=$(gh api "repos/${wrt_repo_path%.git}/compare/$tag_commit...$resolved_commit" --jq .status) || exit 1
+                echo "OpenWrt $version: $status" >&2
+                if [ "$status" = ahead ] || [ "$status" = identical ]; then
+                  echo "$version"
+                  break
+                fi
+              done
+          )
+          if [ -z "$wrt_version" ]; then
+            echo "ERROR: No OpenWrt release merged into $resolved_commit"
+            exit 1
+          fi
+          echo "OpenWrt version: $wrt_version"
+
+          feeds_conf="$GITHUB_WORKSPACE/Build/feeds.conf"
+          echo "::group::Resolve feeds"
+          while read -r _ feed_name feed_src; do
+            feed_url=${feed_src%%^*}
+            feed_commit=$(git ls-remote "$feed_url" "refs/heads/$WRT_BRANCH" | cut -f1)
+            if ! [[ "$feed_commit" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "ERROR: Cannot resolve $feed_name at $WRT_BRANCH" >&2
+              exit 1
+            fi
+            echo "$feed_name: ${feed_src#*^} -> $feed_commit" >&2
+            echo "src-git $feed_name $feed_url^$feed_commit"
+          done < "$feeds_conf" > ./feeds.conf
+          cp ./feeds.conf "$feeds_conf"
+          echo "::endgroup::"
+
+          group_run "Update feeds" ./scripts/feeds update -a
+
+          for patch_file in "$GITHUB_WORKSPACE"/Build/Patches/{LuCI,Docker,X86,ImageBuilder}/*.patch; do
+            if ! git apply --check "$patch_file"; then
+              echo "ERROR: Patch failed: ${patch_file#"$GITHUB_WORKSPACE/Build/Patches/"}"
+              exit 1
+            fi
+          done
+          echo "Patches apply cleanly"
 
           kernel_patchver=$(sed -n 's/^KERNEL_PATCHVER:=//p' target/linux/x86/Makefile | head -1 | tr -d '[:space:]')
           if [ "$kernel_patchver" != "$target_kernel_patchver" ]; then
@@ -176,30 +222,42 @@ jobs:
           cp "$target_patch_dir"/010-bbr3-*.patch "$repo_patch_dir"/
 
           cd "$GITHUB_WORKSPACE"
-          perl -0pi -e "s/^WRT_COMMIT=\"[0-9a-fA-F]*\"/WRT_COMMIT=\"$resolved_commit\"/m" Build/upstream.conf
+
+          if [ "$resolved_commit" = "$WRT_COMMIT" ]; then
+            commit_message="feeds: bump $WRT_BRANCH feeds"
+          else
+            commit_message="kernel: bump $kernel_patchver to $kernel_version"
+            WRT_DATE=$(TZ=Asia/Shanghai date +'%Y%m%d')
+          fi
+
+          perl -0pi -e "
+            s/^WRT_COMMIT=\"[^\"]*\"/WRT_COMMIT=\"$resolved_commit\"/m;
+            s/^WRT_VERSION=\"[^\"]*\"/WRT_VERSION=\"$wrt_version\"/m;
+            s/^WRT_DATE=\"[^\"]*\"/WRT_DATE=\"$WRT_DATE\"/m;
+          " Build/upstream.conf
 
           {
             echo "KERNEL_PATCHVER=$kernel_patchver"
             echo "KERNEL_VERSION=$kernel_version"
             echo "RESOLVED_COMMIT=$resolved_commit"
-            echo "COMMIT_MESSAGE=kernel: bump $kernel_patchver to $kernel_version"
+            echo "COMMIT_MESSAGE=$commit_message"
           } >> "$GITHUB_ENV"
-          echo "Commit message: kernel: bump $kernel_patchver to $kernel_version"
+          echo "Commit message: $commit_message"
 
       - name: Commit Changes
         run: |
-          if git diff --quiet -- Build/upstream.conf Build/Patches/BBRv3; then
+          if git diff --quiet -- Build/upstream.conf Build/feeds.conf Build/Patches/BBRv3; then
             echo "Writeback: no changes"
             exit 0
           fi
 
-          changed_count=$(git diff --name-only -- Build/upstream.conf Build/Patches/BBRv3 | wc -l | tr -d '[:space:]')
+          changed_count=$(git diff --name-only -- Build/upstream.conf Build/feeds.conf Build/Patches/BBRv3 | wc -l | tr -d '[:space:]')
           echo "Changed files: $changed_count"
-          git diff --stat -- Build/upstream.conf Build/Patches/BBRv3
+          git diff --stat -- Build/upstream.conf Build/feeds.conf Build/Patches/BBRv3
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Build/upstream.conf Build/Patches/BBRv3
+          git add Build/upstream.conf Build/feeds.conf Build/Patches/BBRv3
           git commit -m "$COMMIT_MESSAGE"
           git fetch origin "$GITHUB_REF_NAME"
           git rebase FETCH_HEAD

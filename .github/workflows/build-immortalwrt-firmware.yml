@@ -49,9 +49,10 @@ env:
   PPPOE_MAC_2: ${{ secrets.PPPOE_MAC_2 }}
   PPPOE_WAN_MAC_2: ${{ secrets.PPPOE_WAN_MAC_2 }}
   VLAN_ID_2: ${{ secrets.VLAN_ID_2 }}
-  ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
-  SWITCH_MAC: ${{ secrets.SWITCH_MAC }}
   CLOUD_MAC: ${{ secrets.CLOUD_MAC }}
+  ROUTER_MAC: ${{ secrets.ROUTER_MAC }}
+  LMINI_MAC: ${{ secrets.LMINI_MAC }}
+  SWITCH_MAC: ${{ secrets.SWITCH_MAC }}
   REDIRECT_SRC_DPORT: ${{ secrets.REDIRECT_SRC_DPORT }}
   REDIRECT_DEST_PORT: ${{ secrets.REDIRECT_DEST_PORT }}
   REDIRECT_ALLOW_IP: ${{ secrets.REDIRECT_ALLOW_IP }}

@@ -4,30 +4,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
 
 load_profile "${1:?Usage: ApplyPackages.sh <Router|Cloud>}"
 
-PKG_SEARCH_PATHS=${PKG_SEARCH_PATHS:-"feeds/luci/ feeds/packages/"}
 PKG_CLONE_BASE=${PKG_CLONE_BASE:-"package/custom"}
 APPS_BASELINE=${APPS_BASELINE:-".apps-baseline.json"}
-
-remove_package() {
-    local name
-    local found
-    local dir
-
-    for name in "$@"; do
-        log "Removing: $name"
-        found=$(find $PKG_SEARCH_PATHS -maxdepth 3 -type d -iname "*$name*" 2>/dev/null || true)
-
-        if [ -n "$found" ]; then
-            while IFS= read -r dir; do
-                [ -n "$dir" ] || continue
-                rm -rf "$dir"
-                log "Removed: $dir"
-            done <<< "$found"
-        else
-            log "Not found: $name"
-        fi
-    done
-}
 
 clone_package() {
     local repo="$1"
@@ -79,33 +57,38 @@ apply_configured_packages() {
     local repo
     local branch
     local dest_name
-    local name
 
     section "Built-in Package Changes"
-
-    if [ "${#PACKAGE_REMOVES[@]}" -gt 0 ]; then
-        remove_package "${PACKAGE_REMOVES[@]}"
-    fi
 
     for entry in "${PACKAGE_CLONES[@]}"; do
         IFS='|' read -r repo branch dest_name <<< "$entry"
         [ -n "$repo" ] || continue
         clone_package "$repo" "$branch" "$dest_name"
     done
+}
 
-    if [ -n "$WRT_PACKAGE" ]; then
-        section "Extra Packages"
-        log "Installing additional packages: $WRT_PACKAGE"
-        for entry in $WRT_PACKAGE; do
-            IFS='|' read -r name repo branch dest_name <<< "$entry"
-            if [ -n "$repo" ]; then
-                remove_package "$name"
-                clone_package "$repo" "$branch" "$dest_name"
-            fi
+# Uninstall feed packages that share a name with a cloned package,
+# OpenWrt does not detect duplicate package names
+shadow_feed_duplicates() {
+    local makefile
+    local name
+    local link
+
+    [ -d "$PKG_CLONE_BASE" ] || return 0
+
+    section "Feed Duplicates"
+
+    while IFS= read -r makefile; do
+        name=$(basename "$(dirname "$makefile")")
+        for link in package/feeds/*/"$name"; do
+            [ -L "$link" ] || continue
+            rm -f "$link"
+            log "Shadowed: ${link#package/feeds/}"
         done
-    fi
+    done < <(find "$PKG_CLONE_BASE" -mindepth 2 -maxdepth 3 -name Makefile | sort)
 }
 
 apply_configured_packages
+shadow_feed_duplicates
 
 log "ApplyPackages.sh completed"
