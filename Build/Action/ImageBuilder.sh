@@ -90,6 +90,15 @@ extract_packages() {
     awk 'NF >= 3 && $2 == "-" {print $1}' "$1" | sort -u
 }
 
+missing_packages() {
+    local manifest="$1"
+    local profile="$2"
+
+    sed -n 's/^CONFIG_PACKAGE_\([^[:space:]=]\{1,\}\)=y$/\1/p' \
+        "$REPO_ROOT/Config/Common.txt" "$REPO_ROOT/Config/$profile.txt" | sort -u |
+        comm -23 - <(extract_packages "$manifest")
+}
+
 prune_stale_versions() {
     local ref="$1"
     local cutoff="$2"
@@ -226,6 +235,7 @@ restore() {
     local wrt_hash
     local ref
     local file
+    local missing
 
     require_profile "$profile"
     require_command oras
@@ -286,6 +296,11 @@ restore() {
             unavailable "$file missing from $ref"
         fi
     done
+
+    missing=$(missing_packages "$bundle_dir/firmware.manifest" "$profile")
+    if [ -n "$missing" ]; then
+        unavailable "packages not in $ref: $(printf '%s' "$missing" | paste -sd' ' -)"
+    fi
 
     find "$target_dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
     if ! tar --zstd -xf "$bundle_dir/imagebuilder.tar.zst" -C "$target_dir" --strip-components=1; then
