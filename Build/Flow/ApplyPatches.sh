@@ -79,31 +79,42 @@ patch_hostname_ip() {
 patch_build_version() {
     local apk_cheatsheet="package/base-files/files/etc/profile.d/apk-cheatsheet.sh"
     local banner_file="package/base-files/files/etc/banner"
-    local branch_ver
+    local firmware_version="ImmortalWrt ${WRT_BRANCH#openwrt-}-$WRT_DATE"
+    local upstream_version="OpenWrt $WRT_VERSION"
+    local target_makefile="target/linux/x86/Makefile"
+    local kernel_patchver
+    local kernel_version
     local banner_text
-    local firmware_version
     local os_release_file="package/base-files/files/usr/lib/os-release"
     local openwrt_release_file="package/base-files/files/etc/openwrt_release"
+    local luci_status_file="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js"
 
     section "Build Version and Banner"
-
-    if [ -z "$BUILD_DATE" ]; then
-        BUILD_DATE=$(TZ=Asia/Shanghai date +'%y.%m.%d')
-        log "BUILD_DATE not set by workflow, using local: $BUILD_DATE"
-    fi
 
     if [ -f "$apk_cheatsheet" ]; then
         log "Removing APK cheatsheet"
         echo "# Intentionally left empty" > "$apk_cheatsheet"
     fi
 
+    require_file "$target_makefile" "x86 target Makefile"
+    kernel_patchver=$(sed -n 's/^KERNEL_PATCHVER:=//p' "$target_makefile" | head -1 | tr -d '[:space:]')
+    require_file "target/linux/generic/kernel-$kernel_patchver" "kernel version file"
+    kernel_version=$(sed -n "s/^LINUX_VERSION-$kernel_patchver[[:space:]]*=[[:space:]]*//p" \
+        "target/linux/generic/kernel-$kernel_patchver" | head -1 | tr -d '[:space:]')
+    if [ -z "$kernel_version" ]; then
+        log "ERROR: Kernel version not found for ${kernel_patchver:-unknown}"
+        exit 1
+    fi
+    if [[ "$kernel_version" = .* ]]; then
+        kernel_version="${kernel_patchver}${kernel_version}"
+    fi
+    banner_text=" $upstream_version · Kernel $kernel_version"
+
     log "Customizing banner"
     rm -f files/etc/banner
 
     require_file "$banner_file" "banner file"
 
-    branch_ver=$(echo "$WRT_BRANCH" | sed 's/openwrt-//')
-    banner_text=" ImmortalWrt $branch_ver · Build $BUILD_DATE via GitHub"
     sed -i "s|^ %D %V, %C.*$|$banner_text|" "$banner_file"
 
     if grep -qF "$banner_text" "$banner_file"; then
@@ -113,7 +124,6 @@ patch_build_version() {
         exit 1
     fi
 
-    firmware_version="ImmortalWrt @ Build $BUILD_DATE"
     log "Setting firmware version: ${firmware_version}"
 
     require_file "$os_release_file" "os-release file"
@@ -137,6 +147,11 @@ patch_build_version() {
         log "ERROR: Firmware version openwrt_release patch failed: expected line not found"
         exit 1
     fi
+
+    log "Setting upstream version: $upstream_version"
+    sed -i "s|luciversion = luciversion.branch + ' ' + luciversion.revision;|luciversion = '$upstream_version';|" \
+        "$luci_status_file"
+    assert_file_contains "$luci_status_file" "luciversion = '$upstream_version';" "Upstream version"
 }
 
 patch_x86_cpu_performance() {
@@ -145,6 +160,39 @@ patch_x86_cpu_performance() {
     apply_source_patch "$PATCH_ROOT/X86/010-kernel-cpufreq-performance.patch" "x86 CPU frequency performance"
 
     assert_file_contains "config/Config-kernel.in" "default KERNEL_CPU_FREQ_DEFAULT_GOV_PERFORMANCE" "x86 CPU frequency performance"
+}
+
+patch_x86_images() {
+    local image_makefile="target/linux/x86/image/Makefile"
+
+    section "X86 Image Patch"
+
+    sed -i 's/^    IMAGES-y := rootfs\.img\.gz$/    IMAGES-y :=/' "$image_makefile"
+
+    assert_file_not_contains "$image_makefile" 'IMAGES-y := rootfs.img.gz' "x86 rootfs image skip"
+    assert_file_contains "$image_makefile" 'IMAGES-$$(CONFIG_GRUB_EFI_IMAGES) += combined-efi.img.gz' "x86 EFI image"
+}
+
+patch_router_ppp() {
+    local ppp_proto="package/network/services/ppp/files/ppp.sh"
+
+    section "PPP Patches"
+
+    sed -i 's/\[ "\$(uci get syncdial\.config\.enabled)" -eq "1" \]/[ "$(uci -q get syncdial.config.enabled)" = "1" ]/' "$ppp_proto"
+
+    assert_file_contains "$ppp_proto" '[ "$(uci -q get syncdial.config.enabled)" = "1" ]' "PPPoE syncdial check"
+    assert_file_not_contains "$ppp_proto" '[ "$(uci get syncdial.config.enabled)" -eq "1" ]' "PPPoE syncdial check"
+}
+
+patch_router_yq() {
+    local yq_makefile="feeds/packages/utils/yq/Makefile"
+    local yq_tags="GO_PKG_TAGS:=yq_nolua,yq_noini,yq_notoml,yq_noxml,yq_nohcl"
+
+    section "YQ Patch"
+
+    sed -i -e '/^GO_PKG_TAGS:=/d' -e "/^GO_PKG_LDFLAGS_X:=/a $yq_tags" "$yq_makefile"
+
+    assert_file_contains "$yq_makefile" "$yq_tags" "yq build tags"
 }
 
 patch_imagebuilder() {
@@ -191,6 +239,8 @@ patch_luci_common() {
 patch_cloud_docker_runtime() {
     local dockerd_makefile="feeds/packages/utils/dockerd/Makefile"
     local dockerd_init="feeds/packages/utils/dockerd/files/dockerd.init"
+    local containerd_makefile="feeds/packages/utils/containerd/Makefile"
+    local containerd_commands='MAKE_FLAGS += COMMANDS="containerd containerd-shim-runc-v2"'
 
     section "Docker Runtime Patches"
 
@@ -211,8 +261,29 @@ patch_cloud_docker_runtime() {
     assert_file_contains "$dockerd_init" 'config_get bridge globals bridge ""' "dockerd bridge option"
     assert_file_contains "$dockerd_init" 'json_add_string "bridge" "${bridge}"' "dockerd bridge option"
 
+    sed -i \
+        -e '/^STOP=/d' \
+        -e '/^SERVICE_STOP_TIME=/d' \
+        -e '/^START=99$/a STOP=10' \
+        -e '/^START=99$/a SERVICE_STOP_TIME=30' \
+        "$dockerd_init"
+
+    assert_file_contains "$dockerd_init" 'STOP=10' "dockerd shutdown order"
+    assert_file_contains "$dockerd_init" 'SERVICE_STOP_TIME=30' "dockerd stop timeout"
+
     assert_file_contains "$dockerd_makefile" \
         '$(PKG_BUILD_DIR)/hack/make/binary-daemon' "dockerd nested binaries skip"
+
+    sed -i \
+        -e 's/^\(  DEPENDS:=$(ARCH_DEPENDS)\) +btrfs-progs +runc$/\1 +runc/' \
+        -e 's|/bin/{ctr,containerd,containerd-stress,containerd-shim-runc-v2} |/bin/{containerd,containerd-shim-runc-v2} |' \
+        -e '/^MAKE_FLAGS += COMMANDS=/d' \
+        -e "/^Build\/Compile=\$(call Build\/Compile\/Default)\$/i $containerd_commands" \
+        "$containerd_makefile"
+
+    assert_file_contains "$containerd_makefile" '  DEPENDS:=$(ARCH_DEPENDS) +runc' "containerd btrfs dependency"
+    assert_file_contains "$containerd_makefile" '/bin/{containerd,containerd-shim-runc-v2} $(1)/usr/bin/' "containerd install list"
+    assert_file_contains "$containerd_makefile" "$containerd_commands" "containerd build commands"
 }
 
 patch_cloud_luci() {
@@ -277,6 +348,12 @@ patch_hostname_ip
 patch_build_version
 patch_imagebuilder
 patch_x86_cpu_performance
+patch_x86_images
+
+if [ "$BUILD_PROFILE" = "Router" ]; then
+    patch_router_ppp
+    patch_router_yq
+fi
 
 if [ "$BUILD_PROFILE" = "Cloud" ]; then
     patch_cloud_docker_runtime

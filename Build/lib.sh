@@ -143,7 +143,6 @@ parse_profile_config() {
     local key
     local value
 
-    PACKAGE_REMOVES=()
     PACKAGE_CLONES=()
     PRIVATE_FILE_COPIES=()
     FILE_DOWNLOADS=()
@@ -186,9 +185,6 @@ parse_profile_config() {
                         value=$(trim "${line#*=}")
                         set_config_value "$section" "$key" "$value"
                         ;;
-                    packages.remove)
-                        PACKAGE_REMOVES+=("$line")
-                        ;;
                     packages.clone)
                         append_clone_rule "$line"
                         ;;
@@ -224,7 +220,7 @@ expand_config_vars() {
         VLAN_ID_2 PPPOE_MAC_2 PPPOE_USERNAME_2 PPPOE_PASSWORD_2 PPPOE_WAN_MAC_2
         ROOT_PASSWORD_HASH
         VLAN_ID PPPOE_MAC PPPOE_USERNAME PPPOE_PASSWORD PPPOE_WAN_MAC
-        DNS_FALLBACK_SERVER ROUTER_MAC SWITCH_MAC CLOUD_MAC
+        DNS_FALLBACK_SERVER ROUTER_MAC SWITCH_MAC CLOUD_MAC LMINI_MAC
         REDIRECT_SRC_DPORT REDIRECT_DEST_PORT REDIRECT_ALLOW_IP
     )
 

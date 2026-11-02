@@ -3,6 +3,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/../lib.sh"
 
 load_profile "${1:?Usage: ApplyPrepare.sh <Router|Cloud>}"
+FILE_DOWNLOADS+=("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/i915/tgl_guc_70.bin?h=$LINUX_FIRMWARE_VERSION|files/lib/firmware/i915/tgl_guc_70.bin")
 
 REPO_TEMP_DIR=""
 
@@ -133,7 +134,7 @@ download_nikki_ui() {
 download_private_repo
 copy_profile_files
 copy_private_files
-download_files
+download_files || exit 1
 download_nikki_ui
 
 log "ApplyPrepare.sh completed"

@@ -10,6 +10,7 @@ OpenWrt/
 |
 ├── Build/
 │   ├── upstream.conf                   # 上游仓库配置
+│   ├── feeds.conf                      # Feeds 锁定配置
 │   ├── Action/                         # 编译任务脚本
 │   ├── Flow/                           # 编译流程脚本
 │   └── Patches/                        # 编译补丁

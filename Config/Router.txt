@@ -1,3 +1,8 @@
 # Router Customized Apps
 CONFIG_PACKAGE_luci-app-mosdns=y
 CONFIG_PACKAGE_luci-app-nikki=y
+
+# Router Traffic Shaping
+CONFIG_PACKAGE_kmod-sched-cake=y
+CONFIG_PACKAGE_kmod-ifb=y
+CONFIG_PACKAGE_tc-tiny=y
