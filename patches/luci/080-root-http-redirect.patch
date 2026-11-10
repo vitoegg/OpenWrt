@@ -1,0 +1,28 @@
+diff --git a/feeds/luci/modules/luci-base/root/etc/uci-defaults/50_luci-uhttpd-root-redirect b/feeds/luci/modules/luci-base/root/etc/uci-defaults/50_luci-uhttpd-root-redirect
+new file mode 100755
+index 0000000..b4417fe
+--- /dev/null
++++ b/feeds/luci/modules/luci-base/root/etc/uci-defaults/50_luci-uhttpd-root-redirect
+@@ -0,0 +1,9 @@
++#!/bin/sh
++
++# Answer "/" with an HTTP redirect to LuCI instead of the meta refresh page
++[ -n "$(uci -q get uhttpd.main.json_script)" ] || {
++	uci -q set uhttpd.main.json_script='/usr/share/uhttpd/luci-root-redirect.json'
++	uci -q commit uhttpd
++}
++
++exit 0
+diff --git a/feeds/luci/modules/luci-base/root/usr/share/uhttpd/luci-root-redirect.json b/feeds/luci/modules/luci-base/root/usr/share/uhttpd/luci-root-redirect.json
+new file mode 100644
+index 0000000..12afc70
+--- /dev/null
++++ b/feeds/luci/modules/luci-base/root/usr/share/uhttpd/luci-root-redirect.json
+@@ -0,0 +1,7 @@
++{
++	"request": [
++		[ "if", [ "regex", "REQUEST_URI", "^/(\\?.*)?$" ], [
++			[ "redirect", "/cgi-bin/luci/" ]
++		] ]
++	]
++}

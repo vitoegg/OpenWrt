@@ -3,29 +3,28 @@
 </p>
 
 > [!TIP]
-> 本项目基于 [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 的定制，使用 `GitHub Actions` 自动化编译，通过内置 `files` 实现 `Nikki`, `MosDNS`, `Dockerman`, `Mio`, `Samba4` 开箱即用。
+> 本项目基于 [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 的定制，使用 `GitHub Actions` 自动化编译，通过内置 `files` 实现 `Nikki`, `MosDNS`, `Docker`, `Mio`, `Samba4` 开箱即用。
 
 ```
 OpenWrt/
 |
-├── Build/
-│   ├── upstream.conf                   # 上游仓库配置
-│   ├── Action/                         # 编译任务脚本
-│   ├── Flow/                           # 编译流程脚本
-│   └── Patches/                        # 编译补丁
+├── scripts/
+│   ├── build.sh                        # 构建入口，对应 workflow 的每个步骤
+│   ├── lib/                            # 公共函数与 GHCR 操作
+│   ├── customize/                      # 定制源码树：包、文件、补丁、设置、配置
+│   └── artifacts/                      # ImageBuilder、缓存、SDK 的发布与恢复
 |
-├── Custom/
-│   ├── Router.conf                     # Router 业务配置
-│   └── Cloud.conf                      # Cloud 业务配置
+├── patches/                            # 源码补丁
 |
-├── Config/
-│   ├── Common.txt                      # 公共 Config
-│   ├── Router.txt                      # Router 个性化配置
-│   └── Cloud.txt                       # Cloud 个性化配置
+├── profiles/
+│   ├── upstream.conf                   # 上游仓库与版本锁定
+│   ├── feeds.conf                      # Feeds 锁定
+│   ├── common/build.config             # 公共编译配置
+│   ├── router/                         # Router 编译配置与设备配置
+│   └── cloud/                          # Cloud 编译配置与设备配置
 |
 ├── .github/workflows/
-│   ├── build-router-firmware.yml       # Router 版本构建
-│   ├── build-cloud-firmware.yml        # Cloud 版本构建
+│   ├── build-immortalwrt-firmware.yml  # 固件构建
 │   ├── refresh-bbr-patches.yml         # BBR 补丁更新
 │   └── update-rclone-config.yml        # Rclone 配置更新
 |

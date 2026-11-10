@@ -1,0 +1,52 @@
+diff --git a/feeds/luci/modules/luci-base/root/usr/share/rpcd/ucode/luci b/feeds/luci/modules/luci-base/root/usr/share/rpcd/ucode/luci
+index 6239ca7..3f698c0 100644
+--- a/feeds/luci/modules/luci-base/root/usr/share/rpcd/ucode/luci
++++ b/feeds/luci/modules/luci-base/root/usr/share/rpcd/ucode/luci
+@@ -46,6 +46,9 @@ function callPackageVersionCheck(pkg) {
+ 	return version;
+ }
+ 
++let cpu_stat_prev = [ 0, 0 ];
++let cpu_usage_last = '0%';
++
+ const methods = {
+ 	getVersion: {
+ 		call: function(request) {
+@@ -709,17 +712,28 @@ const methods = {
+ 
+ 	getCPUUsage: {
+ 		call: function() {
+-			const fd = popen('top -n1 | awk \'/^CPU/ {printf("%d%", 100 - $8)}\'');
+-			if (fd) {
+-				let cpuusage = fd.read('all');
+-				if (!cpuusage)
+-					cpuusage = '?';
+-				fd.close();
+-
+-				return { cpuusage: cpuusage };
+-			} else {
++			const fd = open('/proc/stat');
++			if (!fd)
+ 				return { cpuusage: error() };
++
++			const stat = map(slice(split(trim(fd.read('line')), /\s+/), 1, 9), (n) => +n);
++			fd.close();
++
++			// user nice system idle iowait irq softirq steal; usage since the previous sample
++			let total = 0;
++			for (let n in stat)
++				total += n;
++
++			const idle = stat[3];
++			const delta = total - cpu_stat_prev[0];
++
++			// Calls less than one CPU-second apart reuse the last sample instead of a noisy one
++			if (delta >= 100) {
++				cpu_usage_last = sprintf('%d%%', 100 - (idle - cpu_stat_prev[1]) * 100 / delta);
++				cpu_stat_prev = [ total, idle ];
+ 			}
++
++			return { cpuusage: cpu_usage_last };
+ 		}
+ 	},
+ 

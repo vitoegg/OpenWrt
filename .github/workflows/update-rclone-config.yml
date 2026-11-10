@@ -7,24 +7,21 @@ on:
 
 permissions:
   actions: write
-  contents: write
+  contents: read
 
+# A cancelled run could refresh the token without saving it back to the secret
 concurrency:
-  group: "update-rclone-config-${{ github.ref_name }}"
-  cancel-in-progress: true
+  group: rclone-config-${{ github.repository }}
+  cancel-in-progress: false
 
 jobs:
   update-rclone-config:
     name: Update Rclone Config
     runs-on: ubuntu-24.04
-    if: always()
-    concurrency:
-      group: rclone-config-${{ github.repository }}
-      cancel-in-progress: false
     steps:
       - name: Setup Rclone
         id: setup-rclone
-        uses: AnimMouse/setup-rclone@v1
+        uses: AnimMouse/setup-rclone@main
         with:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
 
@@ -34,7 +31,7 @@ jobs:
       - name: Update Rclone Config
         if: always() && steps.setup-rclone.outcome == 'success'
         continue-on-error: true
-        uses: AnimMouse/setup-rclone/update-config@v1
+        uses: AnimMouse/setup-rclone/update-config@main
         with:
           rclone_config_secret_name: RCLONE_CONFIG
           token: ${{ secrets.REPO_TOKEN }}
@@ -50,9 +47,6 @@ jobs:
         with:
           gh_token: ${{ secrets.GITHUB_TOKEN }}
           out_log: false
-          delete_releases: true
-          releases_keep_latest: 0
-          delete_tags: true
           delete_workflows: true
           workflows_keep_day: 0
           workflows_keep_keyword: "Build/Patches"
